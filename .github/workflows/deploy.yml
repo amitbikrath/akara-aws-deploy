@@ -116,7 +116,7 @@ jobs:
           echo "BASH_ENV=$GITHUB_WORKSPACE/.bashenv" >> $GITHUB_ENV
           echo "set -euxo pipefail" > .bashenv
 
-      - name: Preflight: show dirs/files
+      - name: Preflight show dirs and files
         shell: bash
         run: |
           set -euo pipefail
