@@ -6,13 +6,6 @@ terraform {
       version = "~> 5.0"
     }
   }
-  
-  # Uncomment and configure for remote state
-  # backend "s3" {
-  #   bucket = "akara-terraform-state"
-  #   key    = "terraform.tfstate"
-  #   region = "us-east-1"
-  # }
 }
 
 provider "aws" {
