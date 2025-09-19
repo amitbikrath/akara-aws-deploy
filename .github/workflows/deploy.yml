@@ -1,0 +1,462 @@
+name: Deploy Akara Studio to AWS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - staging
+      deploy_infra:
+        description: 'Deploy infrastructure'
+        required: true
+        default: true
+        type: boolean
+      deploy_frontend:
+        description: 'Deploy frontend'
+        required: true
+        default: true
+        type: boolean
+      deploy_admin:
+        description: 'Deploy admin'
+        required: true
+        default: true
+        type: boolean
+      upload_sample_data:
+        description: 'Upload sample catalogs'
+        required: true
+        default: true
+        type: boolean
+
+  push:
+    branches: [ main ]
+    paths: [ 'infra/**', 'frontend/**', 'admin/**' ]
+
+  pull_request:
+    branches: [ main ]
+    paths: [ 'infra/**', 'frontend/**', 'admin/**' ]
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: '1.6'
+  NODE_VERSION: '18'
+  PROJECT_NAME: akara
+
+# Required for OIDC
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  # Determine environment and validate inputs
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      deploy_infra: ${{ steps.env.outputs.deploy_infra }}
+      deploy_frontend: ${{ steps.env.outputs.deploy_frontend }}
+      deploy_admin: ${{ steps.env.outputs.deploy_admin }}
+      upload_sample_data: ${{ steps.env.outputs.upload_sample_data }}
+    steps:
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+            echo "deploy_infra=${{ inputs.deploy_infra }}" >> $GITHUB_OUTPUT
+            echo "deploy_frontend=${{ inputs.deploy_frontend }}" >> $GITHUB_OUTPUT
+            echo "deploy_admin=${{ inputs.deploy_admin }}" >> $GITHUB_OUTPUT
+            echo "upload_sample_data=${{ inputs.upload_sample_data }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+            echo "deploy_infra=true" >> $GITHUB_OUTPUT
+            echo "deploy_frontend=true" >> $GITHUB_OUTPUT
+            echo "deploy_admin=true" >> $GITHUB_OUTPUT
+            echo "upload_sample_data=true" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "deploy_infra=true" >> $GITHUB_OUTPUT
+            echo "deploy_frontend=true" >> $GITHUB_OUTPUT
+            echo "deploy_admin=true" >> $GITHUB_OUTPUT
+            echo "upload_sample_data=false" >> $GITHUB_OUTPUT
+          fi
+
+  # Deploy Infrastructure with Terraform
+  deploy-infrastructure:
+    if: needs.setup.outputs.deploy_infra == 'true'
+    needs: setup
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+    outputs:
+      s3_bucket_frontend: ${{ steps.tf_output.outputs.s3_bucket_frontend }}
+      s3_bucket_media: ${{ steps.tf_output.outputs.s3_bucket_media }}
+      cloudfront_id: ${{ steps.tf_output.outputs.cloudfront_id }}
+      cloudfront_domain: ${{ steps.tf_output.outputs.cloudfront_domain }}
+      cognito_user_pool_id: ${{ steps.tf_output.outputs.cognito_user_pool_id }}
+      cognito_client_id: ${{ steps.tf_output.outputs.cognito_client_id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-${{ github.run_id }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: infra
+        run: |
+          terraform plan \
+            -var="environment=${{ needs.setup.outputs.environment }}" \
+            -var="project_name=${{ env.PROJECT_NAME }}" \
+            -var="aws_region=${{ env.AWS_REGION }}" \
+            -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: infra
+        run: terraform apply tfplan
+
+      - name: Get Terraform Outputs
+        id: tf_output
+        working-directory: infra
+        run: |
+          echo "s3_bucket_frontend=$(terraform output -raw s3_bucket_public)" >> $GITHUB_OUTPUT
+          echo "s3_bucket_media=$(terraform output -raw s3_bucket_media)" >> $GITHUB_OUTPUT
+          echo "cloudfront_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+          echo "cloudfront_domain=$(terraform output -raw cloudfront_domain_name)" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_id=$(terraform output -raw cognito_user_pool_id)" >> $GITHUB_OUTPUT
+          echo "cognito_client_id=$(terraform output -raw cognito_client_id)" >> $GITHUB_OUTPUT
+
+      - name: Save Infrastructure Outputs
+        working-directory: infra
+        run: |
+          terraform output -json > ../infrastructure-outputs.json
+          
+      - name: Upload Infrastructure Outputs
+        uses: actions/upload-artifact@v3
+        with:
+          name: infrastructure-outputs-${{ needs.setup.outputs.environment }}
+          path: infrastructure-outputs.json
+
+  # Build and Deploy Frontend
+  deploy-frontend:
+    if: needs.setup.outputs.deploy_frontend == 'true'
+    needs: [setup, deploy-infrastructure]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Frontend-${{ github.run_id }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_CDN_URL: https://${{ needs.deploy-infrastructure.outputs.cloudfront_domain }}
+          NEXT_PUBLIC_API_URL: https://api.akara.studio
+          NEXT_PUBLIC_SITE_URL: ${{ needs.setup.outputs.environment == 'prod' && 'https://akara.studio' || 'https://staging.akara.studio' }}
+          NEXT_PUBLIC_ENVIRONMENT: ${{ needs.setup.outputs.environment }}
+        run: npm run build
+
+      - name: Deploy Frontend to S3
+        working-directory: frontend
+        run: |
+          # Deploy static assets with long cache
+          aws s3 sync out/ s3://${{ needs.deploy-infrastructure.outputs.s3_bucket_frontend }} \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "*.html" --exclude "sitemap.xml" --exclude "robots.txt" \
+            --exclude "_next/static/chunks/pages/**" --exclude "_next/static/chunks/webpack-*"
+          
+          # Deploy HTML files with short cache
+          aws s3 sync out/ s3://${{ needs.deploy-infrastructure.outputs.s3_bucket_frontend }} \
+            --delete \
+            --cache-control "public, max-age=0, must-revalidate" \
+            --include "*.html" --include "sitemap.xml" --include "robots.txt"
+
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ needs.deploy-infrastructure.outputs.cloudfront_id }} \
+            --paths "/*"
+
+      - name: Frontend Deployment Summary
+        run: |
+          echo "✅ Frontend deployed successfully!"
+          echo "🌐 Frontend URL: https://${{ needs.deploy-infrastructure.outputs.cloudfront_domain }}"
+
+  # Upload Sample Catalogs
+  upload-sample-data:
+    if: needs.setup.outputs.upload_sample_data == 'true'
+    needs: [setup, deploy-infrastructure, deploy-frontend]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Data-${{ github.run_id }}
+
+      - name: Upload Sample Catalogs
+        run: |
+          aws s3 cp catalogs/sample-data/ \
+            s3://${{ needs.deploy-infrastructure.outputs.s3_bucket_frontend }}/catalogs/ \
+            --recursive \
+            --cache-control "public, max-age=300"
+
+      - name: Invalidate Catalog Cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ needs.deploy-infrastructure.outputs.cloudfront_id }} \
+            --paths "/catalogs/*"
+
+      - name: Sample Data Upload Summary
+        run: |
+          echo "✅ Sample catalogs uploaded successfully!"
+          echo "📚 Catalogs available at: https://${{ needs.deploy-infrastructure.outputs.cloudfront_domain }}/catalogs/"
+
+  # Build and Deploy Admin
+  deploy-admin:
+    if: needs.setup.outputs.deploy_admin == 'true'
+    needs: [setup, deploy-infrastructure]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+    outputs:
+      admin_cloudfront_domain: ${{ steps.admin_cf.outputs.domain }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Admin-${{ github.run_id }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'admin/package-lock.json'
+
+      - name: Install Admin Dependencies
+        working-directory: admin
+        run: npm ci
+
+      - name: Build Admin
+        working-directory: admin
+        env:
+          NEXT_PUBLIC_AWS_REGION: ${{ env.AWS_REGION }}
+          NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ needs.deploy-infrastructure.outputs.cognito_user_pool_id }}
+          NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ needs.deploy-infrastructure.outputs.cognito_client_id }}
+          NEXT_PUBLIC_API_URL: https://api.akara.studio
+          NEXT_PUBLIC_S3_BUCKET: ${{ needs.deploy-infrastructure.outputs.s3_bucket_media }}
+          NEXT_PUBLIC_ENVIRONMENT: ${{ needs.setup.outputs.environment }}
+        run: npm run build
+
+      - name: Create Admin S3 Bucket
+        run: |
+          BUCKET_NAME="${{ env.PROJECT_NAME }}-admin-${{ needs.setup.outputs.environment }}"
+          aws s3 mb s3://$BUCKET_NAME 2>/dev/null || echo "Admin bucket already exists"
+          aws s3 website s3://$BUCKET_NAME \
+            --index-document index.html \
+            --error-document error.html
+
+      - name: Deploy Admin to S3
+        working-directory: admin
+        run: |
+          BUCKET_NAME="${{ env.PROJECT_NAME }}-admin-${{ needs.setup.outputs.environment }}"
+          aws s3 sync out/ s3://$BUCKET_NAME --delete
+
+      - name: Create Admin CloudFront Distribution
+        id: admin_cf
+        run: |
+          BUCKET_NAME="${{ env.PROJECT_NAME }}-admin-${{ needs.setup.outputs.environment }}"
+          BUCKET_DOMAIN="$BUCKET_NAME.s3-website-${{ env.AWS_REGION }}.amazonaws.com"
+          
+          # Create CloudFront distribution config
+          cat > admin-cf-config.json << EOF
+          {
+            "CallerReference": "admin-$(date +%s)",
+            "Comment": "Akara Studio Admin Interface - ${{ needs.setup.outputs.environment }}",
+            "DefaultRootObject": "index.html",
+            "Origins": {
+              "Quantity": 1,
+              "Items": [
+                {
+                  "Id": "S3-$BUCKET_NAME",
+                  "DomainName": "$BUCKET_DOMAIN",
+                  "CustomOriginConfig": {
+                    "HTTPPort": 80,
+                    "HTTPSPort": 443,
+                    "OriginProtocolPolicy": "http-only"
+                  }
+                }
+              ]
+            },
+            "DefaultCacheBehavior": {
+              "TargetOriginId": "S3-$BUCKET_NAME",
+              "ViewerProtocolPolicy": "redirect-to-https",
+              "MinTTL": 0,
+              "DefaultTTL": 0,
+              "MaxTTL": 86400,
+              "ForwardedValues": {
+                "QueryString": false,
+                "Cookies": {
+                  "Forward": "none"
+                }
+              },
+              "TrustedSigners": {
+                "Enabled": false,
+                "Quantity": 0
+              }
+            },
+            "Enabled": true,
+            "PriceClass": "PriceClass_100"
+          }
+          EOF
+          
+          # Create the distribution
+          RESULT=$(aws cloudfront create-distribution --distribution-config file://admin-cf-config.json)
+          DOMAIN=$(echo "$RESULT" | jq -r '.Distribution.DomainName')
+          echo "domain=$DOMAIN" >> $GITHUB_OUTPUT
+          
+          # Clean up
+          rm admin-cf-config.json
+
+      - name: Admin Deployment Summary
+        run: |
+          echo "✅ Admin deployed successfully!"
+          echo "👤 Admin URL: https://${{ steps.admin_cf.outputs.domain }}"
+
+  # Final Deployment Summary
+  deployment-summary:
+    needs: [setup, deploy-infrastructure, deploy-frontend, deploy-admin, upload-sample-data]
+    if: always() && (needs.deploy-infrastructure.result == 'success' || needs.deploy-frontend.result == 'success' || needs.deploy-admin.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate DNS Records
+        run: |
+          echo "# 🎉 Akara Studio Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🌐 Live URLs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.deploy-frontend.result }}" == "success" ]]; then
+            echo "**Frontend (Public Site):** https://${{ needs.deploy-infrastructure.outputs.cloudfront_domain }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.deploy-admin.result }}" == "success" ]]; then
+            echo "**Admin Interface:** https://${{ needs.deploy-admin.outputs.admin_cloudfront_domain }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📋 DNS Records for Squarespace" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Copy these exact records into your Squarespace DNS settings:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 1. Main Site (akara.studio)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Type:** CNAME" >> $GITHUB_STEP_SUMMARY
+          echo "- **Name:** @" >> $GITHUB_STEP_SUMMARY
+          echo "- **Value:** \`${{ needs.deploy-infrastructure.outputs.cloudfront_domain }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 2. Admin Site (admin.akara.studio)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Type:** CNAME" >> $GITHUB_STEP_SUMMARY
+          echo "- **Name:** admin" >> $GITHUB_STEP_SUMMARY
+          echo "- **Value:** \`${{ needs.deploy-admin.outputs.admin_cloudfront_domain }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## ⏳ Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. ✅ Test the CloudFront URLs above" >> $GITHUB_STEP_SUMMARY
+          echo "2. 📝 Add the DNS records to Squarespace" >> $GITHUB_STEP_SUMMARY
+          echo "3. ⏰ Wait 5-30 minutes for DNS propagation" >> $GITHUB_STEP_SUMMARY
+          echo "4. 🌟 Visit https://akara.studio - your site is live!" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create DNS Records File
+        run: |
+          cat > DNS-RECORDS.txt << EOF
+          Akara Studio - DNS Records for Squarespace
+          ==========================================
+          
+          Environment: ${{ needs.setup.outputs.environment }}
+          Deployed: $(date -u)
+          
+          COPY THESE RECORDS TO SQUARESPACE:
+          ----------------------------------
+          
+          1. Main Site (akara.studio)
+             Type: CNAME
+             Name: @
+             Value: ${{ needs.deploy-infrastructure.outputs.cloudfront_domain }}
+          
+          2. Admin Site (admin.akara.studio)
+             Type: CNAME
+             Name: admin
+             Value: ${{ needs.deploy-admin.outputs.admin_cloudfront_domain }}
+          
+          LIVE URLS FOR TESTING:
+          ---------------------
+          Frontend: https://${{ needs.deploy-infrastructure.outputs.cloudfront_domain }}
+          Admin:    https://${{ needs.deploy-admin.outputs.admin_cloudfront_domain }}
+          
+          AWS RESOURCES CREATED:
+          ---------------------
+          - S3 Buckets: ${{ needs.deploy-infrastructure.outputs.s3_bucket_frontend }}, ${{ needs.deploy-infrastructure.outputs.s3_bucket_media }}
+          - CloudFront Distributions: 2 (frontend + admin)
+          - DynamoDB Tables: 3 (users, interactions, entitlements)
+          - Cognito User Pool: ${{ needs.deploy-infrastructure.outputs.cognito_user_pool_id }}
+          
+          NEXT STEPS:
+          ----------
+          1. Test the CloudFront URLs
+          2. Add DNS records to Squarespace
+          3. Wait for DNS propagation (5-30 minutes)
+          4. Visit https://akara.studio
+          EOF
+
+      - name: Upload DNS Records
+        uses: actions/upload-artifact@v3
+        with:
+          name: dns-records-${{ needs.setup.outputs.environment }}
+          path: DNS-RECORDS.txt

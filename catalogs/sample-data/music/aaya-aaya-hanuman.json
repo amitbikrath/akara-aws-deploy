@@ -1,0 +1,79 @@
+{
+  "id": "aaya-aaya-hanuman",
+  "title": "Aaya Aaya Hanuman",
+  "artists": ["Akara Studio"],
+  "album": "Divine Devotion Vol. 1",
+  "genre": "devotional",
+  "mood": ["devotional", "energetic"],
+  "language": "hindi",
+  "duration": 245,
+  "lyrics": {
+    "original": "आया आया हनुमान\nराम के प्यारे हनुमान\nसंकट हरने वाले\nभक्तों के रखवाले\nजय जय हनुमान",
+    "transliteration": "Aaya aaya Hanuman\nRam ke pyare Hanuman\nSankat harane wale\nBhakton ke rakhwale\nJay jay Hanuman",
+    "translation": "Here comes Hanuman\nBeloved of Lord Rama\nRemover of troubles\nProtector of devotees\nVictory to Hanuman"
+  },
+  "cover": {
+    "alt": "Hanuman devotional song cover art with golden temple background and divine light",
+    "variants": {
+      "thumbnail": {
+        "avif": "https://via.placeholder.com/150x150/FFD700/000000?text=Hanuman+Music",
+        "webp": "https://via.placeholder.com/150x150/FFD700/000000?text=Hanuman+Music",
+        "jpeg": "https://via.placeholder.com/150x150/FFD700/000000?text=Hanuman+Music"
+      },
+      "medium": {
+        "avif": "https://via.placeholder.com/300x300/FFD700/000000?text=Hanuman+Cover",
+        "webp": "https://via.placeholder.com/300x300/FFD700/000000?text=Hanuman+Cover",
+        "jpeg": "https://via.placeholder.com/300x300/FFD700/000000?text=Hanuman+Cover"
+      },
+      "large": {
+        "avif": "https://via.placeholder.com/600x600/FFD700/000000?text=Hanuman+Large",
+        "webp": "https://via.placeholder.com/600x600/FFD700/000000?text=Hanuman+Large",
+        "jpeg": "https://via.placeholder.com/600x600/FFD700/000000?text=Hanuman+Large"
+      }
+    }
+  },
+  "audio": {
+    "preview": {
+      "url": "https://www2.cs.uic.edu/~i101/SoundFiles/BabyElephantWalk60.wav",
+      "duration": 30,
+      "startTime": 60
+    },
+    "full": {
+      "hls": {
+        "master": "https://sample-audio.example.com/aaya-hanuman/master.m3u8"
+      },
+      "mp3": {
+        "320": "https://www2.cs.uic.edu/~i101/SoundFiles/BabyElephantWalk60.wav",
+        "192": "https://www2.cs.uic.edu/~i101/SoundFiles/BabyElephantWalk60.wav",
+        "128": "https://www2.cs.uic.edu/~i101/SoundFiles/BabyElephantWalk60.wav"
+      }
+    }
+  },
+  "tags": ["hanuman", "devotional", "hindi", "bhajan", "energetic", "temple"],
+  "isPremium": false,
+  "metadata": {
+    "createdAt": "2024-12-01T10:00:00.000Z",
+    "updatedAt": "2024-12-01T10:00:00.000Z",
+    "publishedAt": "2024-12-01T10:00:00.000Z",
+    "releaseDate": "2024-12-01",
+    "playCount": 1247,
+    "downloadCount": 89,
+    "rating": {
+      "average": 4.9,
+      "count": 203
+    },
+    "fileSize": {
+      "preview": 1048576,
+      "mp3_320": 7864320,
+      "mp3_192": 4718592,
+      "mp3_128": 3145728
+    }
+  },
+  "seo": {
+    "slug": "aaya-aaya-hanuman",
+    "metaTitle": "Aaya Aaya Hanuman - Devotional Song | Akara Studio",
+    "metaDescription": "Listen to this beautiful devotional song dedicated to Lord Hanuman. Energetic bhajan perfect for daily prayers and meditation.",
+    "ogImage": "https://via.placeholder.com/1200x630/FFD700/000000?text=Hanuman+Song"
+  },
+  "related": ["o-palanhare"]
+}

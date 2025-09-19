@@ -1,0 +1,65 @@
+{
+  "id": "hanuman-divine-strength",
+  "title": "Hanuman - Divine Strength",
+  "caption": "Lord Hanuman displaying his infinite strength and devotion to Sri Rama",
+  "sloka": "मनोजवं मारुततुल्यवेगं जितेन्द्रियं बुद्धिमतां वरिष्ठम्।",
+  "meaning": "Swift as thought, swift as wind, master of senses, foremost among the intelligent",
+  "alt": "Artistic illustration of Lord Hanuman in a powerful pose with golden aura, flying through clouds",
+  "deity": "hanuman",
+  "style": "traditional",
+  "tags": ["hanuman", "strength", "devotion", "traditional", "golden", "clouds", "flying"],
+  "orientation": "portrait",
+  "aspectRatio": "9:16",
+  "dimensions": {
+    "width": 1080,
+    "height": 1920
+  },
+  "palette": ["#FFD700", "#FF6B35", "#8B0000", "#4A4A4A", "#FFFFFF"],
+  "collection": "Divine Warriors",
+  "isPremium": false,
+  "variants": {
+    "thumbnail": {
+      "avif": "https://via.placeholder.com/200x300/FFD700/000000?text=Hanuman+Thumb",
+      "webp": "https://via.placeholder.com/200x300/FFD700/000000?text=Hanuman+Thumb",
+      "jpeg": "https://via.placeholder.com/200x300/FFD700/000000?text=Hanuman+Thumb"
+    },
+    "preview": {
+      "avif": "https://via.placeholder.com/600x900/FFD700/000000?text=Hanuman+Preview",
+      "webp": "https://via.placeholder.com/600x900/FFD700/000000?text=Hanuman+Preview",
+      "jpeg": "https://via.placeholder.com/600x900/FFD700/000000?text=Hanuman+Preview"
+    },
+    "desktop": {
+      "avif": "https://via.placeholder.com/1080x1920/FFD700/000000?text=Hanuman+Desktop",
+      "webp": "https://via.placeholder.com/1080x1920/FFD700/000000?text=Hanuman+Desktop",
+      "jpeg": "https://via.placeholder.com/1080x1920/FFD700/000000?text=Hanuman+Desktop"
+    },
+    "mobile": {
+      "avif": "https://via.placeholder.com/750x1334/FFD700/000000?text=Hanuman+Mobile",
+      "webp": "https://via.placeholder.com/750x1334/FFD700/000000?text=Hanuman+Mobile",
+      "jpeg": "https://via.placeholder.com/750x1334/FFD700/000000?text=Hanuman+Mobile"
+    }
+  },
+  "metadata": {
+    "createdAt": "2024-12-01T10:00:00.000Z",
+    "updatedAt": "2024-12-01T10:00:00.000Z",
+    "publishedAt": "2024-12-01T10:00:00.000Z",
+    "downloadCount": 456,
+    "rating": {
+      "average": 4.8,
+      "count": 124
+    },
+    "fileSize": {
+      "thumbnail": 25600,
+      "preview": 102400,
+      "desktop": 409600,
+      "mobile": 307200
+    }
+  },
+  "seo": {
+    "slug": "hanuman-divine-strength",
+    "metaTitle": "Hanuman Divine Strength Wallpaper - Free Download",
+    "metaDescription": "Download this beautiful wallpaper of Lord Hanuman displaying divine strength. Perfect for mobile and desktop backgrounds.",
+    "ogImage": "https://via.placeholder.com/1200x630/FFD700/000000?text=Hanuman+OG"
+  },
+  "related": ["ganesha-wisdom-light", "krishna-divine-love"]
+}

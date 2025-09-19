@@ -1,0 +1,324 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Bootstrap IAM Role for Akara Studio GitHub Actions OIDC Deployment'
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Default: 'amitrath'
+    Description: 'GitHub organization or username'
+  GitHubRepo:
+    Type: String
+    Default: 'akara-aws-deploy'
+    Description: 'GitHub repository name'
+  ProjectName:
+    Type: String
+    Default: 'akara'
+    Description: 'Project name for resource naming'
+
+Resources:
+  # GitHub OIDC Identity Provider
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCIdentityProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-github-oidc'
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # IAM Role for GitHub Actions
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-github-actions-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOIDCProvider
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                'token.actions.githubusercontent.com:aud': sts.amazonaws.com
+              StringLike:
+                'token.actions.githubusercontent.com:sub': 
+                  - !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/main'
+                  - !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/develop'
+                  - !Sub 'repo:${GitHubOrg}/${GitHubRepo}:pull_request'
+      ManagedPolicyArns:
+        - !Ref AkaraDeploymentPolicy
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-github-actions-role'
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # Custom IAM Policy with least-privilege permissions
+  AkaraDeploymentPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub '${ProjectName}-deployment-policy'
+      Description: 'Least-privilege policy for Akara Studio deployment'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # S3 Permissions
+          - Sid: S3BucketManagement
+            Effect: Allow
+            Action:
+              - s3:CreateBucket
+              - s3:DeleteBucket
+              - s3:ListBucket
+              - s3:GetBucketLocation
+              - s3:GetBucketVersioning
+              - s3:PutBucketVersioning
+              - s3:GetBucketEncryption
+              - s3:PutBucketEncryption
+              - s3:GetBucketPublicAccessBlock
+              - s3:PutBucketPublicAccessBlock
+              - s3:GetBucketPolicy
+              - s3:PutBucketPolicy
+              - s3:DeleteBucketPolicy
+              - s3:GetBucketWebsite
+              - s3:PutBucketWebsite
+              - s3:GetBucketNotification
+              - s3:PutBucketNotification
+            Resource:
+              - !Sub 'arn:aws:s3:::${ProjectName}-*'
+          
+          - Sid: S3ObjectManagement
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:ListMultipartUploadParts
+              - s3:AbortMultipartUpload
+            Resource:
+              - !Sub 'arn:aws:s3:::${ProjectName}-*/*'
+
+          # CloudFront Permissions
+          - Sid: CloudFrontManagement
+            Effect: Allow
+            Action:
+              - cloudfront:CreateDistribution
+              - cloudfront:UpdateDistribution
+              - cloudfront:DeleteDistribution
+              - cloudfront:GetDistribution
+              - cloudfront:GetDistributionConfig
+              - cloudfront:ListDistributions
+              - cloudfront:CreateOriginAccessControl
+              - cloudfront:UpdateOriginAccessControl
+              - cloudfront:DeleteOriginAccessControl
+              - cloudfront:GetOriginAccessControl
+              - cloudfront:ListOriginAccessControls
+              - cloudfront:CreateInvalidation
+              - cloudfront:GetInvalidation
+              - cloudfront:ListInvalidations
+              - cloudfront:TagResource
+              - cloudfront:UntagResource
+              - cloudfront:ListTagsForResource
+            Resource: '*'
+
+          # DynamoDB Permissions
+          - Sid: DynamoDBManagement
+            Effect: Allow
+            Action:
+              - dynamodb:CreateTable
+              - dynamodb:DeleteTable
+              - dynamodb:DescribeTable
+              - dynamodb:UpdateTable
+              - dynamodb:ListTables
+              - dynamodb:TagResource
+              - dynamodb:UntagResource
+              - dynamodb:ListTagsOfResource
+              - dynamodb:CreateGlobalSecondaryIndex
+              - dynamodb:UpdateGlobalSecondaryIndex
+              - dynamodb:DeleteGlobalSecondaryIndex
+              - dynamodb:DescribeGlobalSecondaryIndex
+            Resource:
+              - !Sub 'arn:aws:dynamodb:*:${AWS::AccountId}:table/${ProjectName}-*'
+              - !Sub 'arn:aws:dynamodb:*:${AWS::AccountId}:table/${ProjectName}-*/index/*'
+
+          # Cognito Permissions
+          - Sid: CognitoManagement
+            Effect: Allow
+            Action:
+              - cognito-idp:CreateUserPool
+              - cognito-idp:DeleteUserPool
+              - cognito-idp:DescribeUserPool
+              - cognito-idp:UpdateUserPool
+              - cognito-idp:ListUserPools
+              - cognito-idp:CreateUserPoolClient
+              - cognito-idp:DeleteUserPoolClient
+              - cognito-idp:DescribeUserPoolClient
+              - cognito-idp:UpdateUserPoolClient
+              - cognito-idp:ListUserPoolClients
+              - cognito-idp:CreateIdentityProvider
+              - cognito-idp:DeleteIdentityProvider
+              - cognito-idp:DescribeIdentityProvider
+              - cognito-idp:UpdateIdentityProvider
+              - cognito-idp:ListIdentityProviders
+              - cognito-idp:TagResource
+              - cognito-idp:UntagResource
+              - cognito-idp:ListTagsForResource
+            Resource: '*'
+
+          # EventBridge Permissions
+          - Sid: EventBridgeManagement
+            Effect: Allow
+            Action:
+              - events:CreateEventBus
+              - events:DeleteEventBus
+              - events:DescribeEventBus
+              - events:ListEventBuses
+              - events:PutRule
+              - events:DeleteRule
+              - events:DescribeRule
+              - events:ListRules
+              - events:PutTargets
+              - events:RemoveTargets
+              - events:ListTargetsByRule
+              - events:TagResource
+              - events:UntagResource
+              - events:ListTagsForResource
+            Resource: '*'
+
+          # ACM Permissions
+          - Sid: ACMManagement
+            Effect: Allow
+            Action:
+              - acm:RequestCertificate
+              - acm:DeleteCertificate
+              - acm:DescribeCertificate
+              - acm:ListCertificates
+              - acm:AddTagsToCertificate
+              - acm:RemoveTagsFromCertificate
+              - acm:ListTagsForCertificate
+            Resource: '*'
+
+          # API Gateway Permissions (for future Lambda integration)
+          - Sid: APIGatewayManagement
+            Effect: Allow
+            Action:
+              - apigateway:GET
+              - apigateway:POST
+              - apigateway:PUT
+              - apigateway:DELETE
+              - apigateway:PATCH
+              - apigateway:TagResource
+              - apigateway:UntagResource
+            Resource: '*'
+
+          # Lambda Permissions (for future serverless functions)
+          - Sid: LambdaManagement
+            Effect: Allow
+            Action:
+              - lambda:CreateFunction
+              - lambda:DeleteFunction
+              - lambda:GetFunction
+              - lambda:UpdateFunctionCode
+              - lambda:UpdateFunctionConfiguration
+              - lambda:ListFunctions
+              - lambda:PublishVersion
+              - lambda:CreateAlias
+              - lambda:UpdateAlias
+              - lambda:DeleteAlias
+              - lambda:TagResource
+              - lambda:UntagResource
+              - lambda:ListTags
+              - lambda:AddPermission
+              - lambda:RemovePermission
+              - lambda:GetPolicy
+            Resource: !Sub 'arn:aws:lambda:*:${AWS::AccountId}:function:${ProjectName}-*'
+
+          # IAM Permissions (for service roles)
+          - Sid: IAMServiceRoles
+            Effect: Allow
+            Action:
+              - iam:CreateRole
+              - iam:DeleteRole
+              - iam:GetRole
+              - iam:UpdateRole
+              - iam:ListRoles
+              - iam:PassRole
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:DeleteRolePolicy
+              - iam:GetRolePolicy
+              - iam:ListRolePolicies
+              - iam:ListAttachedRolePolicies
+              - iam:TagRole
+              - iam:UntagRole
+              - iam:ListRoleTags
+            Resource:
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/${ProjectName}-*'
+
+          # Terraform State Management (if using S3 backend)
+          - Sid: TerraformStateManagement
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:ListBucket
+            Resource:
+              - !Sub 'arn:aws:s3:::${ProjectName}-terraform-state'
+              - !Sub 'arn:aws:s3:::${ProjectName}-terraform-state/*'
+            Condition:
+              StringEquals:
+                's3:x-amz-server-side-encryption': 'AES256'
+
+          # General AWS Service Permissions
+          - Sid: GeneralAWSServices
+            Effect: Allow
+            Action:
+              - sts:GetCallerIdentity
+              - sts:TagSession
+            Resource: '*'
+
+          # CloudWatch Logs (for monitoring)
+          - Sid: CloudWatchLogs
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:DeleteLogGroup
+              - logs:DescribeLogGroups
+              - logs:PutRetentionPolicy
+              - logs:TagLogGroup
+              - logs:UntagLogGroup
+            Resource: !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/${ProjectName}-*'
+
+Outputs:
+  GitHubActionsRoleArn:
+    Description: 'ARN of the GitHub Actions IAM Role'
+    Value: !GetAtt GitHubActionsRole.Arn
+    Export:
+      Name: !Sub '${ProjectName}-github-actions-role-arn'
+
+  OIDCProviderArn:
+    Description: 'ARN of the GitHub OIDC Provider'
+    Value: !Ref GitHubOIDCProvider
+    Export:
+      Name: !Sub '${ProjectName}-oidc-provider-arn'
+
+  DeploymentInstructions:
+    Description: 'Next steps for deployment'
+    Value: !Sub |
+      1. Copy the GitHub Actions Role ARN: ${GitHubActionsRole.Arn}
+      2. Add this ARN to your GitHub repository secrets as AWS_ROLE_ARN
+      3. Trigger the GitHub Actions workflow to deploy your infrastructure
+      4. The role has least-privilege permissions for S3, CloudFront, DynamoDB, Cognito, and other AWS services needed for Akara Studio
+
+  OneClickConsoleLink:
+    Description: 'Direct link to create this stack in AWS Console'
+    Value: !Sub |
+      https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?templateURL=https://raw.githubusercontent.com/${GitHubOrg}/${GitHubRepo}/main/bootstrap-oidc-role.yaml&stackName=${ProjectName}-github-oidc&param_GitHubOrg=${GitHubOrg}&param_GitHubRepo=${GitHubRepo}&param_ProjectName=${ProjectName}
