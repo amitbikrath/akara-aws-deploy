@@ -1,0 +1,31 @@
+Akara Studio - CloudFormation Bootstrap Deployment
+=================================================
+
+Generated: Fri Sep 19 23:46:46 IST 2025
+AWS Region: us-east-1
+S3 Bucket: akara-bootstrap-templates
+AWS Account: 738983679688
+
+S3 Template URL:
+https://akara-bootstrap-templates.s3.us-east-1.amazonaws.com/bootstrap-oidc-role.yaml
+
+One-Click CloudFormation Deploy:
+https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?templateURL=https%3A%2F%2Fakara-bootstrap-templates.s3.us-east-1.amazonaws.com%2Fbootstrap-oidc-role.yaml&stackName=akara-github-oidc&param_GitHubOrg=amitbikrath&param_GitHubRepo=akara-aws-deploy&param_ProjectName=akara
+
+Manual Steps:
+1. Go to: https://console.aws.amazon.com/cloudformation/home?region=us-east-1
+2. Create stack → With new resources
+3. Template source: Amazon S3 URL
+4. Amazon S3 URL: https://akara-bootstrap-templates.s3.us-east-1.amazonaws.com/bootstrap-oidc-role.yaml
+5. Stack name: akara-github-oidc
+6. Parameters:
+   - GitHubOrg: amitbikrath
+   - GitHubRepo: akara-aws-deploy
+   - ProjectName: akara
+7. Check 'I acknowledge...' and create stack
+
+Next Steps:
+1. Deploy CloudFormation stack
+2. Copy Role ARN from outputs
+3. Add AWS_ROLE_ARN as GitHub secret
+4. Run main deployment workflow
