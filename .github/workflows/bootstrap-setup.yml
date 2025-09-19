@@ -1,0 +1,261 @@
+name: Bootstrap CloudFormation Template to S3
+
+on:
+  workflow_dispatch:
+    inputs:
+      aws_region:
+        description: 'AWS Region'
+        required: true
+        default: 'us-east-1'
+        type: choice
+        options:
+          - us-east-1
+          - us-west-2
+          - eu-west-1
+      bucket_name:
+        description: 'S3 Bucket Name for Templates'
+        required: true
+        default: 'akara-bootstrap-templates'
+        type: string
+
+  push:
+    branches: [ main ]
+    paths: [ 'bootstrap-oidc-role.yaml' ]
+
+env:
+  AWS_REGION: ${{ inputs.aws_region || 'us-east-1' }}
+  BUCKET_NAME: ${{ inputs.bucket_name || 'akara-bootstrap-templates' }}
+
+jobs:
+  upload-bootstrap-template:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (using existing AWS CLI if available)
+        run: |
+          # This workflow will use whatever AWS credentials are available
+          # Either from AWS CLI, environment variables, or instance profile
+          echo "Checking AWS credentials..."
+          if aws sts get-caller-identity > /dev/null 2>&1; then
+            echo "✅ AWS credentials found"
+            aws sts get-caller-identity
+          else
+            echo "❌ No AWS credentials found"
+            echo "Please configure AWS CLI or set AWS environment variables"
+            exit 1
+          fi
+
+      - name: Create S3 bucket for CloudFormation templates
+        run: |
+          echo "Creating S3 bucket: $BUCKET_NAME"
+          
+          # Check if bucket exists
+          if aws s3 ls "s3://$BUCKET_NAME" 2>/dev/null; then
+            echo "✅ Bucket $BUCKET_NAME already exists"
+          else
+            echo "Creating bucket $BUCKET_NAME in region $AWS_REGION"
+            if [ "$AWS_REGION" = "us-east-1" ]; then
+              aws s3 mb s3://$BUCKET_NAME
+            else
+              aws s3 mb s3://$BUCKET_NAME --region $AWS_REGION
+            fi
+            echo "✅ Bucket created successfully"
+          fi
+          
+          # Enable versioning
+          aws s3api put-bucket-versioning \
+            --bucket $BUCKET_NAME \
+            --versioning-configuration Status=Enabled
+          
+          # Set public read policy for CloudFormation access
+          cat > bucket-policy.json << EOF
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "AllowCloudFormationAccess",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "s3:GetObject",
+                "Resource": "arn:aws:s3:::$BUCKET_NAME/*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:RequestedRegion": "$AWS_REGION"
+                  }
+                }
+              }
+            ]
+          }
+          EOF
+          
+          aws s3api put-bucket-policy --bucket $BUCKET_NAME --policy file://bucket-policy.json
+          echo "✅ Bucket policy applied"
+
+      - name: Upload CloudFormation template to S3
+        run: |
+          echo "Uploading bootstrap-oidc-role.yaml to S3..."
+          
+          # Upload with proper content type for CloudFormation
+          aws s3 cp bootstrap-oidc-role.yaml s3://$BUCKET_NAME/bootstrap-oidc-role.yaml \
+            --content-type "text/yaml" \
+            --metadata "purpose=cloudformation-template,project=akara-studio"
+          
+          echo "✅ Template uploaded successfully"
+          
+          # Get the S3 URL
+          S3_URL="https://$BUCKET_NAME.s3.$AWS_REGION.amazonaws.com/bootstrap-oidc-role.yaml"
+          echo "📄 Template URL: $S3_URL"
+          
+          # Store for next step
+          echo "S3_TEMPLATE_URL=$S3_URL" >> $GITHUB_ENV
+
+      - name: Generate CloudFormation Links
+        run: |
+          echo "🔗 Generating CloudFormation deployment links..."
+          
+          # URL encode the S3 URL for CloudFormation
+          ENCODED_URL=$(echo "$S3_TEMPLATE_URL" | sed 's/:/%3A/g' | sed 's/\//%2F/g')
+          
+          # Generate CloudFormation Console URLs
+          CF_BASE_URL="https://console.aws.amazon.com/cloudformation/home?region=$AWS_REGION#/stacks/create/review"
+          CF_PARAMS="stackName=akara-github-oidc&param_GitHubOrg=amitbikrath&param_GitHubRepo=akara-aws-deploy&param_ProjectName=akara"
+          
+          ONE_CLICK_URL="$CF_BASE_URL?templateURL=$ENCODED_URL&$CF_PARAMS"
+          
+          echo ""
+          echo "🎉 CloudFormation Template Successfully Uploaded!"
+          echo "=============================================="
+          echo ""
+          echo "📄 S3 Template URL:"
+          echo "$S3_TEMPLATE_URL"
+          echo ""
+          echo "🔗 One-Click CloudFormation Deploy Link:"
+          echo "$ONE_CLICK_URL"
+          echo ""
+          echo "📋 Manual CloudFormation Steps (if needed):"
+          echo "1. Go to CloudFormation Console: https://console.aws.amazon.com/cloudformation/home?region=$AWS_REGION"
+          echo "2. Click 'Create stack' → 'With new resources'"
+          echo "3. Choose 'Template is ready'"
+          echo "4. Choose 'Amazon S3 URL'"
+          echo "5. Enter URL: $S3_TEMPLATE_URL"
+          echo "6. Stack name: akara-github-oidc"
+          echo "7. Parameters: GitHubOrg=amitbikrath, GitHubRepo=akara-aws-deploy, ProjectName=akara"
+          echo ""
+          
+          # Save to file for download
+          cat > cloudformation-links.txt << EOF
+          Akara Studio - CloudFormation Deployment Links
+          =============================================
+          
+          Generated: $(date)
+          AWS Region: $AWS_REGION
+          S3 Bucket: $BUCKET_NAME
+          
+          S3 Template URL:
+          $S3_TEMPLATE_URL
+          
+          One-Click CloudFormation Deploy:
+          $ONE_CLICK_URL
+          
+          Manual Steps:
+          1. Go to: https://console.aws.amazon.com/cloudformation/home?region=$AWS_REGION
+          2. Create stack → With new resources
+          3. Template source: Amazon S3 URL
+          4. Amazon S3 URL: $S3_TEMPLATE_URL
+          5. Stack name: akara-github-oidc
+          6. Parameters:
+             - GitHubOrg: amitbikrath
+             - GitHubRepo: akara-aws-deploy  
+             - ProjectName: akara
+          7. Check "I acknowledge..." and create stack
+          8. Copy Role ARN from Outputs tab
+          9. Add as GitHub secret: AWS_ROLE_ARN
+          
+          Next Steps After CloudFormation:
+          1. Add AWS_ROLE_ARN secret to GitHub
+          2. Run "Deploy Akara Studio to AWS" workflow
+          3. Get CloudFront URLs and DNS records
+          EOF
+
+      - name: Upload deployment instructions
+        run: |
+          echo "📤 Uploading deployment instructions to S3..."
+          aws s3 cp cloudformation-links.txt s3://$BUCKET_NAME/deployment-instructions.txt
+          
+          INSTRUCTIONS_URL="https://$BUCKET_NAME.s3.$AWS_REGION.amazonaws.com/deployment-instructions.txt"
+          echo "📋 Instructions URL: $INSTRUCTIONS_URL"
+
+      - name: Create GitHub Release with Links
+        run: |
+          echo "Creating GitHub release with deployment links..."
+          
+          # Create release notes
+          cat > release-notes.md << EOF
+          # 🚀 CloudFormation Bootstrap Ready!
+          
+          The CloudFormation template has been uploaded to S3 and is ready for deployment.
+          
+          ## 🔗 One-Click Deployment
+          
+          **[Click Here to Deploy CloudFormation Stack]($ONE_CLICK_URL)**
+          
+          ## 📋 Manual Deployment
+          
+          If the one-click link doesn't work:
+          
+          1. **Go to CloudFormation Console**: https://console.aws.amazon.com/cloudformation/home?region=$AWS_REGION
+          2. **Create Stack** → With new resources
+          3. **Template Source**: Amazon S3 URL
+          4. **S3 URL**: \`$S3_TEMPLATE_URL\`
+          5. **Stack Name**: \`akara-github-oidc\`
+          6. **Parameters**:
+             - GitHubOrg: \`amitbikrath\`
+             - GitHubRepo: \`akara-aws-deploy\`
+             - ProjectName: \`akara\`
+          7. **Acknowledge** IAM resource creation and **Create Stack**
+          
+          ## 🎯 Next Steps
+          
+          1. ✅ Deploy the CloudFormation stack
+          2. 📋 Copy the **Role ARN** from stack outputs
+          3. 🔐 Add as GitHub secret: \`AWS_ROLE_ARN\`
+          4. 🚀 Run the "Deploy Akara Studio to AWS" workflow
+          
+          ## 📄 Resources Created
+          
+          - S3 Bucket: \`$BUCKET_NAME\`
+          - CloudFormation Template: Uploaded and ready
+          - Deployment Instructions: Available in S3
+          
+          **Region**: $AWS_REGION
+          **Generated**: $(date)
+          EOF
+          
+          echo "$ONE_CLICK_URL" > one-click-link.txt
+
+      - name: Summary
+        run: |
+          echo ""
+          echo "✅ BOOTSTRAP SETUP COMPLETE!"
+          echo "============================="
+          echo ""
+          echo "🔗 Your One-Click CloudFormation Link:"
+          echo "$ONE_CLICK_URL"
+          echo ""
+          echo "📋 Next Steps:"
+          echo "1. Click the link above"
+          echo "2. Create the CloudFormation stack"
+          echo "3. Copy the Role ARN from outputs"
+          echo "4. Add AWS_ROLE_ARN as GitHub secret"
+          echo "5. Run the main deployment workflow"
+          echo ""
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: cloudformation-deployment-links
+          path: |
+            cloudformation-links.txt
+            one-click-link.txt
