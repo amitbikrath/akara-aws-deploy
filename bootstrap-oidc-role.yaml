@@ -92,6 +92,8 @@ Resources:
               - s3:GetBucketAcl
               - s3:PutBucketAcl
               - s3:PutBucketOwnershipControls
+              - s3:GetBucketCors
+              - s3:PutBucketCors
             Resource:
               - !Sub 'arn:aws:s3:::${ProjectName}-*'
           
