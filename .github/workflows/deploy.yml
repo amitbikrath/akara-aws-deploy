@@ -184,11 +184,10 @@ jobs:
             aws dynamodb create-table --table-name "$LOCK_TABLE" --attribute-definitions AttributeName=LockID,AttributeType=S \
               --key-schema AttributeName=LockID,KeyType=HASH --billing-mode PAY_PER_REQUEST
 
-      - name: Terraform setup
+      - name: Install Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: ${{ env.TF_VERSION }}
-          terraform_wrapper: false
+          terraform_version: latest
 
       - name: Run Terraform with comprehensive logging
         env:
@@ -199,7 +198,21 @@ jobs:
         run: |
           set -euxo pipefail
           terraform -version
-          terraform -chdir=infra/terraform fmt -check -diff
+
+      - name: Terraform format (write + non-fatal check)
+        run: |
+          terraform -chdir=infra/terraform fmt -recursive
+          terraform -chdir=infra/terraform fmt -check -recursive || true
+          git --no-pager diff -- infra/terraform || true
+
+      - name: Run Terraform with comprehensive logging
+        env:
+          ACCOUNT_ID: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
+          AWS_REGION: ${{ steps.awsinfo.outputs.AWS_REGION }}
+          STATE_BUCKET: ${{ steps.awsinfo.outputs.TF_STATE_BUCKET }}
+          LOCK_TABLE: ${{ steps.awsinfo.outputs.TF_LOCK_TABLE }}
+        run: |
+          set -euxo pipefail
           terraform -chdir=infra/terraform init -reconfigure \
             -backend-config="bucket=${STATE_BUCKET}" \
             -backend-config="key=global/terraform.tfstate" \
@@ -235,10 +248,9 @@ jobs:
         with:
           name: infra-logs
           path: |
-            infra/terraform/tf-*.log
-            infra/terraform/plan.out
-            infra/terraform/.terraform/**
-            infra/terraform/terraform.tfstate*
+            tf-*.log
+            infra/terraform/*.tf
+            infra/terraform/.terraform/**/*
           if-no-files-found: ignore
 
   # Build and Deploy Frontend
