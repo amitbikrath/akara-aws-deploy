@@ -120,15 +120,18 @@ Resources:
             Resource:
               - !Sub 'arn:aws:s3:::${ProjectName}-*/*'
 
-          # Terraform State Backend S3 Permissions
-          - Sid: TerraformStateBackendS3
+          # Terraform State Backend (consolidated)
+          - Sid: TerraformStateBackend
             Effect: Allow
             Action:
               - s3:ListBucket
+              - s3:GetBucketAcl
+              - s3:GetEncryptionConfiguration
+              - s3:GetBucketEncryption
             Resource:
               - arn:aws:s3:::akara-tf-state-*
           
-          - Sid: TerraformStateBackendS3Objects
+          - Sid: TerraformStateObjects
             Effect: Allow
             Action:
               - s3:GetObject
@@ -136,23 +139,6 @@ Resources:
               - s3:DeleteObject
             Resource:
               - arn:aws:s3:::akara-tf-state-*/*
-
-          # Terraform State Bucket ACL Read
-          - Sid: TerraformStateBucketAclRead
-            Effect: Allow
-            Action:
-              - s3:GetBucketAcl
-            Resource:
-              - arn:aws:s3:::akara-tf-state-*
-
-          # Terraform State Encryption Read
-          - Sid: TerraformStateEncryptionRead
-            Effect: Allow
-            Action:
-              - s3:GetEncryptionConfiguration
-              - s3:GetBucketEncryption
-            Resource:
-              - arn:aws:s3:::akara-tf-state-*
 
           # CloudFront Permissions
           - Sid: CloudFrontManagement
