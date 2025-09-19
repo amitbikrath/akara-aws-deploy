@@ -76,6 +76,7 @@ Resources:
               - s3:GetBucketLocation
               - s3:GetBucketVersioning
               - s3:PutBucketVersioning
+              - s3:GetEncryptionConfiguration
               - s3:GetBucketEncryption
               - s3:PutBucketEncryption
               - s3:GetBucketPublicAccessBlock
@@ -141,6 +142,15 @@ Resources:
             Effect: Allow
             Action:
               - s3:GetBucketAcl
+            Resource:
+              - arn:aws:s3:::akara-tf-state-*
+
+          # Terraform State Encryption Read
+          - Sid: TerraformStateEncryptionRead
+            Effect: Allow
+            Action:
+              - s3:GetEncryptionConfiguration
+              - s3:GetBucketEncryption
             Resource:
               - arn:aws:s3:::akara-tf-state-*
 
