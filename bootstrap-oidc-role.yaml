@@ -48,10 +48,7 @@ Resources:
               StringEquals:
                 'token.actions.githubusercontent.com:aud': sts.amazonaws.com
               StringLike:
-                'token.actions.githubusercontent.com:sub': 
-                  - !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/main'
-                  - !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/develop'
-                  - !Sub 'repo:${GitHubOrg}/${GitHubRepo}:pull_request'
+                'token.actions.githubusercontent.com:sub': !Sub 'repo:${GitHubOrg}/${GitHubRepo}:*'
       ManagedPolicyArns:
         - !Ref AkaraDeploymentPolicy
       Tags:
