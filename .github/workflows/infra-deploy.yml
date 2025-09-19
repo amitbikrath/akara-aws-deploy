@@ -74,7 +74,7 @@ jobs:
           TF_VAR_cognito_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
       - name: Upload plan
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: staging-tfplan
           path: infra/tfplan
@@ -101,7 +101,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Download plan
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: staging-tfplan
           path: infra/
@@ -151,7 +151,7 @@ jobs:
           TF_VAR_cognito_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
       - name: Upload plan
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: production-tfplan
           path: infra/tfplan
@@ -178,7 +178,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Download plan
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: production-tfplan
           path: infra/
@@ -199,7 +199,7 @@ jobs:
           terraform output -json > ../infrastructure-outputs.json
 
       - name: Upload outputs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: infrastructure-outputs
           path: infrastructure-outputs.json

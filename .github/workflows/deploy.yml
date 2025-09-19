@@ -50,6 +50,7 @@ env:
 permissions:
   id-token: write
   contents: read
+  actions: read
   pull-requests: write
 
 jobs:
@@ -150,7 +151,7 @@ jobs:
           terraform output -json > ../infrastructure-outputs.json
           
       - name: Upload Infrastructure Outputs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: infrastructure-outputs-${{ needs.setup.outputs.environment }}
           path: infrastructure-outputs.json
@@ -456,7 +457,7 @@ jobs:
           EOF
 
       - name: Upload DNS Records
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dns-records-${{ needs.setup.outputs.environment }}
           path: DNS-RECORDS.txt
