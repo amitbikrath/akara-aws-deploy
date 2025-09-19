@@ -33,17 +33,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (using existing AWS CLI if available)
+      - name: Configure AWS credentials using OIDC (fallback to CLI)
         run: |
-          # This workflow will use whatever AWS credentials are available
-          # Either from AWS CLI, environment variables, or instance profile
           echo "Checking AWS credentials..."
+          # Try to use existing credentials first
           if aws sts get-caller-identity > /dev/null 2>&1; then
-            echo "✅ AWS credentials found"
+            echo "✅ AWS credentials found via CLI/environment"
             aws sts get-caller-identity
           else
             echo "❌ No AWS credentials found"
-            echo "Please configure AWS CLI or set AWS environment variables"
+            echo "This workflow requires AWS credentials to create S3 bucket and upload template"
+            echo "Please either:"
+            echo "1. Configure AWS CLI locally, or"
+            echo "2. Use the manual upload method instead"
             exit 1
           fi
 

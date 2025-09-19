@@ -273,9 +273,6 @@ Resources:
             Resource:
               - !Sub 'arn:aws:s3:::${ProjectName}-terraform-state'
               - !Sub 'arn:aws:s3:::${ProjectName}-terraform-state/*'
-            Condition:
-              StringEquals:
-                's3:x-amz-server-side-encryption': 'AES256'
 
           # General AWS Service Permissions
           - Sid: GeneralAWSServices
@@ -318,7 +315,3 @@ Outputs:
       3. Trigger the GitHub Actions workflow to deploy your infrastructure
       4. The role has least-privilege permissions for S3, CloudFront, DynamoDB, Cognito, and other AWS services needed for Akara Studio
 
-  OneClickConsoleLink:
-    Description: 'Direct link to create this stack in AWS Console'
-    Value: !Sub |
-      https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?templateURL=https://raw.githubusercontent.com/${GitHubOrg}/${GitHubRepo}/main/bootstrap-oidc-role.yaml&stackName=${ProjectName}-github-oidc&param_GitHubOrg=${GitHubOrg}&param_GitHubRepo=${GitHubRepo}&param_ProjectName=${ProjectName}
