@@ -4,7 +4,7 @@ Description: 'Bootstrap IAM Role for Akara Studio GitHub Actions OIDC Deployment
 Parameters:
   GitHubOrg:
     Type: String
-    Default: 'amitrath'
+    Default: 'amitbikrath'
     Description: 'GitHub organization or username'
   GitHubRepo:
     Type: String

@@ -14,7 +14,7 @@ This document provides the exact steps to deploy Akara Studio to AWS with **zero
 
 Click this link to create the CloudFormation stack:
 
-**🔗 [One-Click CloudFormation Deploy](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?templateURL=https://raw.githubusercontent.com/amitrath/akara-aws-deploy/main/bootstrap-oidc-role.yaml&stackName=akara-github-oidc&param_GitHubOrg=amitrath&param_GitHubRepo=akara-aws-deploy&param_ProjectName=akara)**
+**🔗 [One-Click CloudFormation Deploy](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?templateURL=https://raw.githubusercontent.com/amitbikrath/akara-aws-deploy/main/bootstrap-oidc-role.yaml&stackName=akara-github-oidc&param_GitHubOrg=amitbikrath&param_GitHubRepo=akara-aws-deploy&param_ProjectName=akara)**
 
 #### What this does:
 - Creates an IAM role for GitHub Actions with least-privilege permissions
