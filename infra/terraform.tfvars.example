@@ -1,0 +1,23 @@
+# Terraform Variables Example
+# Copy this file to terraform.tfvars and update the values
+
+aws_region   = "us-east-1"
+environment  = "dev"  # dev, staging, or prod
+project_name = "akara"
+domain_name  = "akara.studio"
+
+# OAuth Configuration (optional)
+# cognito_google_client_id     = "your-google-client-id"
+# cognito_google_client_secret = "your-google-client-secret"
+# cognito_facebook_client_id     = "your-facebook-client-id"
+# cognito_facebook_client_secret = "your-facebook-client-secret"
+
+# Resource Protection
+enable_deletion_protection = true
+
+# Additional Tags
+tags = {
+  Owner       = "Akara Studio"
+  CostCenter  = "Engineering"
+  Backup      = "Required"
+}

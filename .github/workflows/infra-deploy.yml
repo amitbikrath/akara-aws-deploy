@@ -1,0 +1,211 @@
+name: Infrastructure Deploy
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: [ 'infra/**' ]
+  pull_request:
+    branches: [ main ]
+    paths: [ 'infra/**' ]
+
+env:
+  AWS_REGION: 'us-east-1'
+  TF_VERSION: '1.6'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format Check
+        run: |
+          cd infra
+          terraform fmt -check -recursive
+
+      - name: Terraform Init
+        run: |
+          cd infra
+          terraform init -backend=false
+
+      - name: Terraform Validate
+        run: |
+          cd infra
+          terraform validate
+
+  plan-staging:
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        run: |
+          cd infra
+          terraform init
+
+      - name: Terraform Plan
+        run: |
+          cd infra
+          terraform plan -var="environment=staging" -out=tfplan
+        env:
+          TF_VAR_cognito_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
+          TF_VAR_cognito_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
+      - name: Upload plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: staging-tfplan
+          path: infra/tfplan
+
+  apply-staging:
+    if: github.ref == 'refs/heads/develop'
+    needs: plan-staging
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download plan
+        uses: actions/download-artifact@v3
+        with:
+          name: staging-tfplan
+          path: infra/
+
+      - name: Terraform Init
+        run: |
+          cd infra
+          terraform init
+
+      - name: Terraform Apply
+        run: |
+          cd infra
+          terraform apply tfplan
+
+  plan-production:
+    if: github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        run: |
+          cd infra
+          terraform init
+
+      - name: Terraform Plan
+        run: |
+          cd infra
+          terraform plan -var="environment=prod" -out=tfplan
+        env:
+          TF_VAR_cognito_google_client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
+          TF_VAR_cognito_google_client_secret: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
+      - name: Upload plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: production-tfplan
+          path: infra/tfplan
+
+  apply-production:
+    if: github.ref == 'refs/heads/main'
+    needs: plan-production
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download plan
+        uses: actions/download-artifact@v3
+        with:
+          name: production-tfplan
+          path: infra/
+
+      - name: Terraform Init
+        run: |
+          cd infra
+          terraform init
+
+      - name: Terraform Apply
+        run: |
+          cd infra
+          terraform apply tfplan
+
+      - name: Output infrastructure info
+        run: |
+          cd infra
+          terraform output -json > ../infrastructure-outputs.json
+
+      - name: Upload outputs
+        uses: actions/upload-artifact@v3
+        with:
+          name: infrastructure-outputs
+          path: infrastructure-outputs.json
+
+      - name: Notify deployment
+        if: success()
+        run: |
+          echo "Infrastructure deployed successfully to production!"
+          # Add Slack/Discord notification here if needed

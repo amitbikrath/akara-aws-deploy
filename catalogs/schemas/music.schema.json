@@ -1,0 +1,207 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Music Track Schema",
+  "description": "Schema for individual music tracks",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique identifier (slug-style)"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "Track title"
+    },
+    "artists": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Artist names"
+    },
+    "album": {
+      "type": "string",
+      "description": "Album name (optional)"
+    },
+    "genre": {
+      "type": "string",
+      "enum": ["devotional", "mantra", "bhajan", "kirtan", "classical", "fusion", "meditation"],
+      "description": "Musical genre/style"
+    },
+    "mood": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["peaceful", "energetic", "devotional", "meditative", "celebratory", "contemplative"]
+      },
+      "description": "Emotional mood tags"
+    },
+    "language": {
+      "type": "string",
+      "enum": ["sanskrit", "hindi", "english", "instrumental"],
+      "description": "Primary language"
+    },
+    "duration": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Duration in seconds"
+    },
+    "lyrics": {
+      "type": "object",
+      "properties": {
+        "original": { "type": "string", "description": "Original lyrics" },
+        "transliteration": { "type": "string", "description": "Romanized lyrics" },
+        "translation": { "type": "string", "description": "English translation" },
+        "lrc": { "type": "string", "description": "LRC format for timed lyrics" }
+      }
+    },
+    "cover": {
+      "type": "object",
+      "properties": {
+        "alt": { "type": "string", "description": "Alt text for cover art" },
+        "variants": {
+          "type": "object",
+          "properties": {
+            "thumbnail": {
+              "type": "object",
+              "properties": {
+                "avif": { "type": "string", "format": "uri" },
+                "webp": { "type": "string", "format": "uri" },
+                "jpeg": { "type": "string", "format": "uri" }
+              },
+              "required": ["jpeg"]
+            },
+            "medium": {
+              "type": "object",
+              "properties": {
+                "avif": { "type": "string", "format": "uri" },
+                "webp": { "type": "string", "format": "uri" },
+                "jpeg": { "type": "string", "format": "uri" }
+              },
+              "required": ["jpeg"]
+            },
+            "large": {
+              "type": "object",
+              "properties": {
+                "avif": { "type": "string", "format": "uri" },
+                "webp": { "type": "string", "format": "uri" },
+                "jpeg": { "type": "string", "format": "uri" }
+              },
+              "required": ["jpeg"]
+            }
+          },
+          "required": ["thumbnail", "medium", "large"]
+        }
+      },
+      "required": ["alt", "variants"]
+    },
+    "audio": {
+      "type": "object",
+      "properties": {
+        "preview": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" },
+            "duration": { "type": "integer", "description": "Preview duration in seconds" },
+            "startTime": { "type": "integer", "description": "Start time offset in seconds" }
+          },
+          "required": ["url", "duration"]
+        },
+        "full": {
+          "type": "object",
+          "properties": {
+            "hls": {
+              "type": "object",
+              "properties": {
+                "master": { "type": "string", "format": "uri" },
+                "qualities": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "bitrate": { "type": "integer" },
+                      "url": { "type": "string", "format": "uri" }
+                    },
+                    "required": ["bitrate", "url"]
+                  }
+                }
+              },
+              "required": ["master"]
+            },
+            "mp3": {
+              "type": "object",
+              "properties": {
+                "320": { "type": "string", "format": "uri" },
+                "192": { "type": "string", "format": "uri" },
+                "128": { "type": "string", "format": "uri" }
+              }
+            }
+          },
+          "anyOf": [
+            { "required": ["hls"] },
+            { "required": ["mp3"] }
+          ]
+        }
+      },
+      "required": ["preview", "full"]
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 10,
+      "description": "Searchable tags"
+    },
+    "isPremium": {
+      "type": "boolean",
+      "default": false,
+      "description": "Requires subscription/purchase"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "publishedAt": { "type": "string", "format": "date-time" },
+        "releaseDate": { "type": "string", "format": "date" },
+        "playCount": { "type": "integer", "minimum": 0 },
+        "downloadCount": { "type": "integer", "minimum": 0 },
+        "rating": {
+          "type": "object",
+          "properties": {
+            "average": { "type": "number", "minimum": 0, "maximum": 5 },
+            "count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "fileSize": {
+          "type": "object",
+          "patternProperties": {
+            "^(preview|hls|mp3_320|mp3_192|mp3_128)$": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "File size in bytes"
+            }
+          }
+        }
+      }
+    },
+    "seo": {
+      "type": "object",
+      "properties": {
+        "slug": { "type": "string" },
+        "metaTitle": { "type": "string", "maxLength": 60 },
+        "metaDescription": { "type": "string", "maxLength": 160 },
+        "ogImage": { "type": "string", "format": "uri" }
+      }
+    },
+    "related": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 5,
+      "description": "IDs of related tracks"
+    }
+  },
+  "required": ["id", "title", "artists", "genre", "language", "duration", "cover", "audio"],
+  "additionalProperties": false
+}

@@ -1,0 +1,35 @@
+{
+  "name": "@akara/monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Akara Studio - Premium wallpapers and music platform",
+  "workspaces": [
+    "frontend",
+    "admin",
+    "lambdas"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:admin": "npm run dev --workspace=admin",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:admin": "npm run build --workspace=admin",
+    "build:lambdas": "npm run build --workspace=lambdas",
+    "deploy:infra": "cd infra && terraform apply",
+    "deploy:frontend": "npm run deploy --workspace=frontend",
+    "deploy:admin": "npm run deploy --workspace=admin",
+    "deploy:lambdas": "npm run deploy --workspace=lambdas",
+    "lint": "npm run lint --workspaces",
+    "type-check": "npm run type-check --workspaces",
+    "clean": "npm run clean --workspaces && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "author": "Akara Studio",
+  "license": "UNLICENSED"
+}

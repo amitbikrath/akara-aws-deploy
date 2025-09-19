@@ -1,0 +1,151 @@
+name: Admin Deploy
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: [ 'admin/**' ]
+  pull_request:
+    branches: [ main ]
+    paths: [ 'admin/**' ]
+
+env:
+  NODE_VERSION: '18'
+  AWS_REGION: 'us-east-1'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'admin/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd admin
+          npm ci
+
+      - name: Type check
+        run: |
+          cd admin
+          npm run type-check
+
+      - name: Lint
+        run: |
+          cd admin
+          npm run lint
+
+      - name: Build
+        run: |
+          cd admin
+          npm run build
+        env:
+          NEXT_PUBLIC_AWS_REGION: ${{ env.AWS_REGION }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.API_URL }}
+
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'admin/package-lock.json'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install dependencies
+        run: |
+          cd admin
+          npm ci
+
+      - name: Build
+        run: |
+          cd admin
+          npm run build
+        env:
+          NEXT_PUBLIC_AWS_REGION: ${{ env.AWS_REGION }}
+          NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.STAGING_COGNITO_USER_POOL_ID }}
+          NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.STAGING_COGNITO_CLIENT_ID }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.STAGING_API_URL }}
+          NEXT_PUBLIC_S3_BUCKET: ${{ secrets.STAGING_S3_BUCKET_MEDIA }}
+          NEXT_PUBLIC_ENVIRONMENT: staging
+
+      - name: Deploy to S3
+        run: |
+          cd admin
+          aws s3 sync out/ s3://${{ secrets.S3_BUCKET_ADMIN_STAGING }} --delete
+
+      - name: Setup CloudFront for Admin (if needed)
+        run: |
+          echo "Admin deployed to staging S3 bucket"
+          # Configure CloudFront distribution for admin if needed
+
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'admin/package-lock.json'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install dependencies
+        run: |
+          cd admin
+          npm ci
+
+      - name: Build
+        run: |
+          cd admin
+          npm run build
+        env:
+          NEXT_PUBLIC_AWS_REGION: ${{ env.AWS_REGION }}
+          NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.PROD_COGNITO_USER_POOL_ID }}
+          NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.PROD_COGNITO_CLIENT_ID }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.PROD_API_URL }}
+          NEXT_PUBLIC_S3_BUCKET: ${{ secrets.PROD_S3_BUCKET_MEDIA }}
+          NEXT_PUBLIC_ENVIRONMENT: production
+
+      - name: Deploy to S3
+        run: |
+          cd admin
+          aws s3 sync out/ s3://${{ secrets.S3_BUCKET_ADMIN_PROD }} --delete
+
+      - name: Notify deployment
+        if: success()
+        run: |
+          echo "Admin deployed successfully to production!"
+          # Add Slack/Discord notification here if needed

@@ -1,0 +1,182 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Wallpaper Item Schema",
+  "description": "Schema for individual wallpaper items",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique identifier (slug-style)"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "Display title"
+    },
+    "caption": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Brief description or caption"
+    },
+    "sloka": {
+      "type": "string",
+      "description": "Sanskrit/Devanagari verse"
+    },
+    "meaning": {
+      "type": "string",
+      "description": "English translation/meaning"
+    },
+    "alt": {
+      "type": "string",
+      "description": "Alt text for accessibility"
+    },
+    "deity": {
+      "type": "string",
+      "enum": ["hanuman", "ganesha", "krishna", "rama", "shiva", "devi", "vishnu", "other"],
+      "description": "Primary deity featured"
+    },
+    "style": {
+      "type": "string",
+      "enum": ["traditional", "modern", "abstract", "photorealistic", "minimalist", "geometric"],
+      "description": "Artistic style"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 10,
+      "description": "Searchable tags"
+    },
+    "orientation": {
+      "type": "string",
+      "enum": ["portrait", "landscape", "square"],
+      "description": "Image orientation"
+    },
+    "aspectRatio": {
+      "type": "string",
+      "pattern": "^\\d+:\\d+$",
+      "description": "Aspect ratio (e.g., '16:9', '4:3')"
+    },
+    "dimensions": {
+      "type": "object",
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["width", "height"]
+    },
+    "palette": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^#[0-9A-Fa-f]{6}$"
+      },
+      "maxItems": 5,
+      "description": "Dominant colors (hex codes)"
+    },
+    "collection": {
+      "type": "string",
+      "description": "Collection or series name"
+    },
+    "isPremium": {
+      "type": "boolean",
+      "default": false,
+      "description": "Requires purchase for HQ download"
+    },
+    "variants": {
+      "type": "object",
+      "properties": {
+        "thumbnail": {
+          "type": "object",
+          "properties": {
+            "avif": { "type": "string", "format": "uri" },
+            "webp": { "type": "string", "format": "uri" },
+            "jpeg": { "type": "string", "format": "uri" }
+          },
+          "required": ["jpeg"]
+        },
+        "preview": {
+          "type": "object",
+          "properties": {
+            "avif": { "type": "string", "format": "uri" },
+            "webp": { "type": "string", "format": "uri" },
+            "jpeg": { "type": "string", "format": "uri" }
+          },
+          "required": ["jpeg"]
+        },
+        "desktop": {
+          "type": "object",
+          "properties": {
+            "avif": { "type": "string", "format": "uri" },
+            "webp": { "type": "string", "format": "uri" },
+            "jpeg": { "type": "string", "format": "uri" }
+          },
+          "required": ["jpeg"]
+        },
+        "mobile": {
+          "type": "object",
+          "properties": {
+            "avif": { "type": "string", "format": "uri" },
+            "webp": { "type": "string", "format": "uri" },
+            "jpeg": { "type": "string", "format": "uri" }
+          },
+          "required": ["jpeg"]
+        },
+        "hq": {
+          "type": "object",
+          "properties": {
+            "4k": { "type": "string", "format": "uri" },
+            "8k": { "type": "string", "format": "uri" },
+            "original": { "type": "string", "format": "uri" }
+          },
+          "description": "High-quality variants (premium)"
+        }
+      },
+      "required": ["thumbnail", "preview", "desktop", "mobile"]
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "publishedAt": { "type": "string", "format": "date-time" },
+        "downloadCount": { "type": "integer", "minimum": 0 },
+        "rating": { 
+          "type": "object",
+          "properties": {
+            "average": { "type": "number", "minimum": 0, "maximum": 5 },
+            "count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "fileSize": {
+          "type": "object",
+          "patternProperties": {
+            "^(thumbnail|preview|desktop|mobile|4k|8k|original)$": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "File size in bytes"
+            }
+          }
+        }
+      }
+    },
+    "seo": {
+      "type": "object",
+      "properties": {
+        "slug": { "type": "string" },
+        "metaTitle": { "type": "string", "maxLength": 60 },
+        "metaDescription": { "type": "string", "maxLength": 160 },
+        "ogImage": { "type": "string", "format": "uri" }
+      }
+    },
+    "related": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 5,
+      "description": "IDs of related wallpapers"
+    }
+  },
+  "required": ["id", "title", "alt", "deity", "style", "orientation", "aspectRatio", "dimensions", "variants"],
+  "additionalProperties": false
+}

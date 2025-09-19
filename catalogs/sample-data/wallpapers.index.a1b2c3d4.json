@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "1.0.0",
+  "lastUpdated": "2025-01-01T00:00:00.000Z",
+  "items": [
+    {
+      "id": "hanuman-divine-strength",
+      "title": "Hanuman - Divine Strength",
+      "caption": "Lord Hanuman displaying his infinite strength and devotion",
+      "alt": "Artistic illustration of Lord Hanuman in a powerful pose with golden aura",
+      "deity": "hanuman",
+      "style": "traditional",
+      "orientation": "portrait",
+      "aspectRatio": "9:16",
+      "collection": "Divine Warriors",
+      "isPremium": false,
+      "thumbnail": "https://cdn.akara.studio/wallpapers/hanuman-divine-strength/thumbnail.avif",
+      "preview": "https://cdn.akara.studio/wallpapers/hanuman-divine-strength/preview.avif",
+      "tags": ["hanuman", "strength", "devotion", "traditional", "golden"],
+      "palette": ["#FFD700", "#FF6B35", "#8B0000", "#4A4A4A", "#FFFFFF"],
+      "rating": {
+        "average": 4.8,
+        "count": 124
+      },
+      "downloadCount": 456
+    },
+    {
+      "id": "ganesha-wisdom-light",
+      "title": "Ganesha - Wisdom Light",
+      "caption": "Lord Ganesha surrounded by divine light and wisdom",
+      "alt": "Artistic depiction of Lord Ganesha with glowing elements and lotus motifs",
+      "deity": "ganesha",
+      "style": "modern",
+      "orientation": "landscape",
+      "aspectRatio": "16:9",
+      "collection": "Divine Wisdom",
+      "isPremium": true,
+      "thumbnail": "https://cdn.akara.studio/wallpapers/ganesha-wisdom-light/thumbnail.avif",
+      "preview": "https://cdn.akara.studio/wallpapers/ganesha-wisdom-light/preview.avif",
+      "tags": ["ganesha", "wisdom", "light", "modern", "lotus"],
+      "palette": ["#FF8C42", "#6A4C93", "#FFFFFF", "#FFE66D", "#4ECDC4"],
+      "rating": {
+        "average": 4.9,
+        "count": 89
+      },
+      "downloadCount": 234
+    },
+    {
+      "id": "krishna-divine-love",
+      "title": "Krishna - Divine Love",
+      "caption": "Lord Krishna playing the flute in a serene meadow",
+      "alt": "Peaceful illustration of Lord Krishna with his flute in a natural setting",
+      "deity": "krishna",
+      "style": "traditional",
+      "orientation": "square",
+      "aspectRatio": "1:1",
+      "collection": "Divine Love",
+      "isPremium": false,
+      "thumbnail": "https://cdn.akara.studio/wallpapers/krishna-divine-love/thumbnail.avif",
+      "preview": "https://cdn.akara.studio/wallpapers/krishna-divine-love/preview.avif",
+      "tags": ["krishna", "flute", "love", "nature", "peaceful"],
+      "palette": ["#4169E1", "#32CD32", "#FFD700", "#FF69B4", "#FFFFFF"],
+      "rating": {
+        "average": 4.7,
+        "count": 156
+      },
+      "downloadCount": 378
+    }
+  ],
+  "filters": {
+    "deities": ["hanuman", "ganesha", "krishna"],
+    "styles": ["traditional", "modern"],
+    "orientations": ["portrait", "landscape", "square"],
+    "collections": ["Divine Warriors", "Divine Wisdom", "Divine Love"]
+  }
+}

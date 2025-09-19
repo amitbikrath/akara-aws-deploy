@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "1.0.0",
+  "lastUpdated": "2025-01-01T00:00:00.000Z",
+  "catalogs": {
+    "wallpapers": {
+      "indexHash": "a1b2c3d4",
+      "count": 3,
+      "lastUpdated": "2025-01-01T00:00:00.000Z"
+    },
+    "music": {
+      "indexHash": "e5f6g7h8",
+      "count": 2,
+      "lastUpdated": "2025-01-01T00:00:00.000Z"
+    }
+  },
+  "stats": {
+    "totalItems": 5,
+    "totalDownloads": 1250,
+    "featuredItems": [
+      {
+        "id": "hanuman-divine-strength",
+        "type": "wallpaper",
+        "title": "Hanuman - Divine Strength"
+      },
+      {
+        "id": "aaya-aaya-hanuman",
+        "type": "music",
+        "title": "Aaya Aaya Hanuman"
+      }
+    ]
+  }
+}

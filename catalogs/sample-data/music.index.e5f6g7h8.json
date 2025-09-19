@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0.0",
+  "lastUpdated": "2025-01-01T00:00:00.000Z",
+  "items": [
+    {
+      "id": "aaya-aaya-hanuman",
+      "title": "Aaya Aaya Hanuman",
+      "artists": ["Akara Studio"],
+      "genre": "devotional",
+      "language": "hindi",
+      "duration": 245,
+      "mood": ["devotional", "energetic"],
+      "isPremium": false,
+      "cover": {
+        "alt": "Hanuman devotional song cover art with golden temple background",
+        "thumbnail": "https://cdn.akara.studio/music/aaya-aaya-hanuman/cover-thumb.avif"
+      },
+      "audio": {
+        "preview": {
+          "url": "https://cdn.akara.studio/music/aaya-aaya-hanuman/preview.mp3",
+          "duration": 30,
+          "startTime": 60
+        }
+      },
+      "tags": ["hanuman", "devotional", "hindi", "bhajan"],
+      "rating": {
+        "average": 4.9,
+        "count": 203
+      },
+      "playCount": 1247,
+      "downloadCount": 89
+    },
+    {
+      "id": "o-palanhare",
+      "title": "O Palanhare",
+      "artists": ["Akara Studio"],
+      "genre": "devotional",
+      "language": "hindi",
+      "duration": 198,
+      "mood": ["peaceful", "contemplative"],
+      "isPremium": true,
+      "cover": {
+        "alt": "Spiritual devotional song cover with serene temple imagery",
+        "thumbnail": "https://cdn.akara.studio/music/o-palanhare/cover-thumb.avif"
+      },
+      "audio": {
+        "preview": {
+          "url": "https://cdn.akara.studio/music/o-palanhare/preview.mp3",
+          "duration": 30,
+          "startTime": 45
+        }
+      },
+      "tags": ["devotional", "hindi", "peaceful", "bhajan"],
+      "rating": {
+        "average": 4.8,
+        "count": 167
+      },
+      "playCount": 892,
+      "downloadCount": 67
+    }
+  ],
+  "filters": {
+    "genres": ["devotional"],
+    "languages": ["hindi"],
+    "moods": ["devotional", "energetic", "peaceful", "contemplative"],
+    "artists": ["Akara Studio"]
+  }
+}

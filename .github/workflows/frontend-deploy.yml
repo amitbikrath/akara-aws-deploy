@@ -1,0 +1,153 @@
+name: Frontend Deploy
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: [ 'frontend/**' ]
+  pull_request:
+    branches: [ main ]
+    paths: [ 'frontend/**' ]
+
+env:
+  NODE_VERSION: '18'
+  AWS_REGION: 'us-east-1'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Type check
+        run: |
+          cd frontend
+          npm run type-check
+
+      - name: Lint
+        run: |
+          cd frontend
+          npm run lint
+
+      - name: Build
+        run: |
+          cd frontend
+          npm run build
+        env:
+          NEXT_PUBLIC_CDN_URL: ${{ secrets.CDN_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.API_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.SITE_URL }}
+
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build
+        run: |
+          cd frontend
+          npm run build
+        env:
+          NEXT_PUBLIC_CDN_URL: ${{ secrets.STAGING_CDN_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.STAGING_API_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.STAGING_SITE_URL }}
+          NEXT_PUBLIC_ENVIRONMENT: staging
+
+      - name: Deploy to S3
+        run: |
+          cd frontend
+          aws s3 sync out/ s3://${{ secrets.S3_BUCKET_STAGING }} --delete --cache-control "public, max-age=31536000, immutable" --exclude "*.html" --exclude "sitemap.xml" --exclude "robots.txt"
+          aws s3 sync out/ s3://${{ secrets.S3_BUCKET_STAGING }} --delete --cache-control "public, max-age=0, must-revalidate" --include "*.html" --include "sitemap.xml" --include "robots.txt"
+
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING }} --paths "/*"
+
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build
+        run: |
+          cd frontend
+          npm run build
+        env:
+          NEXT_PUBLIC_CDN_URL: ${{ secrets.PROD_CDN_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.PROD_API_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.PROD_SITE_URL }}
+          NEXT_PUBLIC_ENVIRONMENT: production
+
+      - name: Deploy to S3
+        run: |
+          cd frontend
+          aws s3 sync out/ s3://${{ secrets.S3_BUCKET_PROD }} --delete --cache-control "public, max-age=31536000, immutable" --exclude "*.html" --exclude "sitemap.xml" --exclude "robots.txt"
+          aws s3 sync out/ s3://${{ secrets.S3_BUCKET_PROD }} --delete --cache-control "public, max-age=0, must-revalidate" --include "*.html" --include "sitemap.xml" --include "robots.txt"
+
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_PROD }} --paths "/*"
+
+      - name: Notify deployment
+        if: success()
+        run: |
+          echo "Frontend deployed successfully to production!"
+          # Add Slack/Discord notification here if needed
