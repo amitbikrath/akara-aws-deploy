@@ -293,22 +293,41 @@ jobs:
             yarn install --frozen-lockfile
           fi
 
+      - name: Download infra outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: infrastructure-outputs-${{ needs.setup.outputs.environment }}
+          path: .
+
+      - name: Export FRONTEND_BUCKET & FRONTEND_DISTRIBUTION from outputs
+        run: |
+          echo "FRONTEND_BUCKET=$(jq -r .frontend_bucket.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "FRONTEND_DIST=$(jq -r .frontend_distribution_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "FRONTEND_DOMAIN=$(jq -r .frontend_domain.value infrastructure-outputs.json)" >> $GITHUB_ENV
+
       - name: Build Frontend
+        working-directory: frontend
         env:
-          NEXT_PUBLIC_CDN_URL: https://placeholder.cloudfront.net
+          NEXT_PUBLIC_CDN_URL: https://${{ env.FRONTEND_DOMAIN }}
           NEXT_PUBLIC_API_URL: https://api.akara.studio
           NEXT_PUBLIC_SITE_URL: ${{ needs.setup.outputs.environment == 'prod' && 'https://akara.studio' || 'https://staging.akara.studio' }}
           NEXT_PUBLIC_ENVIRONMENT: ${{ needs.setup.outputs.environment }}
         run: |
           if [ "${{ steps.detect_root_pm.outputs.pm }}" = "npm" ]; then
-            npm run build --workspace=frontend
+            npm run build
           else
-            yarn workspace frontend build
+            yarn build
           fi
+
+      - name: Sync to S3 (frontend)
+        run: |
+          aws s3 sync frontend/out "s3://$FRONTEND_BUCKET" --delete
+          aws cloudfront create-invalidation --distribution-id "$FRONTEND_DIST" --paths "/*"
 
       - name: Frontend Deployment Summary
         run: |
-          echo "✅ Frontend built successfully!"
+          echo "✅ Frontend deployed successfully!"
+          echo "🌐 CloudFront URL: https://$FRONTEND_DOMAIN"
           echo "📦 Placeholder bucket: ${{ needs.deploy-infrastructure.outputs.placeholder_bucket }}"
           echo "🏗️ Infrastructure test completed for account: ${{ needs.deploy-infrastructure.outputs.account_id }}"
 
@@ -384,24 +403,43 @@ jobs:
             yarn install --frozen-lockfile
           fi
 
+      - name: Download infra outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: infrastructure-outputs-${{ needs.setup.outputs.environment }}
+          path: .
+
+      - name: Export ADMIN_BUCKET & ADMIN_DISTRIBUTION from outputs
+        run: |
+          echo "ADMIN_BUCKET=$(jq -r .admin_bucket.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "ADMIN_DIST=$(jq -r .admin_distribution_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "ADMIN_DOMAIN=$(jq -r .admin_domain.value infrastructure-outputs.json)" >> $GITHUB_ENV
+
       - name: Build Admin
+        working-directory: admin
         env:
           NEXT_PUBLIC_AWS_REGION: ${{ env.AWS_REGION }}
           NEXT_PUBLIC_COGNITO_USER_POOL_ID: placeholder-pool
           NEXT_PUBLIC_COGNITO_CLIENT_ID: placeholder-client
           NEXT_PUBLIC_API_URL: https://api.akara.studio
-          NEXT_PUBLIC_S3_BUCKET: ${{ needs.deploy-infrastructure.outputs.placeholder_bucket }}
+          NEXT_PUBLIC_S3_BUCKET: ${{ env.ADMIN_BUCKET }}
           NEXT_PUBLIC_ENVIRONMENT: ${{ needs.setup.outputs.environment }}
         run: |
           if [ "${{ steps.detect_root_pm_admin.outputs.pm }}" = "npm" ]; then
-            npm run build --workspace=admin
+            npm run build
           else
-            yarn workspace admin build
+            yarn build
           fi
+
+      - name: Sync to S3 (admin)
+        run: |
+          aws s3 sync admin/out "s3://$ADMIN_BUCKET" --delete
+          aws cloudfront create-invalidation --distribution-id "$ADMIN_DIST" --paths "/*"
 
       - name: Admin Deployment Summary
         run: |
-          echo "✅ Admin built successfully!"
+          echo "✅ Admin deployed successfully!"
+          echo "🌐 CloudFront URL: https://$ADMIN_DOMAIN"
           echo "👤 Admin test completed for account: ${{ needs.deploy-infrastructure.outputs.account_id }}"
           echo "🎯 This is a minimal infrastructure test - full admin deployment coming in Phase 1"
 
@@ -411,15 +449,35 @@ jobs:
     if: always() && (needs.deploy-infrastructure.result == 'success' || needs.deploy-frontend.result == 'success' || needs.deploy-admin.result == 'success')
     runs-on: ubuntu-latest
     steps:
+      - name: Download infra outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: infrastructure-outputs-${{ needs.setup.outputs.environment }}
+          path: .
+
+      - name: Show CloudFront URLs
+        run: |
+          FRONTEND_DOMAIN=$(jq -r .frontend_domain.value infrastructure-outputs.json)
+          ADMIN_DOMAIN=$(jq -r .admin_domain.value infrastructure-outputs.json)
+          echo "🌐 **Frontend**: https://$FRONTEND_DOMAIN"
+          echo "👤 **Admin**:    https://$ADMIN_DOMAIN"
+
       - name: Generate Infrastructure Test Results
         run: |
-          echo "# 🎉 Akara Studio Infrastructure Test Complete!" >> $GITHUB_STEP_SUMMARY
+          FRONTEND_DOMAIN=$(jq -r .frontend_domain.value infrastructure-outputs.json)
+          ADMIN_DOMAIN=$(jq -r .admin_domain.value infrastructure-outputs.json)
+          
+          echo "# 🎉 Akara Studio Production Deployment Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## ✅ Infrastructure Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "## 🌐 Live URLs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend**: https://$FRONTEND_DOMAIN" >> $GITHUB_STEP_SUMMARY
+          echo "**Admin**: https://$ADMIN_DOMAIN" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Infrastructure Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**AWS Account:** ${{ needs.deploy-infrastructure.outputs.account_id }}" >> $GITHUB_STEP_SUMMARY
           echo "**Region:** ${{ needs.deploy-infrastructure.outputs.region }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Test Bucket:** ${{ needs.deploy-infrastructure.outputs.placeholder_bucket }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## 🎯 Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
