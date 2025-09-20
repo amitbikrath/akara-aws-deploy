@@ -263,9 +263,8 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-Frontend-${{ github.run_id }}
 
-      - name: Detect package manager (frontend)
-        id: detect_frontend_pm
-        working-directory: frontend
+      - name: Detect root package manager
+        id: detect_root_pm
         run: |
           if [ -f package-lock.json ]; then
             echo "pm=npm" >> $GITHUB_OUTPUT
@@ -274,52 +273,37 @@ jobs:
             echo "pm=yarn" >> $GITHUB_OUTPUT
             echo "lockfile=yarn.lock" >> $GITHUB_OUTPUT
           else
-            echo "No lockfile found in frontend/; skipping cache."
+            echo "No root lockfile found"
             echo "pm=none" >> $GITHUB_OUTPUT
             echo "lockfile=" >> $GITHUB_OUTPUT
           fi
 
-      - name: Setup Node.js (frontend)
-        if: ${{ steps.detect_frontend_pm.outputs.pm != 'none' }}
+      - name: Setup Node.js (root workspace)
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: ${{ steps.detect_frontend_pm.outputs.pm }}
-          cache-dependency-path: frontend/${{ steps.detect_frontend_pm.outputs.lockfile }}
+          cache: ${{ steps.detect_root_pm.outputs.pm }}
+          cache-dependency-path: ${{ steps.detect_root_pm.outputs.lockfile }}
 
-      - name: Install deps (frontend)
-        if: ${{ steps.detect_frontend_pm.outputs.pm != 'none' }}
-        working-directory: frontend
+      - name: Install workspace deps
         run: |
-          if [ "${{ steps.detect_frontend_pm.outputs.pm }}" = "npm" ]; then
+          if [ "${{ steps.detect_root_pm.outputs.pm }}" = "npm" ]; then
             npm ci
           else
             yarn install --frozen-lockfile
           fi
 
-      - name: Setup Node.js fallback (frontend)
-        if: ${{ steps.detect_frontend_pm.outputs.pm == 'none' }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install deps fallback (frontend)
-        if: ${{ steps.detect_frontend_pm.outputs.pm == 'none' }}
-        working-directory: frontend
-        run: npm install
-
       - name: Build Frontend
-        working-directory: frontend
         env:
           NEXT_PUBLIC_CDN_URL: https://placeholder.cloudfront.net
           NEXT_PUBLIC_API_URL: https://api.akara.studio
           NEXT_PUBLIC_SITE_URL: ${{ needs.setup.outputs.environment == 'prod' && 'https://akara.studio' || 'https://staging.akara.studio' }}
           NEXT_PUBLIC_ENVIRONMENT: ${{ needs.setup.outputs.environment }}
         run: |
-          if [ "${{ steps.detect_frontend_pm.outputs.pm }}" = "npm" ] || [ "${{ steps.detect_frontend_pm.outputs.pm }}" = "none" ]; then
-            npm run build
+          if [ "${{ steps.detect_root_pm.outputs.pm }}" = "npm" ]; then
+            npm run build --workspace=frontend
           else
-            yarn build
+            yarn workspace frontend build
           fi
 
       - name: Frontend Deployment Summary
@@ -370,9 +354,8 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-Admin-${{ github.run_id }}
 
-      - name: Detect package manager (admin)
-        id: detect_admin_pm
-        working-directory: admin
+      - name: Detect root package manager
+        id: detect_root_pm_admin
         run: |
           if [ -f package-lock.json ]; then
             echo "pm=npm" >> $GITHUB_OUTPUT
@@ -381,42 +364,27 @@ jobs:
             echo "pm=yarn" >> $GITHUB_OUTPUT
             echo "lockfile=yarn.lock" >> $GITHUB_OUTPUT
           else
-            echo "No lockfile found in admin/; skipping cache."
+            echo "No root lockfile found"
             echo "pm=none" >> $GITHUB_OUTPUT
             echo "lockfile=" >> $GITHUB_OUTPUT
           fi
 
-      - name: Setup Node.js (admin)
-        if: ${{ steps.detect_admin_pm.outputs.pm != 'none' }}
+      - name: Setup Node.js (root workspace)
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: ${{ steps.detect_admin_pm.outputs.pm }}
-          cache-dependency-path: admin/${{ steps.detect_admin_pm.outputs.lockfile }}
+          cache: ${{ steps.detect_root_pm_admin.outputs.pm }}
+          cache-dependency-path: ${{ steps.detect_root_pm_admin.outputs.lockfile }}
 
-      - name: Install deps (admin)
-        if: ${{ steps.detect_admin_pm.outputs.pm != 'none' }}
-        working-directory: admin
+      - name: Install workspace deps
         run: |
-          if [ "${{ steps.detect_admin_pm.outputs.pm }}" = "npm" ]; then
+          if [ "${{ steps.detect_root_pm_admin.outputs.pm }}" = "npm" ]; then
             npm ci
           else
             yarn install --frozen-lockfile
           fi
 
-      - name: Setup Node.js fallback (admin)
-        if: ${{ steps.detect_admin_pm.outputs.pm == 'none' }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install deps fallback (admin)
-        if: ${{ steps.detect_admin_pm.outputs.pm == 'none' }}
-        working-directory: admin
-        run: npm install
-
       - name: Build Admin
-        working-directory: admin
         env:
           NEXT_PUBLIC_AWS_REGION: ${{ env.AWS_REGION }}
           NEXT_PUBLIC_COGNITO_USER_POOL_ID: placeholder-pool
@@ -425,10 +393,10 @@ jobs:
           NEXT_PUBLIC_S3_BUCKET: ${{ needs.deploy-infrastructure.outputs.placeholder_bucket }}
           NEXT_PUBLIC_ENVIRONMENT: ${{ needs.setup.outputs.environment }}
         run: |
-          if [ "${{ steps.detect_admin_pm.outputs.pm }}" = "npm" ] || [ "${{ steps.detect_admin_pm.outputs.pm }}" = "none" ]; then
-            npm run build
+          if [ "${{ steps.detect_root_pm_admin.outputs.pm }}" = "npm" ]; then
+            npm run build --workspace=admin
           else
-            yarn build
+            yarn workspace admin build
           fi
 
       - name: Admin Deployment Summary
