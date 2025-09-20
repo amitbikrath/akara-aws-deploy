@@ -351,15 +351,6 @@ Resources:
               - logs:UntagLogGroup
             Resource: !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/${ProjectName}-*'
 
-          # Bootstrap Templates Bucket Policy
-          - Sid: BootstrapTemplatesBucketPolicy
-            Effect: Allow
-            Action:
-              - s3:GetBucketPolicy
-              - s3:PutBucketPolicy
-            Resource:
-              - arn:aws:s3:::akara-bootstrap-templates
-
 Outputs:
   GitHubActionsRoleArn:
     Description: 'ARN of the GitHub Actions IAM Role'
