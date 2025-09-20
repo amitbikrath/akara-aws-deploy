@@ -106,6 +106,8 @@ Resources:
               - s3:PutReplicationConfiguration
               - s3:GetBucketRequestPayment
               - s3:PutBucketRequestPayment
+              - s3:GetObjectLockConfiguration
+              - s3:PutObjectLockConfiguration
             Resource:
               - !Sub 'arn:aws:s3:::${ProjectName}-*'
           
