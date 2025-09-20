@@ -222,6 +222,24 @@ jobs:
             -input=false -no-color 2>&1 | tee tf-init.log
 
           terraform -chdir=infra/terraform validate -no-color 2>&1 | tee tf-validate.log
+
+      - name: Diagnose CloudFront alias ownership
+        run: |
+          set -euo pipefail
+          echo "Looking for current owners of aliases…"
+          echo "— admin.akara.studio —"
+          aws cloudfront list-distributions \
+            --query "DistributionList.Items[?Aliases.Items && contains(join(',',Aliases.Items), 'admin.akara.studio')].[Id,DomainName,Aliases.Items,Status]" \
+            --output table || true
+
+          echo ""
+          echo "— www.akara.studio —"
+          aws cloudfront list-distributions \
+            --query "DistributionList.Items[?Aliases.Items && contains(join(',',Aliases.Items), 'www.akara.studio')].[Id,DomainName,Aliases.Items,Status]" \
+            --output table || true
+
+      - name: Continue Terraform deployment
+        run: |
           terraform -chdir=infra/terraform plan -input=false -no-color -lock-timeout=5m -out=plan.out 2>&1 | tee tf-plan.log
           terraform -chdir=infra/terraform apply -input=false -no-color plan.out 2>&1 | tee tf-apply.log
 
