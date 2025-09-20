@@ -140,6 +140,24 @@ Resources:
             Resource:
               - arn:aws:s3:::akara-tf-state-*/*
 
+          # Bootstrap Templates Bucket Policy
+          - Sid: BootstrapTemplatesBucketPolicy
+            Effect: Allow
+            Action:
+              - s3:GetBucketPolicy
+              - s3:PutBucketPolicy
+            Resource:
+              - arn:aws:s3:::akara-bootstrap-templates
+
+          # Bootstrap Templates Public Access Block (optional but harmless)
+          - Sid: BootstrapTemplatesPublicAccessBlock
+            Effect: Allow
+            Action:
+              - s3:GetPublicAccessBlock
+              - s3:PutPublicAccessBlock
+            Resource:
+              - arn:aws:s3:::akara-bootstrap-templates
+
           # CloudFront Permissions
           - Sid: CloudFrontManagement
             Effect: Allow
