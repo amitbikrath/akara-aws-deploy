@@ -107,6 +107,8 @@ Resources:
               - !Sub 'arn:aws:s3:::${ProjectName}-*'
               # Placeholder buckets used by the infra test (e.g., akara-placeholder-ACCOUNTID-REGION)
               - !Sub 'arn:aws:s3:::${ProjectName}-placeholder-*'
+              # Bootstrap templates bucket
+              - arn:aws:s3:::akara-bootstrap-templates
           
           - Sid: S3ObjectManagement
             Effect: Allow
@@ -119,6 +121,7 @@ Resources:
             Resource:
               - !Sub 'arn:aws:s3:::${ProjectName}-*/*'
               - !Sub 'arn:aws:s3:::${ProjectName}-placeholder-*/*'
+              - arn:aws:s3:::akara-bootstrap-templates/*
 
           # Terraform State Backend (consolidated)
           - Sid: TerraformStateBackend
@@ -139,24 +142,6 @@ Resources:
               - s3:DeleteObject
             Resource:
               - arn:aws:s3:::akara-tf-state-*/*
-
-          # Bootstrap Templates Bucket Policy
-          - Sid: BootstrapTemplatesBucketPolicy
-            Effect: Allow
-            Action:
-              - s3:GetBucketPolicy
-              - s3:PutBucketPolicy
-            Resource:
-              - arn:aws:s3:::akara-bootstrap-templates
-
-          # Bootstrap Templates Public Access Block (optional but harmless)
-          - Sid: BootstrapTemplatesPublicAccessBlock
-            Effect: Allow
-            Action:
-              - s3:GetPublicAccessBlock
-              - s3:PutPublicAccessBlock
-            Resource:
-              - arn:aws:s3:::akara-bootstrap-templates
 
           # CloudFront Permissions
           - Sid: CloudFrontManagement
