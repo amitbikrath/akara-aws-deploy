@@ -26,6 +26,11 @@ env:
   AWS_REGION: ${{ inputs.aws_region || 'us-east-1' }}
   BUCKET_NAME: ${{ inputs.bucket_name || 'akara-bootstrap-templates' }}
 
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
 jobs:
   upload-bootstrap-template:
     runs-on: ubuntu-latest
@@ -33,21 +38,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials using OIDC (fallback to CLI)
-        run: |
-          echo "Checking AWS credentials..."
-          # Try to use existing credentials first
-          if aws sts get-caller-identity > /dev/null 2>&1; then
-            echo "✅ AWS credentials found via CLI/environment"
-            aws sts get-caller-identity
-          else
-            echo "❌ No AWS credentials found"
-            echo "This workflow requires AWS credentials to create S3 bucket and upload template"
-            echo "Please either:"
-            echo "1. Configure AWS CLI locally, or"
-            echo "2. Use the manual upload method instead"
-            exit 1
-          fi
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: AkaraBootstrapOIDC
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
 
       - name: Create S3 bucket for CloudFormation templates
         run: |
