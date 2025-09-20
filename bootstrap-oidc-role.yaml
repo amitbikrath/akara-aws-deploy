@@ -96,6 +96,7 @@ Resources:
               # object lock & lifecycle & ownership controls
               - s3:GetObjectLockConfiguration
               - s3:GetLifecycleConfiguration
+              - s3:GetBucketRequestPayment
               # allow bucket create/delete for our project buckets
               - s3:CreateBucket
               - s3:DeleteBucket
