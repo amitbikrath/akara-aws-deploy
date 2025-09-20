@@ -209,6 +209,11 @@ jobs:
           AWS_REGION: ${{ steps.awsinfo.outputs.AWS_REGION }}
           STATE_BUCKET: ${{ steps.awsinfo.outputs.TF_STATE_BUCKET }}
           LOCK_TABLE: ${{ steps.awsinfo.outputs.TF_LOCK_TABLE }}
+          TF_VAR_project: akara
+          TF_VAR_region: ${{ steps.awsinfo.outputs.AWS_REGION }}
+          TF_VAR_account_id: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
+          TF_VAR_frontend_domain: www.akara.studio
+          TF_VAR_admin_domain: admin.akara.studio
           TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERT_ARN }}
         run: |
           set -euxo pipefail
@@ -237,6 +242,12 @@ jobs:
           aws cloudfront list-distributions \
             --query "DistributionList.Items[?Aliases.Items && contains(join(',',Aliases.Items), 'www.akara.studio')].[Id,DomainName,Aliases.Items,Status]" \
             --output table || true
+
+      - name: Import existing frontend distribution
+        run: |
+          set -euo pipefail
+          echo "Importing existing frontend distribution EBWBTLYBASPTD..."
+          terraform -chdir=infra/terraform import aws_cloudfront_distribution.frontend EBWBTLYBASPTD || echo "Import failed or resource already exists in state"
 
       - name: Continue Terraform deployment
         run: |

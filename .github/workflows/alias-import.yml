@@ -1,11 +1,14 @@
-name: Import CloudFront Alias Owner (Admin)
+name: Import CloudFront Alias Owner
 
 on:
   workflow_dispatch:
     inputs:
+      frontend_distribution_id:
+        description: "Existing CloudFront Distribution ID that currently owns www.akara.studio"
+        required: false
       admin_distribution_id:
         description: "Existing CloudFront Distribution ID that currently owns admin.akara.studio"
-        required: true
+        required: false
 
 permissions:
   id-token: write
@@ -79,13 +82,21 @@ jobs:
             echo "TF_VAR_acm_certificate_arn=${{ secrets.ACM_CERT_ARN }}" >> $GITHUB_ENV
           fi
 
-      - name: Import existing admin distribution into Terraform state
+      - name: Import existing distributions into Terraform state
         run: |
           set -euo pipefail
-          DIST_ID="${{ github.event.inputs.admin_distribution_id }}"
-          echo "Importing CloudFront distribution $DIST_ID as aws_cloudfront_distribution.admin"
-          # Import into the resource address used for admin distribution
-          terraform -chdir=infra/terraform import aws_cloudfront_distribution.admin "${DIST_ID}" || true
+          
+          if [ -n "${{ github.event.inputs.frontend_distribution_id }}" ]; then
+            FRONTEND_ID="${{ github.event.inputs.frontend_distribution_id }}"
+            echo "Importing frontend CloudFront distribution $FRONTEND_ID as aws_cloudfront_distribution.frontend"
+            terraform -chdir=infra/terraform import aws_cloudfront_distribution.frontend "${FRONTEND_ID}" || echo "Frontend import failed or already exists"
+          fi
+          
+          if [ -n "${{ github.event.inputs.admin_distribution_id }}" ]; then
+            ADMIN_ID="${{ github.event.inputs.admin_distribution_id }}"
+            echo "Importing admin CloudFront distribution $ADMIN_ID as aws_cloudfront_distribution.admin"
+            terraform -chdir=infra/terraform import aws_cloudfront_distribution.admin "${ADMIN_ID}" || echo "Admin import failed or already exists"
+          fi
 
       - name: Plan to reconcile config with imported distribution
         run: |
@@ -95,7 +106,12 @@ jobs:
 
       - name: Import Summary
         run: |
-          echo "✅ Import completed for distribution: ${{ github.event.inputs.admin_distribution_id }}"
+          if [ -n "${{ github.event.inputs.frontend_distribution_id }}" ]; then
+            echo "✅ Frontend import completed for distribution: ${{ github.event.inputs.frontend_distribution_id }}"
+          fi
+          if [ -n "${{ github.event.inputs.admin_distribution_id }}" ]; then
+            echo "✅ Admin import completed for distribution: ${{ github.event.inputs.admin_distribution_id }}"
+          fi
           echo "🔍 Check the plan output above to see what changes Terraform will make"
           echo "🚀 Next: Run the main 'Deploy Akara Studio to AWS' workflow"
-          echo "   The imported distribution will be updated to match your configuration"
+          echo "   The imported distributions will be updated to match your configuration"
