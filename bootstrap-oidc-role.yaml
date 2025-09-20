@@ -97,6 +97,8 @@ Resources:
               - s3:GetObjectLockConfiguration
               - s3:GetLifecycleConfiguration
               - s3:GetBucketRequestPayment
+              - s3:GetBucketReplication
+              - s3:PutBucketReplication
               # allow bucket create/delete for our project buckets
               - s3:CreateBucket
               - s3:DeleteBucket
