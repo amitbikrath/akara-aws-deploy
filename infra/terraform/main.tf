@@ -53,9 +53,14 @@ resource "aws_cloudfront_origin_access_control" "oac" {
 # Bucket policies to allow CloudFront via OAC
 data "aws_iam_policy_document" "frontend_policy" {
   statement {
-    principals { type = "Service", identifiers = ["cloudfront.amazonaws.com"] }
     actions   = ["s3:GetObject"]
     resources = ["${aws_s3_bucket.frontend.arn}/*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
     condition {
       test     = "StringEquals"
       variable = "AWS:SourceArn"
@@ -70,9 +75,14 @@ resource "aws_s3_bucket_policy" "frontend" {
 
 data "aws_iam_policy_document" "admin_policy" {
   statement {
-    principals { type = "Service", identifiers = ["cloudfront.amazonaws.com"] }
     actions   = ["s3:GetObject"]
     resources = ["${aws_s3_bucket.admin.arn}/*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
     condition {
       test     = "StringEquals"
       variable = "AWS:SourceArn"
@@ -109,7 +119,11 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
-  restrictions { geo_restriction { restriction_type = "none" } }
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
   viewer_certificate { cloudfront_default_certificate = true }
   tags = { Project = var.project }
 }
@@ -137,7 +151,11 @@ resource "aws_cloudfront_distribution" "admin" {
     }
   }
 
-  restrictions { geo_restriction { restriction_type = "none" } }
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
   viewer_certificate { cloudfront_default_certificate = true }
   tags = { Project = var.project }
 }
