@@ -43,7 +43,7 @@ on:
 env:
   AWS_REGION: us-east-1
   TF_VERSION: '1.6'
-  NODE_VERSION: '18'
+  NODE_VERSION: '18.x'
   PROJECT_NAME: akara
 
 # Required for OIDC
@@ -263,16 +263,50 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-Frontend-${{ github.run_id }}
 
-      - name: Setup Node.js
+      - name: Detect package manager (frontend)
+        id: detect_frontend_pm
+        working-directory: frontend
+        run: |
+          if [ -f package-lock.json ]; then
+            echo "pm=npm" >> $GITHUB_OUTPUT
+            echo "lockfile=package-lock.json" >> $GITHUB_OUTPUT
+          elif [ -f yarn.lock ]; then
+            echo "pm=yarn" >> $GITHUB_OUTPUT
+            echo "lockfile=yarn.lock" >> $GITHUB_OUTPUT
+          else
+            echo "No lockfile found in frontend/; skipping cache."
+            echo "pm=none" >> $GITHUB_OUTPUT
+            echo "lockfile=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node.js (frontend)
+        if: ${{ steps.detect_frontend_pm.outputs.pm != 'none' }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: 'frontend/package-lock.json'
+          cache: ${{ steps.detect_frontend_pm.outputs.pm }}
+          cache-dependency-path: frontend/${{ steps.detect_frontend_pm.outputs.lockfile }}
 
-      - name: Install Frontend Dependencies
+      - name: Install deps (frontend)
+        if: ${{ steps.detect_frontend_pm.outputs.pm != 'none' }}
         working-directory: frontend
-        run: npm ci
+        run: |
+          if [ "${{ steps.detect_frontend_pm.outputs.pm }}" = "npm" ]; then
+            npm ci
+          else
+            yarn install --frozen-lockfile
+          fi
+
+      - name: Setup Node.js fallback (frontend)
+        if: ${{ steps.detect_frontend_pm.outputs.pm == 'none' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install deps fallback (frontend)
+        if: ${{ steps.detect_frontend_pm.outputs.pm == 'none' }}
+        working-directory: frontend
+        run: npm install
 
       - name: Build Frontend
         working-directory: frontend
@@ -281,7 +315,12 @@ jobs:
           NEXT_PUBLIC_API_URL: https://api.akara.studio
           NEXT_PUBLIC_SITE_URL: ${{ needs.setup.outputs.environment == 'prod' && 'https://akara.studio' || 'https://staging.akara.studio' }}
           NEXT_PUBLIC_ENVIRONMENT: ${{ needs.setup.outputs.environment }}
-        run: npm run build
+        run: |
+          if [ "${{ steps.detect_frontend_pm.outputs.pm }}" = "npm" ] || [ "${{ steps.detect_frontend_pm.outputs.pm }}" = "none" ]; then
+            npm run build
+          else
+            yarn build
+          fi
 
       - name: Frontend Deployment Summary
         run: |
@@ -331,16 +370,50 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-Admin-${{ github.run_id }}
 
-      - name: Setup Node.js
+      - name: Detect package manager (admin)
+        id: detect_admin_pm
+        working-directory: admin
+        run: |
+          if [ -f package-lock.json ]; then
+            echo "pm=npm" >> $GITHUB_OUTPUT
+            echo "lockfile=package-lock.json" >> $GITHUB_OUTPUT
+          elif [ -f yarn.lock ]; then
+            echo "pm=yarn" >> $GITHUB_OUTPUT
+            echo "lockfile=yarn.lock" >> $GITHUB_OUTPUT
+          else
+            echo "No lockfile found in admin/; skipping cache."
+            echo "pm=none" >> $GITHUB_OUTPUT
+            echo "lockfile=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node.js (admin)
+        if: ${{ steps.detect_admin_pm.outputs.pm != 'none' }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: 'admin/package-lock.json'
+          cache: ${{ steps.detect_admin_pm.outputs.pm }}
+          cache-dependency-path: admin/${{ steps.detect_admin_pm.outputs.lockfile }}
 
-      - name: Install Admin Dependencies
+      - name: Install deps (admin)
+        if: ${{ steps.detect_admin_pm.outputs.pm != 'none' }}
         working-directory: admin
-        run: npm ci
+        run: |
+          if [ "${{ steps.detect_admin_pm.outputs.pm }}" = "npm" ]; then
+            npm ci
+          else
+            yarn install --frozen-lockfile
+          fi
+
+      - name: Setup Node.js fallback (admin)
+        if: ${{ steps.detect_admin_pm.outputs.pm == 'none' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install deps fallback (admin)
+        if: ${{ steps.detect_admin_pm.outputs.pm == 'none' }}
+        working-directory: admin
+        run: npm install
 
       - name: Build Admin
         working-directory: admin
@@ -351,7 +424,12 @@ jobs:
           NEXT_PUBLIC_API_URL: https://api.akara.studio
           NEXT_PUBLIC_S3_BUCKET: ${{ needs.deploy-infrastructure.outputs.placeholder_bucket }}
           NEXT_PUBLIC_ENVIRONMENT: ${{ needs.setup.outputs.environment }}
-        run: npm run build
+        run: |
+          if [ "${{ steps.detect_admin_pm.outputs.pm }}" = "npm" ] || [ "${{ steps.detect_admin_pm.outputs.pm }}" = "none" ]; then
+            npm run build
+          else
+            yarn build
+          fi
 
       - name: Admin Deployment Summary
         run: |
