@@ -73,6 +73,8 @@ Resources:
               - s3:*Bucket*
               - s3:ListBucket
               - s3:GetBucketLocation
+              - s3:GetAccelerateConfiguration
+              - s3:PutAccelerateConfiguration
             Resource:
               - !Sub 'arn:aws:s3:::${ProjectName}-*'
           
