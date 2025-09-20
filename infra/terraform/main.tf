@@ -100,6 +100,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   comment             = "${var.project}-frontend"
   default_root_object = "index.html"
+  aliases             = [var.frontend_domain]
 
   origin {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
@@ -124,7 +125,11 @@ resource "aws_cloudfront_distribution" "frontend" {
       restriction_type = "none"
     }
   }
-  viewer_certificate { cloudfront_default_certificate = true }
+  viewer_certificate {
+    acm_certificate_arn      = var.acm_certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
+  }
   tags = { Project = var.project }
 }
 
@@ -132,6 +137,7 @@ resource "aws_cloudfront_distribution" "admin" {
   enabled             = true
   comment             = "${var.project}-admin"
   default_root_object = "index.html"
+  aliases             = [var.admin_domain]
 
   origin {
     domain_name              = aws_s3_bucket.admin.bucket_regional_domain_name
@@ -156,7 +162,11 @@ resource "aws_cloudfront_distribution" "admin" {
       restriction_type = "none"
     }
   }
-  viewer_certificate { cloudfront_default_certificate = true }
+  viewer_certificate {
+    acm_certificate_arn      = var.acm_certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
+  }
   tags = { Project = var.project }
 }
 

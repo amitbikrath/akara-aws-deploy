@@ -197,12 +197,19 @@ jobs:
           terraform -chdir=infra/terraform fmt -check -recursive || true
           git --no-pager diff -- infra/terraform || true
 
+      - name: Export TF vars (ACM)
+        run: |
+          echo "Using ACM cert: ${{ secrets.ACM_CERT_ARN }}"
+          export TF_VAR_acm_certificate_arn='${{ secrets.ACM_CERT_ARN }}'
+          echo "TF var set"
+
       - name: Run Terraform with comprehensive logging
         env:
           ACCOUNT_ID: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
           AWS_REGION: ${{ steps.awsinfo.outputs.AWS_REGION }}
           STATE_BUCKET: ${{ steps.awsinfo.outputs.TF_STATE_BUCKET }}
           LOCK_TABLE: ${{ steps.awsinfo.outputs.TF_LOCK_TABLE }}
+          TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERT_ARN }}
         run: |
           set -euxo pipefail
           terraform -version
