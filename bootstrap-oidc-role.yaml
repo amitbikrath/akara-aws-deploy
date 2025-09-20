@@ -70,44 +70,16 @@ Resources:
           - Sid: S3BucketManagement
             Effect: Allow
             Action:
-              # bucket listing/policy/public access
-              - s3:ListBucket
-              - s3:GetBucketLocation
-              - s3:GetBucketPolicy
-              - s3:GetBucketPolicyStatus
-              - s3:GetBucketPublicAccessBlock
-              - s3:PutBucketPublicAccessBlock
-              # versioning/encryption/logging/website/notifications
-              - s3:GetBucketVersioning
-              - s3:PutBucketVersioning
-              - s3:GetBucketEncryption
-              - s3:PutBucketEncryption
-              - s3:GetBucketLogging
-              - s3:GetBucketWebsite
-              - s3:GetBucketNotification
-              - s3:PutBucketNotification
-              # tagging & ACL
-              - s3:GetBucketTagging
-              - s3:PutBucketTagging
-              - s3:GetBucketAcl
-              # CORS & accelerate
-              - s3:GetBucketCors
-              - s3:GetAccelerateConfiguration
-              # object lock & lifecycle & ownership controls
-              - s3:GetObjectLockConfiguration
-              - s3:GetLifecycleConfiguration
-              - s3:GetBucketRequestPayment
-              - s3:GetBucketReplication
-              - s3:PutBucketReplication
-              # allow bucket create/delete for our project buckets
+              - s3:GetBucket*            # read any bucket-level config (replication, CORS, encrypt, lifecycle, etc.)
+              - s3:PutBucket*            # write any bucket-level config (same families)
+              - s3:ListBucket            # list objects when needed
               - s3:CreateBucket
               - s3:DeleteBucket
+              - s3:DeleteBucketPolicy    # not covered by PutBucket*
+              - s3:GetBucketPolicyStatus # sometimes queried by provider
             Resource:
-              # Project buckets (e.g., akara-*)
               - !Sub 'arn:aws:s3:::${ProjectName}-*'
-              # Placeholder buckets used by the infra test (e.g., akara-placeholder-ACCOUNTID-REGION)
               - !Sub 'arn:aws:s3:::${ProjectName}-placeholder-*'
-              # Bootstrap templates bucket
               - arn:aws:s3:::akara-bootstrap-templates
           
           - Sid: S3ObjectManagement
