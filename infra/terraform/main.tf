@@ -10,6 +10,8 @@ provider "aws" { region = var.region }
 locals {
   frontend_bucket = "${var.project}-frontend-${var.account_id}-${var.region}"
   admin_bucket    = "${var.project}-admin-${var.account_id}-${var.region}"
+  assets_bucket   = "${var.project}-assets-${var.account_id}-${var.region}"
+  catalog_table   = "${var.project}-catalog"
 }
 
 # Buckets for static sites
@@ -97,7 +99,7 @@ resource "aws_s3_bucket_policy" "admin" {
 
 # S3 Assets Bucket
 resource "aws_s3_bucket" "assets" {
-  bucket        = "${var.project}-assets-${var.account_id}-${var.region}"
+  bucket        = local.assets_bucket
   force_destroy = true
   tags = { Project = var.project }
 }
@@ -252,7 +254,7 @@ resource "aws_s3_bucket_policy" "assets" {
 
 # DynamoDB Tables
 resource "aws_dynamodb_table" "catalog" {
-  name           = "${var.project}-catalog"
+  name           = local.catalog_table
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "pk"
   range_key      = "sk"
@@ -456,8 +458,7 @@ resource "aws_lambda_function" "get_upload_url" {
 
   environment {
     variables = {
-      ASSETS_BUCKET = coalesce(var.assets_bucket_name, aws_s3_bucket.assets.bucket)
-      AWS_REGION    = tostring(var.region)
+      ASSETS_BUCKET = local.assets_bucket
     }
   }
 
@@ -484,8 +485,7 @@ resource "aws_lambda_function" "get_catalog" {
 
   environment {
     variables = {
-      CATALOG_TABLE = coalesce(var.catalog_table_name, aws_dynamodb_table.catalog.name)
-      AWS_REGION    = tostring(var.region)
+      CATALOG_TABLE = local.catalog_table
     }
   }
 
@@ -510,8 +510,7 @@ resource "aws_lambda_function" "post_catalog" {
 
   environment {
     variables = {
-      CATALOG_TABLE = coalesce(var.catalog_table_name, aws_dynamodb_table.catalog.name)
-      AWS_REGION    = tostring(var.region)
+      CATALOG_TABLE = local.catalog_table
     }
   }
 
