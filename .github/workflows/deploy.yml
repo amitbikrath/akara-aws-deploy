@@ -243,11 +243,24 @@ jobs:
             --query "DistributionList.Items[?Aliases.Items && contains(join(',',Aliases.Items), 'www.akara.studio')].[Id,DomainName,Aliases.Items,Status]" \
             --output table || true
 
-      - name: Import existing frontend distribution
+      - name: Import existing frontend distribution (idempotent, non-blocking)
         run: |
           set -euo pipefail
-          echo "Importing existing frontend distribution EBWBTLYBASPTD..."
-          terraform -chdir=infra/terraform import aws_cloudfront_distribution.frontend EBWBTLYBASPTD || echo "Import failed or resource already exists in state"
+          echo "Checking if aws_cloudfront_distribution.frontend is already in state…"
+          if terraform -chdir=infra/terraform state show aws_cloudfront_distribution.frontend >/dev/null 2>&1; then
+            echo "✅ Already imported — skipping import."
+          else
+            echo "➡️ Importing frontend distribution ${FRONTEND_DIST_ID}…"
+            # timeout prevents indefinite hangs; -input=false avoids interactivity; -no-color helps logs
+            timeout 15m terraform -chdir=infra/terraform import \
+              -input=false \
+              -no-color \
+              -lock-timeout=10m \
+              aws_cloudfront_distribution.frontend ${FRONTEND_DIST_ID}
+            echo "✅ Import completed."
+          fi
+        env:
+          FRONTEND_DIST_ID: EBWBTLYBASPTD
 
       - name: Continue Terraform deployment
         run: |
