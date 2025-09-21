@@ -1,193 +1,197 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import VinylPlayer from './VinylPlayer'
+import { useEffect, useState } from 'react';
 
-// This would normally fetch from the catalog API
-const sampleTracks = [
-  {
-    id: 'aaya-aaya-hanuman',
-    title: 'Aaya Aaya Hanuman',
-    artists: ['Akara Studio'],
-    genre: 'devotional',
-    language: 'hindi',
-    duration: 245,
-    mood: ['devotional', 'energetic'],
-    cover: {
-      thumbnail: 'https://via.placeholder.com/200x200/FFD700/000000?text=Hanuman'
-    },
-    audio: {
-      preview: {
-        url: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3', // Sample URL
-        duration: 30
-      }
-    },
-    tags: ['hanuman', 'devotional', 'hindi', 'bhajan'],
-    rating: { average: 4.9, count: 203 },
-    playCount: 1247
-  },
-  {
-    id: 'o-palanhare',
-    title: 'O Palanhare',
-    artists: ['Akara Studio'],
-    genre: 'devotional',
-    language: 'hindi',
-    duration: 198,
-    mood: ['peaceful', 'contemplative'],
-    isPremium: true,
-    cover: {
-      thumbnail: 'https://via.placeholder.com/200x200/6A4C93/000000?text=Divine'
-    },
-    audio: {
-      preview: {
-        url: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3', // Sample URL
-        duration: 30
-      }
-    },
-    tags: ['devotional', 'hindi', 'peaceful', 'bhajan'],
-    rating: { average: 4.8, count: 167 },
-    playCount: 892
-  }
-]
+interface MusicItem {
+  id: string;
+  title: string;
+  caption: string;
+  shloka: string;
+  meaning: string;
+  fileKey: string;
+  thumbKey?: string;
+  ratio: string;
+  palette: string[];
+  style: string;
+  createdAt: string;
+}
 
 export default function MusicGallery() {
-  const [currentTrack, setCurrentTrack] = useState<typeof sampleTracks[0] | null>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [selectedGenre, setSelectedGenre] = useState('all')
+  const [music, setMusic] = useState<MusicItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentTrack, setCurrentTrack] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  const filteredTracks = sampleTracks.filter(track => 
-    selectedGenre === 'all' || track.genre === selectedGenre
-  )
+  useEffect(() => {
+    const fetchMusic = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+        if (!apiUrl) {
+          throw new Error('API URL not configured');
+        }
 
-  const genres = ['all', 'devotional', 'mantra', 'bhajan']
+        const response = await fetch(`${apiUrl}/api/catalog?type=music`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch music: ${response.statusText}`);
+        }
 
-  const handlePlayTrack = (track: typeof sampleTracks[0]) => {
-    if (currentTrack?.id === track.id) {
-      setIsPlaying(!isPlaying)
+        const data = await response.json();
+        setMusic(data.items || []);
+      } catch (err) {
+        console.error('Error fetching music:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load music');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMusic();
+  }, []);
+
+  const handlePlay = (trackId: string) => {
+    if (currentTrack === trackId && isPlaying) {
+      setIsPlaying(false);
     } else {
-      setCurrentTrack(track)
-      setIsPlaying(true)
+      setCurrentTrack(trackId);
+      setIsPlaying(true);
     }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/30"></div>
+      </div>
+    );
   }
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 max-w-md mx-auto">
+          <p className="text-red-400 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn-glass"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div>
-      {/* Filters */}
-      <div className="mb-8">
-        <div className="flex flex-wrap gap-2 justify-center">
-          <span className="text-white/80 font-medium">Genre:</span>
-          {genres.map(genre => (
-            <button
-              key={genre}
-              onClick={() => setSelectedGenre(genre)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                selectedGenre === genre
-                  ? 'bg-primary-500 text-white'
-                  : 'glass text-white hover:bg-white/20'
-              }`}
-            >
-              {genre.charAt(0).toUpperCase() + genre.slice(1)}
-            </button>
-          ))}
+      {/* Music Grid */}
+      {music.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-white/60 text-lg mb-4">
+            No music tracks available yet.
+          </div>
+          <p className="text-white/40 text-sm">
+            Upload some music in the admin panel to see them here!
+          </p>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {music.map(track => (
+            <div
+              key={track.id}
+              className="card-glass group overflow-hidden"
+            >
+              {/* Vinyl Player Visual */}
+              <div className="relative aspect-square mb-4 overflow-hidden rounded-xl bg-gradient-to-br from-gray-800 to-gray-900">
+                <div className={`absolute inset-4 rounded-full bg-gradient-to-br from-gray-700 to-black border-4 border-gray-600 ${
+                  currentTrack === track.id && isPlaying ? 'animate-spin' : ''
+                }`}>
+                  <div className="absolute inset-1/3 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500">
+                    <div className="absolute inset-1/3 rounded-full bg-black"></div>
+                  </div>
+                </div>
+                
+                {/* Play Button */}
+                <button
+                  onClick={() => handlePlay(track.id)}
+                  className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center">
+                    {currentTrack === track.id && isPlaying ? (
+                      <svg className="w-8 h-8 text-gray-800" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-8 h-8 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
 
-      {/* Current Playing Track with Vinyl Player */}
-      {currentTrack && (
-        <div className="mb-12">
-          <VinylPlayer
-            track={currentTrack}
-            isPlaying={isPlaying}
-            onPlayPause={() => setIsPlaying(!isPlaying)}
-          />
+                {/* Hidden Audio Element */}
+                <audio
+                  key={track.id}
+                  autoPlay={currentTrack === track.id && isPlaying}
+                  onEnded={() => setIsPlaying(false)}
+                  onError={() => {
+                    console.error('Audio failed to load:', track.fileKey);
+                    setIsPlaying(false);
+                  }}
+                >
+                  <source src={`/content/${track.fileKey}`} type="audio/mpeg" />
+                  <source src={`/content/${track.fileKey}`} type="audio/wav" />
+                </audio>
+              </div>
+
+              {/* Content */}
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-white font-semibold text-lg line-clamp-1">
+                    {track.title}
+                  </h3>
+                  {track.caption && (
+                    <p className="text-white/70 text-sm line-clamp-2">
+                      {track.caption}
+                    </p>
+                  )}
+                </div>
+
+                {/* Shloka */}
+                {track.shloka && (
+                  <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-md">
+                    <p className="text-orange-300 text-sm italic">{track.shloka}</p>
+                    {track.meaning && (
+                      <p className="text-orange-200 text-xs mt-1">{track.meaning}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Tags */}
+                <div className="flex flex-wrap gap-1">
+                  {track.style && (
+                    <span className="text-xs bg-white/10 text-white/80 px-2 py-1 rounded-full">
+                      {track.style}
+                    </span>
+                  )}
+                  <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded-full">
+                    Audio
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Tracks List */}
-      <div className="space-y-4">
-        {filteredTracks.map(track => (
-          <div
-            key={track.id}
-            className="card-glass flex items-center gap-4 hover:bg-white/15 transition-all cursor-pointer"
-            onClick={() => handlePlayTrack(track)}
-          >
-            {/* Album Art */}
-            <div className="relative flex-shrink-0">
-              <img
-                src={track.cover.thumbnail}
-                alt={`${track.title} cover`}
-                className="w-16 h-16 rounded-lg object-cover"
-              />
-              {track.isPremium && (
-                <div className="absolute -top-1 -right-1 bg-primary-500 text-white text-xs px-1 py-0.5 rounded-full">
-                  Premium
-                </div>
-              )}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg opacity-0 hover:opacity-100 transition-opacity">
-                {currentTrack?.id === track.id && isPlaying ? (
-                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </div>
-            </div>
-
-            {/* Track Info */}
-            <div className="flex-grow min-w-0">
-              <h3 className="text-white font-semibold text-lg truncate">
-                {track.title}
-              </h3>
-              <p className="text-white/70 text-sm">
-                {track.artists.join(', ')}
-              </p>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {track.mood.slice(0, 2).map(mood => (
-                  <span
-                    key={mood}
-                    className="text-xs bg-white/10 text-white/80 px-2 py-0.5 rounded-full"
-                  >
-                    {mood}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="flex flex-col items-end text-sm text-white/70 space-y-1">
-              <div className="flex items-center gap-1">
-                <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-                <span>{track.rating.average}</span>
-              </div>
-              <div className="text-white/60">
-                {formatDuration(track.duration)}
-              </div>
-              <div className="text-white/50 text-xs">
-                {track.playCount.toLocaleString()} plays
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {filteredTracks.length === 0 && (
+      {filteredWallpapers.length === 0 && music.length > 0 && (
         <div className="text-center py-12">
           <div className="text-white/60 text-lg">
-            No tracks found matching your filters.
+            No music found matching your filters.
           </div>
           <button
-            onClick={() => setSelectedGenre('all')}
+            onClick={() => setSelectedStyle('all')}
             className="btn-glass mt-4"
           >
             Clear Filters
@@ -195,5 +199,5 @@ export default function MusicGallery() {
         </div>
       )}
     </div>
-  )
+  );
 }

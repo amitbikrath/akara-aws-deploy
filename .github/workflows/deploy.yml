@@ -340,12 +340,20 @@ jobs:
           echo "FRONTEND_BUCKET=$(jq -r .frontend_bucket.value infrastructure-outputs.json)" >> $GITHUB_ENV
           echo "FRONTEND_DIST=$(jq -r .frontend_distribution_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
           echo "FRONTEND_DOMAIN=$(jq -r .frontend_domain.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "API_BASE_URL=$(jq -r .api_base_url.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "COGNITO_USER_POOL_ID=$(jq -r .cognito_user_pool_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "COGNITO_CLIENT_ID=$(jq -r .cognito_user_pool_client_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "AWS_REGION_OUTPUT=$(jq -r .aws_region.value infrastructure-outputs.json)" >> $GITHUB_ENV
 
       - name: Build Frontend
         working-directory: frontend
         env:
           NEXT_PUBLIC_CDN_URL: https://${{ env.FRONTEND_DOMAIN }}
-          NEXT_PUBLIC_API_URL: https://api.akara.studio
+          NEXT_PUBLIC_API_BASE_URL: ${{ env.API_BASE_URL }}
+          NEXT_PUBLIC_ASSETS_CDN_URL: https://${{ env.FRONTEND_DOMAIN }}/content
+          NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ env.COGNITO_USER_POOL_ID }}
+          NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ env.COGNITO_CLIENT_ID }}
+          NEXT_PUBLIC_AWS_REGION: ${{ env.AWS_REGION_OUTPUT }}
           NEXT_PUBLIC_SITE_URL: ${{ needs.setup.outputs.environment == 'prod' && 'https://akara.studio' || 'https://staging.akara.studio' }}
           NEXT_PUBLIC_ENVIRONMENT: ${{ needs.setup.outputs.environment }}
         run: |
@@ -450,15 +458,19 @@ jobs:
           echo "ADMIN_BUCKET=$(jq -r .admin_bucket.value infrastructure-outputs.json)" >> $GITHUB_ENV
           echo "ADMIN_DIST=$(jq -r .admin_distribution_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
           echo "ADMIN_DOMAIN=$(jq -r .admin_domain.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "API_BASE_URL=$(jq -r .api_base_url.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "COGNITO_USER_POOL_ID=$(jq -r .cognito_user_pool_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "COGNITO_CLIENT_ID=$(jq -r .cognito_user_pool_client_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "AWS_REGION_OUTPUT=$(jq -r .aws_region.value infrastructure-outputs.json)" >> $GITHUB_ENV
 
       - name: Build Admin
         working-directory: admin
         env:
-          NEXT_PUBLIC_AWS_REGION: ${{ env.AWS_REGION }}
-          NEXT_PUBLIC_COGNITO_USER_POOL_ID: placeholder-pool
-          NEXT_PUBLIC_COGNITO_CLIENT_ID: placeholder-client
-          NEXT_PUBLIC_API_URL: https://api.akara.studio
-          NEXT_PUBLIC_S3_BUCKET: ${{ env.ADMIN_BUCKET }}
+          NEXT_PUBLIC_API_BASE_URL: ${{ env.API_BASE_URL }}
+          NEXT_PUBLIC_ASSETS_CDN_URL: https://${{ env.ADMIN_DOMAIN }}/content
+          NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ env.COGNITO_USER_POOL_ID }}
+          NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ env.COGNITO_CLIENT_ID }}
+          NEXT_PUBLIC_AWS_REGION: ${{ env.AWS_REGION_OUTPUT }}
           NEXT_PUBLIC_ENVIRONMENT: ${{ needs.setup.outputs.environment }}
         run: |
           if [ "${{ steps.detect_root_pm_admin.outputs.pm }}" = "npm" ]; then

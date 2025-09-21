@@ -21,6 +21,11 @@ export default function RootLayout({
                 <h1 className="text-xl font-semibold text-gray-900">
                   Akara Studio Admin
                 </h1>
+                <nav className="flex space-x-4">
+                  <a href="/" className="text-gray-600 hover:text-gray-900">Dashboard</a>
+                  <a href="/upload" className="text-gray-600 hover:text-gray-900">Upload</a>
+                  <a href="/login" className="text-gray-600 hover:text-gray-900">Login</a>
+                </nav>
               </div>
             </div>
           </header>
