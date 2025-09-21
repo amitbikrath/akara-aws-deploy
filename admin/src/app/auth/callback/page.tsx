@@ -1,10 +1,10 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default function AuthCallbackPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
