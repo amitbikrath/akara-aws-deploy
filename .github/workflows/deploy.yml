@@ -260,6 +260,16 @@ jobs:
           echo "placeholder_bucket=$(terraform -chdir=infra/terraform output -raw placeholder_bucket)" >> $GITHUB_OUTPUT
           echo "account_id=$(terraform -chdir=infra/terraform output -raw account_id)" >> $GITHUB_OUTPUT
           echo "region=$(terraform -chdir=infra/terraform output -raw region)" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_id=$(terraform -chdir=infra/terraform output -raw cognito_user_pool_id)" >> $GITHUB_OUTPUT
+
+      - name: Ensure Cognito groups exist
+        if: ${{ inputs.deploy_infra == 'true' }}
+        env:
+          COGNITO_POOL_ID: ${{ steps.tf_output.outputs.cognito_user_pool_id }}
+        run: |
+          set -euo pipefail
+          aws cognito-idp create-group --user-pool-id "$COGNITO_POOL_ID" --group-name admin || true
+          aws cognito-idp create-group --user-pool-id "$COGNITO_POOL_ID" --group-name user  || true
 
       - name: Save Infrastructure Outputs
         run: |

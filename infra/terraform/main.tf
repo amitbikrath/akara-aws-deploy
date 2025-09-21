@@ -337,18 +337,6 @@ resource "aws_cognito_user_pool_client" "main" {
   ]
 }
 
-resource "aws_cognito_user_pool_group" "admin" {
-  name         = "admin"
-  user_pool_id = aws_cognito_user_pool.main.id
-  description  = "Admin users"
-}
-
-resource "aws_cognito_user_pool_group" "user" {
-  name         = "user"
-  user_pool_id = aws_cognito_user_pool.main.id
-  description  = "Regular users"
-}
-
 # IAM Role for Lambda execution
 resource "aws_iam_role" "lambda_execution" {
   name = "${var.project}-lambda-execution"
