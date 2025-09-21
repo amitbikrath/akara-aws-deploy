@@ -95,6 +95,21 @@ resource "aws_s3_bucket_policy" "admin" {
   policy = data.aws_iam_policy_document.admin_policy.json
 }
 
+# S3 Assets Bucket
+resource "aws_s3_bucket" "assets" {
+  bucket        = "${var.project}-assets-${var.account_id}-${var.region}"
+  force_destroy = true
+  tags = { Project = var.project }
+}
+
+resource "aws_s3_bucket_public_access_block" "assets" {
+  bucket                  = aws_s3_bucket.assets.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
 # CloudFront distributions (default index.html)
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
@@ -206,21 +221,6 @@ resource "aws_cloudfront_distribution" "admin" {
     minimum_protocol_version = "TLSv1.2_2021"
   }
   tags = { Project = var.project }
-}
-
-# S3 Assets Bucket
-resource "aws_s3_bucket" "assets" {
-  bucket        = "${var.project}-assets-${var.account_id}-${var.region}"
-  force_destroy = true
-  tags = { Project = var.project }
-}
-
-resource "aws_s3_bucket_public_access_block" "assets" {
-  bucket                  = aws_s3_bucket.assets.id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
 }
 
 # Assets bucket policy to allow CloudFront via OAC
