@@ -54,6 +54,9 @@ resource "aws_cloudfront_origin_access_control" "oac" {
 
 # Bucket policies to allow CloudFront via OAC
 data "aws_iam_policy_document" "frontend_policy" {
+  # Ensure the CF distribution is created before this document is evaluated
+  depends_on = [aws_cloudfront_distribution.frontend]
+
   statement {
     actions   = ["s3:GetObject"]
     resources = ["${aws_s3_bucket.frontend.arn}/*"]
@@ -76,6 +79,9 @@ resource "aws_s3_bucket_policy" "frontend" {
 }
 
 data "aws_iam_policy_document" "admin_policy" {
+  # Ensure the CF distribution is created before this document is evaluated
+  depends_on = [aws_cloudfront_distribution.admin]
+
   statement {
     actions   = ["s3:GetObject"]
     resources = ["${aws_s3_bucket.admin.arn}/*"]
@@ -259,6 +265,12 @@ resource "aws_cloudfront_distribution" "admin" {
 
 # Assets bucket policy to allow CloudFront via OAC
 data "aws_iam_policy_document" "assets_policy" {
+  # This policy references BOTH distributions; make sure they exist first
+  depends_on = [
+    aws_cloudfront_distribution.frontend,
+    aws_cloudfront_distribution.admin
+  ]
+
   statement {
     actions   = ["s3:GetObject"]
     resources = ["${aws_s3_bucket.assets.arn}/*"]
