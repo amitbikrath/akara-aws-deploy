@@ -336,6 +336,17 @@ jobs:
           set -euxo pipefail
           terraform -chdir=infra/terraform apply -input=false -no-color -lock-timeout=10m plan.infra.out
 
+      - name: Capture Phase 1 outputs (bucket/table)
+        run: |
+          set -euo pipefail
+          terraform -chdir=infra/terraform output -raw assets_bucket_name     | tee /tmp/assets_bucket.txt
+          terraform -chdir=infra/terraform output -raw catalog_table_name     | tee /tmp/catalog_table.txt
+          echo "ASSETS_BUCKET_NAME=$(cat /tmp/assets_bucket.txt)"   >> $GITHUB_ENV
+          echo "CATALOG_TABLE_NAME=$(cat /tmp/catalog_table.txt)"   >> $GITHUB_ENV
+          echo "Captured:"
+          echo "  ASSETS_BUCKET_NAME=$ASSETS_BUCKET_NAME"
+          echo "  CATALOG_TABLE_NAME=$CATALOG_TABLE_NAME"
+
       - name: Sanity check env sources
         run: |
           set -euxo pipefail
@@ -343,12 +354,27 @@ jobs:
           terraform -chdir=infra/terraform output -raw assets_bucket_name || true
           terraform -chdir=infra/terraform output -raw catalog_table_name || true
 
+      - name: Sanity check Phase 1 materialized names
+        run: |
+          set -euo pipefail
+          test -n "${ASSETS_BUCKET_NAME:-}" || (echo "ASSETS_BUCKET_NAME missing"; exit 1)
+          test -n "${CATALOG_TABLE_NAME:-}" || (echo "CATALOG_TABLE_NAME missing"; exit 1)
+          ls -lah infra/terraform || true
+          for z in get_upload_url.zip get_catalog.zip post_catalog.zip; do
+            if [ ! -f "infra/terraform/$z" ]; then
+              echo "Missing ZIP: infra/terraform/$z"; exit 1
+            fi
+            unzip -l "infra/terraform/$z" | sed -n '1,20p'
+          done
+
       - name: Terraform plan (lambdas phase)
         run: |
           set -euxo pipefail
           terraform -chdir=infra/terraform plan -input=false -no-color \
             -lock-timeout=10m \
             -var="acm_certificate_arn=${ACM_CERT_ARN}" \
+            -var="assets_bucket_name=${ASSETS_BUCKET_NAME}" \
+            -var="catalog_table_name=${CATALOG_TABLE_NAME}" \
             -target=aws_lambda_function.get_upload_url \
             -target=aws_lambda_function.get_catalog \
             -target=aws_lambda_function.post_catalog \

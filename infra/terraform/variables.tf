@@ -31,3 +31,15 @@ variable "acm_certificate_arn" {
   description = "ACM certificate ARN in us-east-1 for the above domains"
   type        = string
 }
+
+variable "assets_bucket_name" {
+  description = "Optional override for assets bucket name (used by CI two-phase apply)"
+  type        = string
+  default     = null
+}
+
+variable "catalog_table_name" {
+  description = "Optional override for catalog table name (used by CI two-phase apply)"
+  type        = string
+  default     = null
+}
