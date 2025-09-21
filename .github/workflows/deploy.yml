@@ -93,6 +93,9 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
+    env:
+      ACM_CERT_ARN: ${{ secrets.ACM_CERT_ARN }}
+      TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERT_ARN }}
     outputs:
       placeholder_bucket: ${{ steps.tf_output.outputs.placeholder_bucket }}
       account_id: ${{ steps.tf_output.outputs.account_id }}
@@ -197,12 +200,6 @@ jobs:
           terraform -chdir=infra/terraform fmt -check -recursive || true
           git --no-pager diff -- infra/terraform || true
 
-      - name: Export TF vars (ACM)
-        run: |
-          echo "Using ACM cert: ${{ secrets.ACM_CERT_ARN }}"
-          export TF_VAR_acm_certificate_arn='${{ secrets.ACM_CERT_ARN }}'
-          echo "TF var set"
-
       - name: Run Terraform with comprehensive logging
         env:
           ACCOUNT_ID: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
@@ -214,7 +211,6 @@ jobs:
           TF_VAR_account_id: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
           TF_VAR_frontend_domain: www.akara.studio
           TF_VAR_admin_domain: admin.akara.studio
-          TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERT_ARN }}
         run: |
           set -euxo pipefail
           terraform -version
@@ -262,10 +258,21 @@ jobs:
         env:
           FRONTEND_DIST_ID: EBWBTLYBASPTD
 
-      - name: Continue Terraform deployment
+      - name: Run Terraform plan
         run: |
-          terraform -chdir=infra/terraform plan -input=false -no-color -lock-timeout=5m -out=plan.out 2>&1 | tee tf-plan.log
-          terraform -chdir=infra/terraform apply -input=false -no-color plan.out 2>&1 | tee tf-apply.log
+          terraform -chdir=infra/terraform init -input=false -upgrade
+          terraform -chdir=infra/terraform plan \
+            -input=false -no-color -lock-timeout=10m \
+            -var="acm_certificate_arn=${{ env.ACM_CERT_ARN }}" \
+            -out=plan.out
+
+      - name: Run Terraform apply
+        run: |
+          terraform -chdir=infra/terraform apply \
+            -input=false -no-color -lock-timeout=10m \
+            -auto-approve \
+            -var="acm_certificate_arn=${{ env.ACM_CERT_ARN }}" \
+            plan.out
 
       - name: Get Terraform Outputs
         id: tf_output
