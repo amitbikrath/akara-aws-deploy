@@ -456,14 +456,15 @@ resource "aws_lambda_function" "get_upload_url" {
 
   environment {
     variables = {
-      ASSETS_BUCKET = aws_s3_bucket.assets.bucket
-      AWS_REGION    = var.region
+      ASSETS_BUCKET = tostring(aws_s3_bucket.assets.bucket)
+      AWS_REGION    = tostring(var.region)
     }
   }
 
-  # ensure bucket exists before Lambda creation
   depends_on = [
-    aws_s3_bucket.assets
+    aws_s3_bucket.assets,
+    aws_s3_bucket_public_access_block.assets,
+    aws_s3_bucket_policy.assets
   ]
 
   tags = { Project = var.project }
@@ -481,8 +482,8 @@ resource "aws_lambda_function" "get_catalog" {
 
   environment {
     variables = {
-      CATALOG_TABLE = aws_dynamodb_table.catalog.name
-      AWS_REGION    = var.region
+      CATALOG_TABLE = tostring(aws_dynamodb_table.catalog.name)
+      AWS_REGION    = tostring(var.region)
     }
   }
 
@@ -505,8 +506,8 @@ resource "aws_lambda_function" "post_catalog" {
 
   environment {
     variables = {
-      CATALOG_TABLE = aws_dynamodb_table.catalog.name
-      AWS_REGION    = var.region
+      CATALOG_TABLE = tostring(aws_dynamodb_table.catalog.name)
+      AWS_REGION    = tostring(var.region)
     }
   }
 

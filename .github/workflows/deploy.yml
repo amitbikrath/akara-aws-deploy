@@ -288,21 +288,70 @@ jobs:
           echo "Expecting ZIPs:"
           ls -lah infra/terraform/*.zip
 
-      - name: Run Terraform plan
+      - name: Terraform init
         run: |
-          terraform -chdir=infra/terraform init -input=false -upgrade
-          terraform -chdir=infra/terraform plan \
-            -input=false -no-color -lock-timeout=10m \
-            -var="acm_certificate_arn=${{ env.ACM_CERT_ARN }}" \
-            -out=plan.out
+          set -euxo pipefail
+          terraform -chdir=infra/terraform init -reconfigure \
+            -backend-config="bucket=${STATE_BUCKET}" \
+            -backend-config="key=global/terraform.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${LOCK_TABLE}"
 
-      - name: Run Terraform apply
+      - name: Terraform plan (infra phase)
         run: |
-          terraform -chdir=infra/terraform apply \
-            -input=false -no-color -lock-timeout=10m \
-            -auto-approve \
-            -var="acm_certificate_arn=${{ env.ACM_CERT_ARN }}" \
-            plan.out
+          set -euxo pipefail
+          terraform -chdir=infra/terraform plan -input=false -no-color \
+            -lock-timeout=10m \
+            -var="acm_certificate_arn=${ACM_CERT_ARN}" \
+            -target=aws_s3_bucket.assets \
+            -target=aws_s3_bucket_public_access_block.assets \
+            -target=aws_s3_bucket_policy.assets \
+            -target=aws_dynamodb_table.catalog \
+            -target=aws_dynamodb_table.users \
+            -target=aws_dynamodb_table.orders \
+            -target=aws_apigatewayv2_api.main \
+            -target=aws_apigatewayv2_stage.main \
+            -target=aws_cognito_user_pool.main \
+            -target=aws_cognito_user_pool_client.main \
+            -out=plan.infra.out
+
+      - name: Terraform apply (infra phase)
+        run: |
+          set -euxo pipefail
+          terraform -chdir=infra/terraform apply -input=false -no-color -lock-timeout=10m plan.infra.out
+
+      - name: Sanity check env sources
+        run: |
+          set -euxo pipefail
+          echo "Expect non-empty values:"
+          terraform -chdir=infra/terraform output -raw assets_bucket_name || true
+          terraform -chdir=infra/terraform output -raw catalog_table_name || true
+
+      - name: Terraform plan (lambdas phase)
+        run: |
+          set -euxo pipefail
+          terraform -chdir=infra/terraform plan -input=false -no-color \
+            -lock-timeout=10m \
+            -var="acm_certificate_arn=${ACM_CERT_ARN}" \
+            -target=aws_lambda_function.get_upload_url \
+            -target=aws_lambda_function.get_catalog \
+            -target=aws_lambda_function.post_catalog \
+            -target=aws_lambda_permission.get_upload_url \
+            -target=aws_lambda_permission.get_catalog \
+            -target=aws_lambda_permission.post_catalog \
+            -target=aws_apigatewayv2_integration.get_upload_url \
+            -target=aws_apigatewayv2_integration.get_catalog \
+            -target=aws_apigatewayv2_integration.post_catalog \
+            -target=aws_apigatewayv2_route.get_upload_url \
+            -target=aws_apigatewayv2_route.get_catalog \
+            -target=aws_apigatewayv2_route.post_catalog \
+            -target=aws_apigatewayv2_authorizer.cognito \
+            -out=plan.lambdas.out
+
+      - name: Terraform apply (lambdas phase)
+        run: |
+          set -euxo pipefail
+          terraform -chdir=infra/terraform apply -input=false -no-color -lock-timeout=10m plan.lambdas.out
 
       - name: Get Terraform Outputs
         id: tf_output
