@@ -444,12 +444,15 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
 
 # Lambda Functions
 resource "aws_lambda_function" "get_upload_url" {
-  filename         = "get_upload_url.zip"
+  filename         = "${path.module}/get_upload_url.zip"
   function_name    = "${var.project}-get-upload-url"
-  role            = aws_iam_role.lambda_execution.arn
-  handler         = "index.handler"
-  runtime         = "nodejs20.x"
-  timeout         = 30
+  role             = aws_iam_role.lambda_execution.arn
+  handler          = "index.handler"
+  runtime          = "nodejs20.x"
+  timeout          = 30
+
+  # force update when ZIP changes
+  source_code_hash = filebase64sha256("${path.module}/get_upload_url.zip")
 
   environment {
     variables = {
@@ -458,16 +461,23 @@ resource "aws_lambda_function" "get_upload_url" {
     }
   }
 
+  # ensure bucket exists before Lambda creation
+  depends_on = [
+    aws_s3_bucket.assets
+  ]
+
   tags = { Project = var.project }
 }
 
 resource "aws_lambda_function" "get_catalog" {
-  filename         = "get_catalog.zip"
+  filename         = "${path.module}/get_catalog.zip"
   function_name    = "${var.project}-get-catalog"
-  role            = aws_iam_role.lambda_execution.arn
-  handler         = "index.handler"
-  runtime         = "nodejs20.x"
-  timeout         = 30
+  role             = aws_iam_role.lambda_execution.arn
+  handler          = "index.handler"
+  runtime          = "nodejs20.x"
+  timeout          = 30
+
+  source_code_hash = filebase64sha256("${path.module}/get_catalog.zip")
 
   environment {
     variables = {
@@ -475,17 +485,23 @@ resource "aws_lambda_function" "get_catalog" {
       AWS_REGION    = var.region
     }
   }
+
+  depends_on = [
+    aws_dynamodb_table.catalog
+  ]
 
   tags = { Project = var.project }
 }
 
 resource "aws_lambda_function" "post_catalog" {
-  filename         = "post_catalog.zip"
+  filename         = "${path.module}/post_catalog.zip"
   function_name    = "${var.project}-post-catalog"
-  role            = aws_iam_role.lambda_execution.arn
-  handler         = "index.handler"
-  runtime         = "nodejs20.x"
-  timeout         = 30
+  role             = aws_iam_role.lambda_execution.arn
+  handler          = "index.handler"
+  runtime          = "nodejs20.x"
+  timeout          = 30
+
+  source_code_hash = filebase64sha256("${path.module}/post_catalog.zip")
 
   environment {
     variables = {
@@ -493,6 +509,10 @@ resource "aws_lambda_function" "post_catalog" {
       AWS_REGION    = var.region
     }
   }
+
+  depends_on = [
+    aws_dynamodb_table.catalog
+  ]
 
   tags = { Project = var.project }
 }

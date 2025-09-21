@@ -258,6 +258,35 @@ jobs:
         env:
           FRONTEND_DIST_ID: EBWBTLYBASPTD
 
+      - name: Package Lambda functions
+        run: |
+          set -euo pipefail
+          pushd lambdas
+
+          # clean & build
+          rm -f get_upload_url.zip get_catalog.zip post_catalog.zip
+
+          zip -rq get_upload_url.zip src/getUploadUrl/*
+          zip -rq get_catalog.zip src/getCatalog/*
+          zip -rq post_catalog.zip src/postCatalog/*
+
+          popd
+
+          # move zips into module folder used by -chdir
+          mv lambdas/get_upload_url.zip infra/terraform/
+          mv lambdas/get_catalog.zip infra/terraform/
+          mv lambdas/post_catalog.zip infra/terraform/
+
+          # sanity check before plan/apply
+          ls -lah infra/terraform/*.zip
+
+      - name: Show TF inputs snapshot
+        run: |
+          set -euo pipefail
+          echo "ACM_CERT_ARN=${ACM_CERT_ARN:-(unset)}"
+          echo "Expecting ZIPs:"
+          ls -lah infra/terraform/*.zip
+
       - name: Run Terraform plan
         run: |
           terraform -chdir=infra/terraform init -input=false -upgrade
