@@ -595,3 +595,4 @@ output "api_base_url"            { value = aws_apigatewayv2_stage.main.invoke_ur
 output "cognito_user_pool_id"    { value = aws_cognito_user_pool.main.id }
 output "cognito_user_pool_client_id" { value = aws_cognito_user_pool_client.main.id }
 output "aws_region"              { value = var.region }
+output "catalog_table_name"      { value = aws_dynamodb_table.catalog.name }

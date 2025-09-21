@@ -261,24 +261,25 @@ jobs:
       - name: Package Lambda functions
         run: |
           set -euo pipefail
-          pushd lambdas
 
-          # clean & build
-          rm -f get_upload_url.zip get_catalog.zip post_catalog.zip
+          # fresh zips
+          rm -f lambdas/get_upload_url.zip lambdas/get_catalog.zip lambdas/post_catalog.zip || true
 
-          zip -rq get_upload_url.zip src/getUploadUrl/*
-          zip -rq get_catalog.zip src/getCatalog/*
-          zip -rq post_catalog.zip src/postCatalog/*
+          (cd lambdas/get_upload_url && zip -rq ../get_upload_url.zip .)
+          (cd lambdas/get_catalog && zip -rq ../get_catalog.zip .)
+          (cd lambdas/post_catalog && zip -rq ../post_catalog.zip .)
 
-          popd
+          # move to module dir (terraform -chdir=infra/terraform ...)
+          mv lambdas/get_upload_url.zip infra/terraform/get_upload_url.zip
+          mv lambdas/get_catalog.zip infra/terraform/get_catalog.zip
+          mv lambdas/post_catalog.zip infra/terraform/post_catalog.zip
 
-          # move zips into module folder used by -chdir
-          mv lambdas/get_upload_url.zip infra/terraform/
-          mv lambdas/get_catalog.zip infra/terraform/
-          mv lambdas/post_catalog.zip infra/terraform/
-
-          # sanity check before plan/apply
+          echo "== ZIP listing =="
           ls -lah infra/terraform/*.zip
+          echo "== Inspect each zip (should show index.js) =="
+          unzip -l infra/terraform/get_upload_url.zip | sed -n '1,20p'
+          unzip -l infra/terraform/get_catalog.zip    | sed -n '1,20p'
+          unzip -l infra/terraform/post_catalog.zip   | sed -n '1,20p'
 
       - name: Show TF inputs snapshot
         run: |
