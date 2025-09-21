@@ -339,10 +339,15 @@ jobs:
       - name: Capture Phase 1 outputs (bucket/table)
         run: |
           set -euo pipefail
-          terraform -chdir=infra/terraform output -raw assets_bucket_name     | tee /tmp/assets_bucket.txt
-          terraform -chdir=infra/terraform output -raw catalog_table_name     | tee /tmp/catalog_table.txt
-          echo "ASSETS_BUCKET_NAME=$(cat /tmp/assets_bucket.txt)"   >> $GITHUB_ENV
-          echo "CATALOG_TABLE_NAME=$(cat /tmp/catalog_table.txt)"   >> $GITHUB_ENV
+
+          # Read outputs from Terraform and export them for THIS shell
+          export ASSETS_BUCKET_NAME="$(terraform -chdir=infra/terraform output -raw assets_bucket_name | tee /tmp/assets_bucket.txt)"
+          export CATALOG_TABLE_NAME="$(terraform -chdir=infra/terraform output -raw catalog_table_name | tee /tmp/catalog_table.txt)"
+
+          # Also persist for subsequent steps in the job
+          echo "ASSETS_BUCKET_NAME=$ASSETS_BUCKET_NAME"   >> "$GITHUB_ENV"
+          echo "CATALOG_TABLE_NAME=$CATALOG_TABLE_NAME"   >> "$GITHUB_ENV"
+
           echo "Captured:"
           echo "  ASSETS_BUCKET_NAME=$ASSETS_BUCKET_NAME"
           echo "  CATALOG_TABLE_NAME=$CATALOG_TABLE_NAME"
