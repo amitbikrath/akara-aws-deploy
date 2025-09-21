@@ -54,9 +54,6 @@ resource "aws_cloudfront_origin_access_control" "oac" {
 
 # Bucket policies to allow CloudFront via OAC
 data "aws_iam_policy_document" "frontend_policy" {
-  # Ensure the CF distribution is created before this document is evaluated
-  depends_on = [aws_cloudfront_distribution.frontend]
-
   statement {
     actions   = ["s3:GetObject"]
     resources = ["${aws_s3_bucket.frontend.arn}/*"]
@@ -76,12 +73,12 @@ data "aws_iam_policy_document" "frontend_policy" {
 resource "aws_s3_bucket_policy" "frontend" {
   bucket = aws_s3_bucket.frontend.id
   policy = data.aws_iam_policy_document.frontend_policy.json
+
+  # Ensure CF distribution exists before we create/apply the policy JSON
+  depends_on = [aws_cloudfront_distribution.frontend]
 }
 
 data "aws_iam_policy_document" "admin_policy" {
-  # Ensure the CF distribution is created before this document is evaluated
-  depends_on = [aws_cloudfront_distribution.admin]
-
   statement {
     actions   = ["s3:GetObject"]
     resources = ["${aws_s3_bucket.admin.arn}/*"]
@@ -101,6 +98,9 @@ data "aws_iam_policy_document" "admin_policy" {
 resource "aws_s3_bucket_policy" "admin" {
   bucket = aws_s3_bucket.admin.id
   policy = data.aws_iam_policy_document.admin_policy.json
+
+  # Ensure CF distribution exists before we create/apply the policy JSON
+  depends_on = [aws_cloudfront_distribution.admin]
 }
 
 # S3 Assets Bucket
@@ -265,12 +265,6 @@ resource "aws_cloudfront_distribution" "admin" {
 
 # Assets bucket policy to allow CloudFront via OAC
 data "aws_iam_policy_document" "assets_policy" {
-  # This policy references BOTH distributions; make sure they exist first
-  depends_on = [
-    aws_cloudfront_distribution.frontend,
-    aws_cloudfront_distribution.admin
-  ]
-
   statement {
     actions   = ["s3:GetObject"]
     resources = ["${aws_s3_bucket.assets.arn}/*"]
@@ -294,6 +288,12 @@ data "aws_iam_policy_document" "assets_policy" {
 resource "aws_s3_bucket_policy" "assets" {
   bucket = aws_s3_bucket.assets.id
   policy = data.aws_iam_policy_document.assets_policy.json
+
+  # This policy references BOTH distributions
+  depends_on = [
+    aws_cloudfront_distribution.frontend,
+    aws_cloudfront_distribution.admin
+  ]
 }
 
 # DynamoDB Tables
