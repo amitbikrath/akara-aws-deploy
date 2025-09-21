@@ -484,6 +484,11 @@ jobs:
           echo "COGNITO_CLIENT_ID=$(jq -r .cognito_user_pool_client_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
           echo "AWS_REGION_OUTPUT=$(jq -r .aws_region.value infrastructure-outputs.json)" >> $GITHUB_ENV
 
+      - name: Clean Next caches (frontend)
+        working-directory: frontend
+        run: |
+          rm -rf .next node_modules/.cache || true
+
       - name: Build Frontend
         working-directory: frontend
         env:
@@ -601,6 +606,11 @@ jobs:
           echo "COGNITO_USER_POOL_ID=$(jq -r .cognito_user_pool_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
           echo "COGNITO_CLIENT_ID=$(jq -r .cognito_user_pool_client_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
           echo "AWS_REGION_OUTPUT=$(jq -r .aws_region.value infrastructure-outputs.json)" >> $GITHUB_ENV
+
+      - name: Clean Next caches (admin)
+        working-directory: admin
+        run: |
+          rm -rf .next node_modules/.cache || true
 
       - name: Build Admin
         working-directory: admin
