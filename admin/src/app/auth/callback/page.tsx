@@ -3,38 +3,43 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-// For static export, revalidate must be a number or false.
-// Using false disables ISR and is valid for export.
+// Next.js static export: revalidate must be a number or false
 export const revalidate = false;
 
 export default function AuthCallbackPage() {
-  const sp = useSearchParams();
+  const params = useSearchParams();
   const [status, setStatus] = useState<'pending'|'success'|'error'>('pending');
 
   useEffect(() => {
-    try {
-      const code = sp.get('code');
-      if (code) {
-        // simulate success and redirect
-        setStatus('success');
-        setTimeout(() => {
-          window.location.href = '/upload';
-        }, 800);
-      } else {
-        setStatus('error');
-      }
-    } catch {
+    const code = params.get('code');
+    if (code) {
+      setStatus('success');
+      // Client-side redirect after brief confirmation
+      const t = setTimeout(() => {
+        window.location.href = '/upload';
+      }, 800);
+      return () => clearTimeout(t);
+    } else {
       setStatus('error');
     }
-  }, [sp]);
+  }, [params]);
 
   return (
-    <div style={{minHeight:'60vh',display:'grid',placeItems:'center',color:'#fff'}}>
-      {status === 'pending' && <div>Completing sign-in…</div>}
-      {status === 'success' && <div>Signed in! Redirecting…</div>}
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'black',
+      color: 'white',
+      fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu'
+    }}>
+      {status === 'pending' && <p>Processing authentication…</p>}
+      {status === 'success' && <p>Authentication successful! Redirecting…</p>}
       {status === 'error' && (
-        <div>
-          Sign-in failed. <a href="/login" style={{textDecoration:'underline'}}>Try again</a>
+        <div style={{textAlign: 'center'}}>
+          <p>No auth code found in callback.</p>
+          <a href="/login" style={{textDecoration: 'underline', color: '#9AE6B4'}}>Go to Login</a>
         </div>
       )}
     </div>
