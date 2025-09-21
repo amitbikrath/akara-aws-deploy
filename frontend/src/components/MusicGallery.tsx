@@ -185,19 +185,6 @@ export default function MusicGallery() {
         </div>
       )}
 
-      {filteredWallpapers.length === 0 && music.length > 0 && (
-        <div className="text-center py-12">
-          <div className="text-white/60 text-lg">
-            No music found matching your filters.
-          </div>
-          <button
-            onClick={() => setSelectedStyle('all')}
-            className="btn-glass mt-4"
-          >
-            Clear Filters
-          </button>
-        </div>
-      )}
     </div>
   );
 }
