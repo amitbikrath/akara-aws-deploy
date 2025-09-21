@@ -11,34 +11,25 @@ export default function AuthCallbackPage() {
     const code = params.get('code');
     if (code) {
       setStatus('success');
-      const t = setTimeout(() => {
+      const timer = setTimeout(() => {
         window.location.href = '/upload';
       }, 800);
-      return () => clearTimeout(t);
+      return () => clearTimeout(timer);
     } else {
       setStatus('error');
     }
   }, [params]);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'black',
-      color: 'white',
-      textAlign: 'center',
-      padding: '2rem',
-      fontFamily:
-        "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji"
-    }}>
-      {status === 'pending' && <p>Processing authentication…</p>}
-      {status === 'success' && <p>Authentication successful! Redirecting…</p>}
+    <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
+      {status === 'pending' && <p>Processing authentication...</p>}
+      {status === 'success' && <p>Authentication successful! Redirecting...</p>}
       {status === 'error' && (
         <div>
-          <p>No auth code found in callback.</p>
-          <a href="/login" style={{ color: '#22c55e' }}>Back to login</a>
+          <p>Authentication failed. Please try again.</p>
+          <a href="/auth/login" className="text-green-400 underline mt-4 block">
+            Back to Login
+          </a>
         </div>
       )}
     </div>
