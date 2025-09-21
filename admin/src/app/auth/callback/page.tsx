@@ -21,13 +21,13 @@ export default function AuthCallbackPage() {
   }, [params]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
-      {status === 'pending' && <p>Processing authentication...</p>}
-      {status === 'success' && <p>Authentication successful! Redirecting...</p>}
+    <div className="min-h-screen flex items-center justify-center bg-black text-white">
+      {status === 'pending' && <p>Processing authentication…</p>}
+      {status === 'success' && <p>Authentication successful! Redirecting…</p>}
       {status === 'error' && (
-        <div>
+        <div className="text-center">
           <p>Authentication failed. Please try again.</p>
-          <a href="/auth/login" className="text-green-400 underline mt-4 block">
+          <a href="/auth/login" className="underline text-green-400 mt-4 block">
             Back to Login
           </a>
         </div>
