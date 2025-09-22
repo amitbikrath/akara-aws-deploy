@@ -286,83 +286,40 @@ jobs:
           fi
 
 
-      - name: Package Lambdas (create ZIPs if missing)
+      # --- LAMBDA ZIPs ---
+      - name: Package Lambdas
         run: |
           set -euo pipefail
-          cd infra/terraform
+          pushd lambdas/get_upload_url >/dev/null
+          zip -rq ../../infra/terraform/get_upload_url.zip .
+          popd >/dev/null
 
-          make_zip () {
-            FN="$1"               # e.g., get_upload_url
-            RUNTIME_FILE="index.js"
+          pushd lambdas/get_catalog >/dev/null
+          zip -rq ../../infra/terraform/get_catalog.zip .
+          popd >/dev/null
 
-            if [ -f "${FN}.zip" ]; then
-              echo "✓ ${FN}.zip already exists — keeping existing file."
-              return
-            fi
+          pushd lambdas/post_catalog >/dev/null
+          zip -rq ../../infra/terraform/post_catalog.zip .
+          popd >/dev/null
 
-            echo "⧗ Creating ${FN}.zip …"
-            
-            # Use existing source if available, otherwise create minimal handler
-            if [ -f "../../lambdas/${FN}/index.js" ]; then
-              echo "  Using existing source from lambdas/${FN}/"
-              (cd "../../lambdas/${FN}" && zip -rq "../../infra/terraform/${FN}.zip" .)
-            else
-              echo "  Creating minimal handler"
-              mkdir -p "build/${FN}"
-              cat > "build/${FN}/${RUNTIME_FILE}" <<'EOF'
-// Minimal handler for deployment sanity. Replace with real logic later.
-exports.handler = async (event) => {
-  return {
-    statusCode: 200,
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      ok: true,
-      fn: process.env.AWS_LAMBDA_FUNCTION_NAME,
-      env: process.env,
-      eventPreview: typeof event === "object" ? Object.keys(event) : typeof event
-    })
-  };
-};
-EOF
-              (cd "build/${FN}" && zip -rq "../../${FN}.zip" .)
-            fi
-            
-            unzip -l "${FN}.zip" | sed 's/^/   /'
-            echo "✓ ${FN}.zip created."
-          }
+          ls -lh infra/terraform/*.zip
 
-          make_zip get_upload_url
-          make_zip get_catalog
-          make_zip post_catalog
-
-      - name: Show TF inputs snapshot
-        run: |
-          set -euo pipefail
-          echo "ACM_CERT_ARN=${ACM_CERT_ARN:-(unset)}"
-          echo "Expecting ZIPs:"
-          ls -lah infra/terraform/*.zip
+      # --- TERRAFORM ---
+      - name: Terraform fmt
+        working-directory: infra/terraform
+        run: terraform fmt -check
 
       - name: Terraform init
         working-directory: infra/terraform
         env:
-          ACCOUNT_ID: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
-          AWS_REGION: ${{ steps.awsinfo.outputs.AWS_REGION }}
-          STATE_BUCKET: ${{ steps.awsinfo.outputs.TF_STATE_BUCKET }}
-          LOCK_TABLE: ${{ steps.awsinfo.outputs.TF_LOCK_TABLE }}
           TF_VAR_project: akara
           TF_VAR_region: ${{ steps.awsinfo.outputs.AWS_REGION }}
           TF_VAR_account_id: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
           TF_VAR_frontend_domain: www.akara.studio
           TF_VAR_admin_domain: admin.akara.studio
-        run: |
-          set -euxo pipefail
-          terraform init -reconfigure \
-            -backend-config="bucket=${STATE_BUCKET}" \
-            -backend-config="key=global/terraform.tfstate" \
-            -backend-config="region=${AWS_REGION}" \
-            -backend-config="dynamodb_table=${LOCK_TABLE}"
+        run: terraform init -input=false
 
-      - name: Terraform plan (infra phase)
+      - name: Terraform validate
         working-directory: infra/terraform
         env:
           TF_VAR_project: akara
@@ -370,53 +327,9 @@ EOF
           TF_VAR_account_id: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
           TF_VAR_frontend_domain: www.akara.studio
           TF_VAR_admin_domain: admin.akara.studio
-        run: |
-          set -euxo pipefail
-          terraform plan -input=false -no-color \
-            -lock-timeout=10m \
-            -var="acm_certificate_arn=${ACM_CERT_ARN}" \
-            -target=aws_s3_bucket.assets \
-            -target=aws_s3_bucket_public_access_block.assets \
-            -target=aws_s3_bucket_policy.assets \
-            -target=aws_dynamodb_table.catalog \
-            -target=aws_dynamodb_table.users \
-            -target=aws_dynamodb_table.orders \
-            -target=aws_apigatewayv2_api.main \
-            -target=aws_apigatewayv2_stage.main \
-            -target=aws_cognito_user_pool.main \
-            -target=aws_cognito_user_pool_client.main \
-            -out=plan.infra.out
+        run: terraform validate
 
-      - name: Terraform apply (infra phase)
-        working-directory: infra/terraform
-        run: |
-          set -euxo pipefail
-          terraform apply -input=false -no-color -lock-timeout=10m plan.infra.out
-
-      - name: Sanity check Phase 1 completion
-        working-directory: infra/terraform
-        run: |
-          set -euxo pipefail
-          echo "Phase 1 infrastructure deployed successfully"
-          terraform output -raw assets_bucket_name || true
-          terraform output -raw catalog_table_name || true
-
-      - name: Sanity check Phase 1 materialized names
-        working-directory: infra/terraform
-        run: |
-          set -euo pipefail
-          echo "Verifying Terraform outputs are available:"
-          terraform output assets_bucket_name
-          terraform output catalog_table_name
-          ls -lah infra/terraform || true
-          for z in get_upload_url.zip get_catalog.zip post_catalog.zip; do
-            if [ ! -f "infra/terraform/$z" ]; then
-              echo "Missing ZIP: infra/terraform/$z"; exit 1
-            fi
-            unzip -l "infra/terraform/$z" | sed -n '1,20p'
-          done
-
-      - name: Terraform plan (lambdas phase)
+      - name: Terraform plan
         working-directory: infra/terraform
         env:
           TF_VAR_project: akara
@@ -424,31 +337,19 @@ EOF
           TF_VAR_account_id: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
           TF_VAR_frontend_domain: www.akara.studio
           TF_VAR_admin_domain: admin.akara.studio
-        run: |
-          set -euxo pipefail
-          terraform plan -input=false -no-color \
-            -lock-timeout=10m \
-            -var="acm_certificate_arn=${ACM_CERT_ARN}" \
-            -target=aws_lambda_function.get_upload_url \
-            -target=aws_lambda_function.get_catalog \
-            -target=aws_lambda_function.post_catalog \
-            -target=aws_lambda_permission.get_upload_url \
-            -target=aws_lambda_permission.get_catalog \
-            -target=aws_lambda_permission.post_catalog \
-            -target=aws_apigatewayv2_integration.get_upload_url \
-            -target=aws_apigatewayv2_integration.get_catalog \
-            -target=aws_apigatewayv2_integration.post_catalog \
-            -target=aws_apigatewayv2_route.get_upload_url \
-            -target=aws_apigatewayv2_route.get_catalog \
-            -target=aws_apigatewayv2_route.post_catalog \
-            -target=aws_apigatewayv2_authorizer.cognito \
-            -out=plan.lambdas.out
+        run: terraform plan -input=false -var="acm_certificate_arn=${{ env.ACM_CERT_ARN }}"
 
-      - name: Terraform apply (lambdas phase)
+      - name: Terraform apply
+        if: github.ref == 'refs/heads/main'
         working-directory: infra/terraform
-        run: |
-          set -euxo pipefail
-          terraform apply -input=false -no-color -lock-timeout=10m plan.lambdas.out
+        env:
+          TF_VAR_project: akara
+          TF_VAR_region: ${{ steps.awsinfo.outputs.AWS_REGION }}
+          TF_VAR_account_id: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
+          TF_VAR_frontend_domain: www.akara.studio
+          TF_VAR_admin_domain: admin.akara.studio
+        run: terraform apply -auto-approve -input=false -var="acm_certificate_arn=${{ env.ACM_CERT_ARN }}"
+
 
       - name: Get Terraform Outputs
         id: tf_output
