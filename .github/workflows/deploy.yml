@@ -292,22 +292,33 @@ jobs:
 
 
       # --- LAMBDA ZIPs ---
-      - name: Package Lambdas
+      - name: Package Lambdas (create ZIPs if missing)
         run: |
           set -euo pipefail
-          pushd lambdas/get_upload_url >/dev/null
-          zip -rq ../../infra/terraform/get_upload_url.zip .
-          popd >/dev/null
+          cd lambdas
 
-          pushd lambdas/get_catalog >/dev/null
-          zip -rq ../../infra/terraform/get_catalog.zip .
-          popd >/dev/null
+          pack () {
+            FN="$1"
+            SRC_DIR="$FN"
+            OUT_ZIP="../infra/terraform/${FN}.zip"
+            if [ -f "$OUT_ZIP" ]; then echo "✓ $FN.zip exists"; return; fi
 
-          pushd lambdas/post_catalog >/dev/null
-          zip -rq ../../infra/terraform/post_catalog.zip .
-          popd >/dev/null
+            if [ "$FN" = "get_upload_url" ]; then
+              # needs aws-sdk v3 modules
+              (cd "$SRC_DIR" && rm -rf node_modules package.json package-lock.json && \
+                npm init -y >/dev/null 2>&1 && \
+                npm i @aws-sdk/client-s3 @aws-sdk/s3-request-presigner >/dev/null 2>&1 && \
+                zip -rq "$OUT_ZIP" index.js node_modules package.json package-lock.json)
+            else
+              # stubs: just zip index.js
+              (cd "$SRC_DIR" && zip -rq "$OUT_ZIP" index.js)
+            fi
+          }
 
-          ls -lh infra/terraform/*.zip
+          pack get_upload_url
+          pack get_catalog
+          pack post_catalog
+          ls -lh ../infra/terraform/*.zip
 
       # --- TERRAFORM ---
       - name: Terraform fmt

@@ -39,64 +39,33 @@ export default function UploadPage() {
     setResult(null);
 
     try {
-      // Step 1: Get upload URL
-      const fileExt = file.name.split('.').pop();
-      const uploadUrlResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/upload-url`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          // TODO: Add Authorization header with Cognito ID token
-        },
-        body: JSON.stringify({
-          contentType: file.type,
-          fileExt,
-          type: formData.type
-        })
-      });
+      // 1) Ask API for presigned URL
+      const base = process.env.NEXT_PUBLIC_API_BASE_URL!; // from infra output
+      const getUrl = new URL(`${base}/api/upload-url`);
+      getUrl.searchParams.set('key', `wallpapers/${encodeURIComponent(file.name)}`);
+      getUrl.searchParams.set('contentType', file.type || 'application/octet-stream');
 
-      if (!uploadUrlResponse.ok) {
-        throw new Error(`Failed to get upload URL: ${uploadUrlResponse.statusText}`);
+      const r1 = await fetch(getUrl.toString(), { method: 'GET' });
+      const j1 = await r1.json();
+      if (!j1.ok) { 
+        throw new Error(`Failed to get upload URL: ${j1.error || r1.statusText}`);
       }
 
-      const { uploadUrl, key } = await uploadUrlResponse.json();
-
-      // Step 2: Upload file to S3
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type
-        }
+      // 2) Upload file to S3
+      const r2 = await fetch(j1.url, { 
+        method: 'PUT', 
+        headers: { 'content-type': j1.contentType }, 
+        body: file 
       });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`Failed to upload file: ${uploadResponse.statusText}`);
+      if (!r2.ok) { 
+        throw new Error(`S3 upload failed: ${r2.statusText}`);
       }
-
-      // Step 3: Save metadata to catalog
-      const catalogResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/catalog`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // TODO: Add Authorization header with Cognito ID token
-        },
-        body: JSON.stringify({
-          ...formData,
-          fileKey: key
-        })
-      });
-
-      if (!catalogResponse.ok) {
-        throw new Error(`Failed to save catalog: ${catalogResponse.statusText}`);
-      }
-
-      const catalogResult = await catalogResponse.json();
 
       setResult({
         success: true,
-        key,
-        catalogItem: catalogResult,
-        cdnUrl: `${process.env.NEXT_PUBLIC_ASSETS_CDN_URL}/${key}`
+        key: j1.key,
+        bucket: j1.bucket,
+        cdnUrl: `${process.env.NEXT_PUBLIC_ASSETS_CDN_URL}/${j1.key}`
       });
 
       // Reset form
@@ -273,12 +242,12 @@ export default function UploadPage() {
             <div>
               <h3 className="text-lg font-medium text-green-800 mb-2">Upload Successful!</h3>
               <p className="text-sm text-green-700 mb-2">File Key: {result.key}</p>
+              <p className="text-sm text-green-700 mb-2">Bucket: {result.bucket}</p>
               <p className="text-sm text-green-700 mb-2">CDN URL: {result.cdnUrl}</p>
               <div className="mt-4 p-3 bg-white rounded border">
-                <h4 className="font-medium text-gray-900 mb-2">Catalog Item:</h4>
-                <pre className="text-xs text-gray-600 overflow-auto">
-                  {JSON.stringify(result.catalogItem, null, 2)}
-                </pre>
+                <p className="text-sm text-gray-600">
+                  File uploaded successfully to S3! You can now access it via the CDN URL above.
+                </p>
               </div>
             </div>
           ) : (
