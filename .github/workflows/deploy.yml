@@ -670,6 +670,15 @@ jobs:
           aws s3 sync admin/out "s3://$ADMIN_BUCKET" --delete
           aws cloudfront create-invalidation --distribution-id "$ADMIN_DIST" --paths "/*"
 
+      - name: Invalidate Admin CloudFront
+        if: always()
+        run: |
+          set -euo pipefail
+          ID=$(jq -r '.admin_distribution_id' infrastructure-outputs.json)
+          : "${ID:?missing admin_distribution_id in outputs}"
+          aws cloudfront create-invalidation --distribution-id "$ID" --paths "/*"
+          echo "Submitted admin CloudFront invalidation."
+
       - name: Invalidate CloudFront (frontend/admin)
         if: always()
         env:
