@@ -58,29 +58,34 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
-      environment: ${{ steps.env.outputs.environment }}
+      environment: ${{ steps.resolve_env.outputs.environment }}
       deploy_infra: ${{ steps.env.outputs.deploy_infra }}
       deploy_frontend: ${{ steps.env.outputs.deploy_frontend }}
       deploy_admin: ${{ steps.env.outputs.deploy_admin }}
       upload_sample_data: ${{ steps.env.outputs.upload_sample_data }}
     steps:
-      - name: Determine environment
+      - name: Resolve environment
+        id: resolve_env
+        run: |
+          # prefer workflow_dispatch input; fallback to "prod"
+          ENV="${{ github.event.inputs.environment }}"
+          if [ -z "$ENV" ]; then ENV="prod"; fi
+          echo "environment=$ENV" >> "$GITHUB_OUTPUT"
+
+      - name: Determine deployment flags
         id: env
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
             echo "deploy_infra=${{ inputs.deploy_infra }}" >> $GITHUB_OUTPUT
             echo "deploy_frontend=${{ inputs.deploy_frontend }}" >> $GITHUB_OUTPUT
             echo "deploy_admin=${{ inputs.deploy_admin }}" >> $GITHUB_OUTPUT
             echo "upload_sample_data=${{ inputs.upload_sample_data }}" >> $GITHUB_OUTPUT
           elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "environment=prod" >> $GITHUB_OUTPUT
             echo "deploy_infra=true" >> $GITHUB_OUTPUT
             echo "deploy_frontend=true" >> $GITHUB_OUTPUT
             echo "deploy_admin=true" >> $GITHUB_OUTPUT
-            echo "upload_sample_data=true" >> $GITHUB_OUTPUT
+            echo "upload_sample_data=false" >> $GITHUB_OUTPUT
           else
-            echo "environment=staging" >> $GITHUB_OUTPUT
             echo "deploy_infra=true" >> $GITHUB_OUTPUT
             echo "deploy_frontend=true" >> $GITHUB_OUTPUT
             echo "deploy_admin=true" >> $GITHUB_OUTPUT
@@ -369,16 +374,27 @@ jobs:
           aws cognito-idp create-group --user-pool-id "$COGNITO_POOL_ID" --group-name admin || true
           aws cognito-idp create-group --user-pool-id "$COGNITO_POOL_ID" --group-name user  || true
 
-      - name: Save Infrastructure Outputs
+      - name: Write infrastructure outputs to JSON
         working-directory: infra/terraform
         run: |
+          set -euo pipefail
+          # Create JSON from TF outputs
           terraform output -json > infrastructure-outputs.json
-          
+          # Copy next to GITHUB_WORKSPACE so the upload step can find it
+          cp infrastructure-outputs.json "$GITHUB_WORKSPACE/infrastructure-outputs.json"
+          echo "Wrote infra outputs:"
+          jq -r 'keys[]' infrastructure-outputs.json || true
+
+      - name: Ensure infra outputs exist
+        run: test -f infrastructure-outputs.json
+
       - name: Upload Infrastructure Outputs
         uses: actions/upload-artifact@v4
         with:
           name: infrastructure-outputs-${{ needs.setup.outputs.environment }}
           path: infrastructure-outputs.json
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload TF logs
         if: always()
@@ -444,6 +460,12 @@ jobs:
         with:
           name: infrastructure-outputs-${{ needs.setup.outputs.environment }}
           path: .
+      - name: Show downloaded infra outputs
+        run: |
+          echo "Downloaded:"
+          ls -l
+          echo "----------------"
+          cat infrastructure-outputs.json || true
 
       - name: Export FRONTEND_BUCKET & FRONTEND_DISTRIBUTION from outputs
         run: |
@@ -563,6 +585,12 @@ jobs:
         with:
           name: infrastructure-outputs-${{ needs.setup.outputs.environment }}
           path: .
+      - name: Show downloaded infra outputs
+        run: |
+          echo "Downloaded:"
+          ls -l
+          echo "----------------"
+          cat infrastructure-outputs.json || true
 
       - name: Export ADMIN_BUCKET & ADMIN_DISTRIBUTION from outputs
         run: |
@@ -613,6 +641,12 @@ jobs:
         with:
           name: infrastructure-outputs-${{ needs.setup.outputs.environment }}
           path: .
+      - name: Show downloaded infra outputs
+        run: |
+          echo "Downloaded:"
+          ls -l
+          echo "----------------"
+          cat infrastructure-outputs.json || true
 
       - name: Show CloudFront URLs
         run: |
