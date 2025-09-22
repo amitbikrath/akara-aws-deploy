@@ -1,31 +1,145 @@
-import Navigation from '@/components/Navigation'
-import Footer from '@/components/Footer'
-import WallpapersGallery from '@/components/WallpapersGallery'
+'use client';
 
-export const metadata = {
-  title: 'Premium Wallpapers',
-  description: 'Discover our collection of premium spiritual wallpapers featuring divine art and sacred imagery.',
+import { useEffect, useState } from 'react';
+
+interface CatalogItem {
+  id: string;
+  type: string;
+  title: string;
+  caption: string;
+  shloka: string;
+  meaning: string;
+  fileKey: string;
+  thumbKey?: string;
+  ratio: string;
+  palette: string;
+  style: string;
+  createdAt: string;
 }
 
 export default function WallpapersPage() {
-  return (
-    <main className="min-h-screen">
-      <Navigation />
-      <div className="pt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Premium <span className="text-gradient">Wallpapers</span>
-            </h1>
-            <p className="text-xl text-white/80 max-w-2xl mx-auto">
-              Transform your digital spaces with divine artistry. High-resolution wallpapers 
-              featuring sacred imagery and spiritual themes.
-            </p>
+  const [items, setItems] = useState<CatalogItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchWallpapers = async () => {
+      try {
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+        const response = await fetch(`${apiBase}/api/catalog?type=wallpaper&limit=20`);
+        const data = await response.json();
+        
+        if (data.ok) {
+          setItems(data.items || []);
+        } else {
+          setError(data.error || 'Failed to load wallpapers');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load wallpapers');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWallpapers();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-6xl mx-auto px-4">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">Wallpapers</h1>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
+                <div className="h-48 bg-gray-200"></div>
+                <div className="p-4">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                </div>
+              </div>
+            ))}
           </div>
-          <WallpapersGallery />
         </div>
       </div>
-      <Footer />
-    </main>
-  )
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-6xl mx-auto px-4">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">Wallpapers</h1>
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <p className="text-red-800">Error: {error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-6xl mx-auto px-4">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Wallpapers</h1>
+        
+        {items.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg">No wallpapers available yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {items.map((item) => (
+              <div key={item.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="aspect-video bg-gray-100 relative">
+                  <img
+                    src={`${process.env.NEXT_PUBLIC_ASSETS_CDN_URL}/${item.fileKey}`}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/placeholder-image.jpg';
+                    }}
+                  />
+                  <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                    {item.ratio}
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold text-gray-900 mb-2">{item.title}</h3>
+                  {item.caption && (
+                    <p className="text-sm text-gray-600 mb-2">{item.caption}</p>
+                  )}
+                  {item.shloka && (
+                    <div className="text-sm text-gray-700 mb-2">
+                      <p className="font-medium">Shloka:</p>
+                      <p className="italic">{item.shloka}</p>
+                    </div>
+                  )}
+                  {item.meaning && (
+                    <div className="text-sm text-gray-700 mb-2">
+                      <p className="font-medium">Meaning:</p>
+                      <p>{item.meaning}</p>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {item.palette && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        {item.palette}
+                      </span>
+                    )}
+                    {item.style && (
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                        {item.style}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

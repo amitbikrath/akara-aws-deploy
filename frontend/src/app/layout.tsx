@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import Nav from '@/components/Nav'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -74,7 +75,13 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body className={`${inter.className} antialiased`}>
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-          {children}
+          <header className="w-full border-b border-white/10">
+            <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
+              <div className="font-bold text-white text-xl">Akara Studio</div>
+              <Nav />
+            </div>
+          </header>
+          <main>{children}</main>
         </div>
       </body>
     </html>

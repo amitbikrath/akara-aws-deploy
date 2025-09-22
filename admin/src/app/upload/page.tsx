@@ -61,11 +61,38 @@ export default function UploadPage() {
         throw new Error(`S3 upload failed: ${r2.statusText}`);
       }
 
+      // 3) Save metadata to catalog
+      const catalogData = {
+        type: formData.type,
+        title: formData.title,
+        caption: formData.caption,
+        shloka: formData.shloka,
+        meaning: formData.meaning,
+        fileKey: j1.key,
+        ratio: formData.ratio,
+        palette: formData.palette,
+        style: formData.style
+      };
+
+      const r3 = await fetch(`${base}/api/catalog`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(catalogData)
+      });
+
+      let catalogResult = null;
+      if (r3.ok) {
+        catalogResult = await r3.json();
+      } else {
+        console.warn('Failed to save catalog metadata:', r3.statusText);
+      }
+
       setResult({
         success: true,
         key: j1.key,
         bucket: j1.bucket,
-        cdnUrl: `${process.env.NEXT_PUBLIC_ASSETS_CDN_URL}/${j1.key}`
+        cdnUrl: `${process.env.NEXT_PUBLIC_ASSETS_CDN_URL}/${j1.key}`,
+        catalogItem: catalogResult
       });
 
       // Reset form
@@ -244,11 +271,26 @@ export default function UploadPage() {
               <p className="text-sm text-green-700 mb-2">File Key: {result.key}</p>
               <p className="text-sm text-green-700 mb-2">Bucket: {result.bucket}</p>
               <p className="text-sm text-green-700 mb-2">CDN URL: {result.cdnUrl}</p>
-              <div className="mt-4 p-3 bg-white rounded border">
-                <p className="text-sm text-gray-600">
-                  File uploaded successfully to S3! You can now access it via the CDN URL above.
-                </p>
-              </div>
+              
+              {result.catalogItem ? (
+                <div className="mt-4 p-3 bg-white rounded border">
+                  <h4 className="font-medium text-gray-900 mb-2">✅ Catalog Item Saved</h4>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Metadata has been saved to the catalog. The item should now appear on the frontend.
+                  </p>
+                  <div className="text-xs text-gray-500">
+                    <p>ID: {result.catalogItem.item?.id}</p>
+                    <p>Type: {result.catalogItem.item?.type}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 p-3 bg-yellow-50 rounded border border-yellow-200">
+                  <h4 className="font-medium text-yellow-800 mb-2">⚠️ Catalog Save Failed</h4>
+                  <p className="text-sm text-yellow-700">
+                    File uploaded to S3 successfully, but metadata could not be saved to catalog.
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <div>

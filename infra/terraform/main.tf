@@ -313,6 +313,17 @@ resource "aws_dynamodb_table" "catalog" {
     type = "S"
   }
 
+  attribute {
+    name = "type"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name     = "TypeIndex"
+    hash_key = "type"
+    range_key = "createdAt"
+  }
+
   tags = { Project = var.project }
 }
 

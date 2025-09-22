@@ -309,6 +309,12 @@ jobs:
                 npm init -y >/dev/null 2>&1 && \
                 npm i @aws-sdk/client-s3 @aws-sdk/s3-request-presigner >/dev/null 2>&1 && \
                 zip -rq "$OUT_ZIP" index.js node_modules package.json package-lock.json)
+            elif [ "$FN" = "get_catalog" ] || [ "$FN" = "post_catalog" ]; then
+              # needs aws-sdk v3 dynamodb modules
+              (cd "$SRC_DIR" && rm -rf node_modules package.json package-lock.json && \
+                npm init -y >/dev/null 2>&1 && \
+                npm i @aws-sdk/client-dynamodb @aws-sdk/util-dynamodb >/dev/null 2>&1 && \
+                zip -rq "$OUT_ZIP" index.js node_modules package.json package-lock.json)
             else
               # stubs: just zip index.js
               (cd "$SRC_DIR" && zip -rq "$OUT_ZIP" index.js)
