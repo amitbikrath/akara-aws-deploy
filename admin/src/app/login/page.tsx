@@ -4,17 +4,16 @@ import React from 'react';
 
 export const revalidate = false;
 
-const domain   = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
+const hostedUIBase = process.env.NEXT_PUBLIC_COGNITO_HOSTED_UI_BASE;
 const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
-const region   = process.env.NEXT_PUBLIC_AWS_REGION;
 const redirect = process.env.NEXT_PUBLIC_COGNITO_REDIRECT_URI || 'https://admin.akara.studio/auth/callback';
 
-const hostedUI = domain && region
-  ? `https://${domain}.auth.${region}.amazoncognito.com/oauth2/authorize?client_id=${encodeURIComponent(clientId || '')}&response_type=token&scope=openid+email+profile&redirect_uri=${encodeURIComponent(redirect)}`
+const hostedUI = hostedUIBase && clientId
+  ? `${hostedUIBase}/oauth2/authorize?client_id=${encodeURIComponent(clientId)}&response_type=token&scope=openid+email+profile&redirect_uri=${encodeURIComponent(redirect)}`
   : '';
 
 export default function LoginPage() {
-  const ready = Boolean(domain && clientId && region);
+  const ready = Boolean(hostedUIBase && clientId);
   return (
     <div style={{padding:'2rem'}}>
       <h1>Login</h1>

@@ -609,23 +609,29 @@ jobs:
           name: infrastructure-outputs-${{ needs.setup.outputs.environment }}
           path: .
 
-      - name: Create .env.production for Admin
+      - name: Generate admin .env.production
         run: |
           set -euo pipefail
-          cat infrastructure-outputs.json
-          API_BASE=$(jq -r '.api_base_url' infrastructure-outputs.json)
-          COG_DOMAIN=$(jq -r '.cognito_domain' infrastructure-outputs.json)
-          COG_CLIENT=$(jq -r '.cognito_user_pool_client_id' infrastructure-outputs.json)
-          AWS_REGION=$(jq -r '.aws_region' infrastructure-outputs.json)
+          JQ='.value'
+          API_BASE=$(jq -r '.api_base_url|'"$JQ" infrastructure-outputs.json)
+          REGION=$(jq -r '.aws_region|'"$JQ" infrastructure-outputs.json)
+          COG_CLIENT=$(jq -r '.cognito_user_pool_client_id|'"$JQ" infrastructure-outputs.json)
+          # These two will exist after the Terraform outputs are added
+          COG_DOMAIN=$(jq -r '.cognito_domain|'"$JQ" infrastructure-outputs.json)
+          HOSTED_UI=$(jq -r '.cognito_hosted_ui_base|'"$JQ" infrastructure-outputs.json)
 
           mkdir -p admin
           cat > admin/.env.production <<EOF
           NEXT_PUBLIC_API_BASE=${API_BASE}
-          NEXT_PUBLIC_COGNITO_DOMAIN=${COG_DOMAIN}
+          NEXT_PUBLIC_AWS_REGION=${REGION}
           NEXT_PUBLIC_COGNITO_CLIENT_ID=${COG_CLIENT}
-          NEXT_PUBLIC_AWS_REGION=${AWS_REGION}
+          NEXT_PUBLIC_COGNITO_DOMAIN=${COG_DOMAIN}
+          NEXT_PUBLIC_COGNITO_HOSTED_UI_BASE=${HOSTED_UI}
           NEXT_PUBLIC_COGNITO_REDIRECT_URI=https://admin.akara.studio/auth/callback
           EOF
+
+          echo "Wrote admin/.env.production:"
+          sed 's/=.*/=***redacted*** /' admin/.env.production
         shell: bash
 
       - name: Show downloaded infra outputs
