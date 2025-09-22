@@ -500,6 +500,28 @@ jobs:
           aws s3 sync frontend/out "s3://$FRONTEND_BUCKET" --delete
           aws cloudfront create-invalidation --distribution-id "$FRONTEND_DIST" --paths "/*"
 
+      - name: Invalidate CloudFront (frontend/admin)
+        if: always()
+        env:
+          AWS_REGION: us-east-1
+        run: |
+          set -euo pipefail
+          test -f infrastructure-outputs.json || { echo "infra outputs missing"; cat .; exit 1; }
+          FRONTEND_ID=$(jq -r '.frontend_distribution_id.value' infrastructure-outputs.json)
+          ADMIN_ID=$(jq -r '.admin_distribution_id.value' infrastructure-outputs.json)
+
+          echo "Frontend CF dist: $FRONTEND_ID"
+          echo "Admin CF dist:    $ADMIN_ID"
+
+          if [ -n "${FRONTEND_ID:-}" ] && [ "$FRONTEND_ID" != "null" ]; then
+            aws cloudfront create-invalidation --distribution-id "$FRONTEND_ID" --paths "/*" >/dev/null
+            echo "Submitted frontend invalidation."
+          fi
+          if [ -n "${ADMIN_ID:-}" ] && [ "$ADMIN_ID" != "null" ]; then
+            aws cloudfront create-invalidation --distribution-id "$ADMIN_ID" --paths "/*" >/dev/null
+            echo "Submitted admin invalidation."
+          fi
+
       - name: Frontend Deployment Summary
         run: |
           echo "✅ Frontend deployed successfully!"
@@ -622,6 +644,28 @@ jobs:
         run: |
           aws s3 sync admin/out "s3://$ADMIN_BUCKET" --delete
           aws cloudfront create-invalidation --distribution-id "$ADMIN_DIST" --paths "/*"
+
+      - name: Invalidate CloudFront (frontend/admin)
+        if: always()
+        env:
+          AWS_REGION: us-east-1
+        run: |
+          set -euo pipefail
+          test -f infrastructure-outputs.json || { echo "infra outputs missing"; cat .; exit 1; }
+          FRONTEND_ID=$(jq -r '.frontend_distribution_id.value' infrastructure-outputs.json)
+          ADMIN_ID=$(jq -r '.admin_distribution_id.value' infrastructure-outputs.json)
+
+          echo "Frontend CF dist: $FRONTEND_ID"
+          echo "Admin CF dist:    $ADMIN_ID"
+
+          if [ -n "${FRONTEND_ID:-}" ] && [ "$FRONTEND_ID" != "null" ]; then
+            aws cloudfront create-invalidation --distribution-id "$FRONTEND_ID" --paths "/*" >/dev/null
+            echo "Submitted frontend invalidation."
+          fi
+          if [ -n "${ADMIN_ID:-}" ] && [ "$ADMIN_ID" != "null" ]; then
+            aws cloudfront create-invalidation --distribution-id "$ADMIN_ID" --paths "/*" >/dev/null
+            echo "Submitted admin invalidation."
+          fi
 
       - name: Admin Deployment Summary
         run: |
