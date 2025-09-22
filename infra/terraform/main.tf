@@ -633,8 +633,8 @@ resource "aws_apigatewayv2_route" "get_upload_url" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "GET /api/upload-url"
   target    = "integrations/${aws_apigatewayv2_integration.get_upload_url.id}"
-  authorization_type = "JWT"
-  authorizer_id = aws_apigatewayv2_authorizer.cognito.id
+  # Public until Hosted UI is wired; CORS on API + Lambda is already permissive.
+  authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_route" "get_catalog" {
