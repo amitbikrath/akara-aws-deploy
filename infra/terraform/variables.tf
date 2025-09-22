@@ -1,45 +1,30 @@
-variable "region" {
+// infra/terraform/variables.tf
+variable "project" {
+  description = "Project short name used in resource names"
   type        = string
-  default     = "us-east-1"
-  description = "AWS region"
 }
 
-variable "project" {
+variable "region" {
+  description = "AWS region (e.g., us-east-1)"
   type        = string
-  default     = "akara"
-  description = "Project name"
 }
 
 variable "account_id" {
+  description = "AWS Account ID (12 digits)"
   type        = string
-  description = "AWS account ID"
 }
 
 variable "frontend_domain" {
-  description = "Custom domain for the frontend"
+  description = "Custom domain for the public app"
   type        = string
-  default     = "www.akara.studio"
 }
 
 variable "admin_domain" {
-  description = "Custom domain for the admin"
+  description = "Custom domain for the admin app"
   type        = string
-  default     = "admin.akara.studio"
 }
 
 variable "acm_certificate_arn" {
-  description = "ACM certificate ARN in us-east-1 for the above domains"
+  description = "ACM certificate ARN in us-east-1"
   type        = string
-}
-
-variable "assets_bucket_name" {
-  description = "Optional override for assets bucket name (used by CI two-phase apply)"
-  type        = string
-  default     = null
-}
-
-variable "catalog_table_name" {
-  description = "Optional override for catalog table name (used by CI two-phase apply)"
-  type        = string
-  default     = null
 }

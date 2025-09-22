@@ -96,6 +96,9 @@ jobs:
     env:
       ACM_CERT_ARN: ${{ secrets.ACM_CERT_ARN }}
       TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERT_ARN }}
+      TF_VAR_project: akara
+      TF_VAR_frontend_domain: www.akara.studio
+      TF_VAR_admin_domain: admin.akara.studio
     outputs:
       placeholder_bucket: ${{ steps.tf_output.outputs.placeholder_bucket }}
       account_id: ${{ steps.tf_output.outputs.account_id }}
@@ -211,12 +214,14 @@ jobs:
           terraform_version: latest
 
       - name: Terraform format (write + non-fatal check)
+        working-directory: infra/terraform
         run: |
-          terraform -chdir=infra/terraform fmt -recursive
-          terraform -chdir=infra/terraform fmt -check -recursive || true
-          git --no-pager diff -- infra/terraform || true
+          terraform fmt -recursive
+          terraform fmt -check -recursive || true
+          git --no-pager diff -- . || true
 
       - name: Run Terraform with comprehensive logging
+        working-directory: infra/terraform
         env:
           ACCOUNT_ID: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
           AWS_REGION: ${{ steps.awsinfo.outputs.AWS_REGION }}
@@ -230,7 +235,7 @@ jobs:
         run: |
           set -euxo pipefail
           terraform -version
-          terraform -chdir=infra/terraform init -reconfigure \
+          terraform init -reconfigure \
             -backend-config="bucket=${STATE_BUCKET}" \
             -backend-config="key=global/terraform.tfstate" \
             -backend-config="region=${AWS_REGION}" \
@@ -238,7 +243,7 @@ jobs:
             -backend-config="encrypt=true" \
             -input=false -no-color 2>&1 | tee tf-init.log
 
-          terraform -chdir=infra/terraform validate -no-color 2>&1 | tee tf-validate.log
+          terraform validate -no-color 2>&1 | tee tf-validate.log
 
       - name: Diagnose CloudFront alias ownership
         run: |
@@ -256,23 +261,29 @@ jobs:
             --output table || true
 
       - name: Import existing frontend distribution (idempotent, non-blocking)
+        working-directory: infra/terraform
+        env:
+          FRONTEND_DIST_ID: EBWBTLYBASPTD
+          TF_VAR_project: akara
+          TF_VAR_region: ${{ steps.awsinfo.outputs.AWS_REGION }}
+          TF_VAR_account_id: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
+          TF_VAR_frontend_domain: www.akara.studio
+          TF_VAR_admin_domain: admin.akara.studio
         run: |
           set -euo pipefail
           echo "Checking if aws_cloudfront_distribution.frontend is already in state…"
-          if terraform -chdir=infra/terraform state show aws_cloudfront_distribution.frontend >/dev/null 2>&1; then
+          if terraform state show aws_cloudfront_distribution.frontend >/dev/null 2>&1; then
             echo "✅ Already imported — skipping import."
           else
             echo "➡️ Importing frontend distribution ${FRONTEND_DIST_ID}…"
             # timeout prevents indefinite hangs; -input=false avoids interactivity; -no-color helps logs
-            timeout 15m terraform -chdir=infra/terraform import \
+            timeout 15m terraform import \
               -input=false \
               -no-color \
               -lock-timeout=10m \
               aws_cloudfront_distribution.frontend ${FRONTEND_DIST_ID}
             echo "✅ Import completed."
           fi
-        env:
-          FRONTEND_DIST_ID: EBWBTLYBASPTD
 
       - name: Package Lambda functions
         run: |
@@ -285,7 +296,7 @@ jobs:
           (cd lambdas/get_catalog && zip -rq ../get_catalog.zip .)
           (cd lambdas/post_catalog && zip -rq ../post_catalog.zip .)
 
-          # move to module dir (terraform -chdir=infra/terraform ...)
+          # move to module dir (terraform ...)
           mv lambdas/get_upload_url.zip infra/terraform/get_upload_url.zip
           mv lambdas/get_catalog.zip infra/terraform/get_catalog.zip
           mv lambdas/post_catalog.zip infra/terraform/post_catalog.zip
@@ -305,18 +316,36 @@ jobs:
           ls -lah infra/terraform/*.zip
 
       - name: Terraform init
+        working-directory: infra/terraform
+        env:
+          ACCOUNT_ID: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
+          AWS_REGION: ${{ steps.awsinfo.outputs.AWS_REGION }}
+          STATE_BUCKET: ${{ steps.awsinfo.outputs.TF_STATE_BUCKET }}
+          LOCK_TABLE: ${{ steps.awsinfo.outputs.TF_LOCK_TABLE }}
+          TF_VAR_project: akara
+          TF_VAR_region: ${{ steps.awsinfo.outputs.AWS_REGION }}
+          TF_VAR_account_id: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
+          TF_VAR_frontend_domain: www.akara.studio
+          TF_VAR_admin_domain: admin.akara.studio
         run: |
           set -euxo pipefail
-          terraform -chdir=infra/terraform init -reconfigure \
+          terraform init -reconfigure \
             -backend-config="bucket=${STATE_BUCKET}" \
             -backend-config="key=global/terraform.tfstate" \
             -backend-config="region=${AWS_REGION}" \
             -backend-config="dynamodb_table=${LOCK_TABLE}"
 
       - name: Terraform plan (infra phase)
+        working-directory: infra/terraform
+        env:
+          TF_VAR_project: akara
+          TF_VAR_region: ${{ steps.awsinfo.outputs.AWS_REGION }}
+          TF_VAR_account_id: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
+          TF_VAR_frontend_domain: www.akara.studio
+          TF_VAR_admin_domain: admin.akara.studio
         run: |
           set -euxo pipefail
-          terraform -chdir=infra/terraform plan -input=false -no-color \
+          terraform plan -input=false -no-color \
             -lock-timeout=10m \
             -var="acm_certificate_arn=${ACM_CERT_ARN}" \
             -target=aws_s3_bucket.assets \
@@ -332,23 +361,26 @@ jobs:
             -out=plan.infra.out
 
       - name: Terraform apply (infra phase)
+        working-directory: infra/terraform
         run: |
           set -euxo pipefail
-          terraform -chdir=infra/terraform apply -input=false -no-color -lock-timeout=10m plan.infra.out
+          terraform apply -input=false -no-color -lock-timeout=10m plan.infra.out
 
       - name: Sanity check Phase 1 completion
+        working-directory: infra/terraform
         run: |
           set -euxo pipefail
           echo "Phase 1 infrastructure deployed successfully"
-          terraform -chdir=infra/terraform output -raw assets_bucket_name || true
-          terraform -chdir=infra/terraform output -raw catalog_table_name || true
+          terraform output -raw assets_bucket_name || true
+          terraform output -raw catalog_table_name || true
 
       - name: Sanity check Phase 1 materialized names
+        working-directory: infra/terraform
         run: |
           set -euo pipefail
           echo "Verifying Terraform outputs are available:"
-          terraform -chdir=infra/terraform output assets_bucket_name
-          terraform -chdir=infra/terraform output catalog_table_name
+          terraform output assets_bucket_name
+          terraform output catalog_table_name
           ls -lah infra/terraform || true
           for z in get_upload_url.zip get_catalog.zip post_catalog.zip; do
             if [ ! -f "infra/terraform/$z" ]; then
@@ -358,9 +390,16 @@ jobs:
           done
 
       - name: Terraform plan (lambdas phase)
+        working-directory: infra/terraform
+        env:
+          TF_VAR_project: akara
+          TF_VAR_region: ${{ steps.awsinfo.outputs.AWS_REGION }}
+          TF_VAR_account_id: ${{ steps.awsinfo.outputs.ACCOUNT_ID }}
+          TF_VAR_frontend_domain: www.akara.studio
+          TF_VAR_admin_domain: admin.akara.studio
         run: |
           set -euxo pipefail
-          terraform -chdir=infra/terraform plan -input=false -no-color \
+          terraform plan -input=false -no-color \
             -lock-timeout=10m \
             -var="acm_certificate_arn=${ACM_CERT_ARN}" \
             -target=aws_lambda_function.get_upload_url \
@@ -379,17 +418,19 @@ jobs:
             -out=plan.lambdas.out
 
       - name: Terraform apply (lambdas phase)
+        working-directory: infra/terraform
         run: |
           set -euxo pipefail
-          terraform -chdir=infra/terraform apply -input=false -no-color -lock-timeout=10m plan.lambdas.out
+          terraform apply -input=false -no-color -lock-timeout=10m plan.lambdas.out
 
       - name: Get Terraform Outputs
         id: tf_output
+        working-directory: infra/terraform
         run: |
-          echo "placeholder_bucket=$(terraform -chdir=infra/terraform output -raw placeholder_bucket)" >> $GITHUB_OUTPUT
-          echo "account_id=$(terraform -chdir=infra/terraform output -raw account_id)" >> $GITHUB_OUTPUT
-          echo "region=$(terraform -chdir=infra/terraform output -raw region)" >> $GITHUB_OUTPUT
-          echo "cognito_user_pool_id=$(terraform -chdir=infra/terraform output -raw cognito_user_pool_id)" >> $GITHUB_OUTPUT
+          echo "placeholder_bucket=$(terraform output -raw placeholder_bucket)" >> $GITHUB_OUTPUT
+          echo "account_id=$(terraform output -raw account_id)" >> $GITHUB_OUTPUT
+          echo "region=$(terraform output -raw region)" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_id=$(terraform output -raw cognito_user_pool_id)" >> $GITHUB_OUTPUT
 
       - name: Ensure Cognito groups exist
         if: ${{ inputs.deploy_infra == 'true' }}
@@ -401,8 +442,9 @@ jobs:
           aws cognito-idp create-group --user-pool-id "$COGNITO_POOL_ID" --group-name user  || true
 
       - name: Save Infrastructure Outputs
+        working-directory: infra/terraform
         run: |
-          terraform -chdir=infra/terraform output -json > infrastructure-outputs.json
+          terraform output -json > infrastructure-outputs.json
           
       - name: Upload Infrastructure Outputs
         uses: actions/upload-artifact@v4
