@@ -1,24 +1,40 @@
 'use client';
+
 import React from 'react';
 
-const domain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN!;
-const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!;
-const redirect = process.env.NEXT_PUBLIC_COGNITO_REDIRECT_URI!; // e.g. https://admin.akara.studio/auth/callback
+const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN; // e.g. https://your-prefix.auth.us-east-1.amazoncognito.com
+const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
+const redirectUri = process.env.NEXT_PUBLIC_COGNITO_REDIRECT_URI || (typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : '');
+const scope = 'openid+email+profile';
+const responseType = 'code';
 
 export default function LoginPage() {
+  const hasHostedUI = !!(cognitoDomain && clientId && redirectUri);
+
   const go = () => {
-    const url = new URL(`https://${domain}/login`);
-    url.searchParams.set('client_id', clientId);
-    url.searchParams.set('response_type', 'code');
-    url.searchParams.set('redirect_uri', redirect);
-    window.location.href = url.toString();
+    if (!hasHostedUI) return;
+    const url = `${cognitoDomain}/oauth2/authorize?response_type=${responseType}&client_id=${encodeURIComponent(clientId!)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}`;
+    window.location.href = url;
   };
 
   return (
-    <div style={{maxWidth:720, margin:'80px auto'}}>
-      <h1>Login</h1>
-      <p>This will open Cognito Hosted UI.</p>
-      <button onClick={go} style={{padding:'10px 16px', borderRadius:8}}>Continue</button>
+    <div style={{padding: 24}}>
+      <h2>Login</h2>
+      {hasHostedUI ? (
+        <>
+          <p>Continue to Cognito Hosted UI</p>
+          <button onClick={go}>Continue</button>
+        </>
+      ) : (
+        <>
+          <p>This is a placeholder. Hosted UI env vars not set yet.</p>
+          <ul>
+            <li>NEXT_PUBLIC_COGNITO_DOMAIN</li>
+            <li>NEXT_PUBLIC_COGNITO_CLIENT_ID</li>
+            <li>NEXT_PUBLIC_COGNITO_REDIRECT_URI</li>
+          </ul>
+        </>
+      )}
     </div>
   );
 }

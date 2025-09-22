@@ -292,39 +292,23 @@ jobs:
 
 
       # --- LAMBDA ZIPs ---
-      - name: Package Lambdas (create ZIPs if missing)
+      - name: Package Lambdas (install deps, create ZIPs)
         run: |
           set -euo pipefail
-          cd lambdas
 
-          pack () {
-            FN="$1"
-            SRC_DIR="$FN"
-            OUT_ZIP="../infra/terraform/${FN}.zip"
-            if [ -f "$OUT_ZIP" ]; then echo "✓ $FN.zip exists"; return; fi
+          cd lambdas/get_upload_url
+          npm ci --no-audit --no-fund
+          zip -rq ../../infra/terraform/get_upload_url.zip index.js node_modules package.json package-lock.json
+          cd -
 
-            if [ "$FN" = "get_upload_url" ]; then
-              # needs aws-sdk v3 modules
-              (cd "$SRC_DIR" && rm -rf node_modules package.json package-lock.json && \
-                npm init -y >/dev/null 2>&1 && \
-                npm i @aws-sdk/client-s3 @aws-sdk/s3-request-presigner >/dev/null 2>&1 && \
-                zip -rq "$OUT_ZIP" index.js node_modules package.json package-lock.json)
-            elif [ "$FN" = "get_catalog" ] || [ "$FN" = "post_catalog" ]; then
-              # needs aws-sdk v3 dynamodb modules
-              (cd "$SRC_DIR" && rm -rf node_modules package.json package-lock.json && \
-                npm init -y >/dev/null 2>&1 && \
-                npm i @aws-sdk/client-dynamodb @aws-sdk/util-dynamodb >/dev/null 2>&1 && \
-                zip -rq "$OUT_ZIP" index.js node_modules package.json package-lock.json)
-            else
-              # stubs: just zip index.js
-              (cd "$SRC_DIR" && zip -rq "$OUT_ZIP" index.js)
-            fi
-          }
+          # Keep the other two minimal handlers as-is (no deps) unless we wire them later.
+          # Rebuild their zips every run for reliability.
+          mkdir -p infra/terraform
+          (cd lambdas/get_catalog && zip -rq ../../infra/terraform/get_catalog.zip .)
+          (cd lambdas/post_catalog && zip -rq ../../infra/terraform/post_catalog.zip .)
 
-          pack get_upload_url
-          pack get_catalog
-          pack post_catalog
-          ls -lh ../infra/terraform/*.zip
+          echo "Zips:"
+          ls -lh infra/terraform/*.zip
 
       # --- TERRAFORM ---
       - name: Terraform fmt
@@ -639,7 +623,7 @@ jobs:
           echo "API_BASE_URL=$(jq -r .api_base_url.value infrastructure-outputs.json)" >> $GITHUB_ENV
           echo "COGNITO_USER_POOL_ID=$(jq -r .cognito_user_pool_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
           echo "COGNITO_CLIENT_ID=$(jq -r .cognito_user_pool_client_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
-          echo "COGNITO_DOMAIN=$(jq -r .cognito_domain.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "COGNITO_DOMAIN=$(jq -r .cognito_hosted_ui_domain.value infrastructure-outputs.json)" >> $GITHUB_ENV
           echo "AWS_REGION_OUTPUT=$(jq -r .aws_region.value infrastructure-outputs.json)" >> $GITHUB_ENV
 
       - name: Build Admin

@@ -1,35 +1,43 @@
-// Generate a presigned PUT URL for S3 upload
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+// get_upload_url Lambda (Node 20) - returns a presigned S3 PUT URL
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { v4 as uuid } from "uuid";
 
-const REGION = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1';
-const BUCKET = process.env.ASSETS_BUCKET;
+const s3 = new S3Client({});
 
-const s3 = new S3Client({ region: REGION });
+const allowCors = (body, statusCode = 200) => ({
+  statusCode,
+  headers: {
+    "content-type": "application/json",
+    // Allow both CloudFront domains just in case
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS"
+  },
+  body: JSON.stringify(body)
+});
 
-exports.handler = async (event) => {
-  try {
-    const qs = event?.queryStringParameters || {};
-    const key = qs.key || `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.bin`;
-    const contentType = qs.contentType || 'application/octet-stream';
+export const handler = async (event) => {
+  // Accept GET with queryStringParameters (no body) to avoid "GET cannot have body" errors
+  const qs = event?.queryStringParameters || {};
+  const filename = (qs.filename || "").toString().trim();
+  const contentType = (qs.contentType || "application/octet-stream").toString();
 
-    const cmd = new PutObjectCommand({
-      Bucket: BUCKET,
-      Key: key,
-      ContentType: contentType,
-    });
+  const bucket = process.env.ASSETS_BUCKET;
+  if (!bucket) return allowCors({ ok: false, error: "Missing ASSETS_BUCKET" }, 500);
+  if (!filename) return allowCors({ ok: false, error: "filename required" }, 400);
 
-    const url = await getSignedUrl(s3, cmd, { expiresIn: 900 }); // 15 min
-    return {
-      statusCode: 200,
-      headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' },
-      body: JSON.stringify({ ok: true, bucket: BUCKET, key, url, contentType }),
-    };
-  } catch (err) {
-    return {
-      statusCode: 500,
-      headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' },
-      body: JSON.stringify({ ok: false, error: String(err) }),
-    };
-  }
+  // Put uploads under /content/
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const key = `content/${uuid()}-${safeName}`;
+
+  const cmd = new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    ContentType: contentType
+  });
+
+  const uploadUrl = await getSignedUrl(s3, cmd, { expiresIn: 900 }); // 15m
+
+  return allowCors({ ok: true, uploadUrl, key, bucket, contentType });
 };

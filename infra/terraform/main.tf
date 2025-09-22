@@ -396,7 +396,7 @@ resource "aws_cognito_user_pool_client" "main" {
 
 # Hosted UI domain for Cognito
 resource "aws_cognito_user_pool_domain" "main" {
-  domain       = "${var.project}-auth-${var.account_id}"
+  domain       = "${var.project}-${var.account_id}"
   user_pool_id = aws_cognito_user_pool.main.id
 }
 
@@ -662,5 +662,6 @@ output "api_base_url"            { value = aws_apigatewayv2_stage.main.invoke_ur
 output "cognito_user_pool_id"    { value = aws_cognito_user_pool.main.id }
 output "cognito_user_pool_client_id" { value = aws_cognito_user_pool_client.main.id }
 output "cognito_domain"          { value = "${aws_cognito_user_pool_domain.main.domain}.auth.${var.region}.amazoncognito.com" }
+output "cognito_hosted_ui_domain" { value = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${var.region}.amazoncognito.com" }
 output "aws_region"              { value = var.region }
 output "catalog_table_name"      { value = aws_dynamodb_table.catalog.name }
