@@ -1,20 +1,24 @@
 'use client';
+import React from 'react';
+
+const domain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN!;
+const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!;
+const redirect = process.env.NEXT_PUBLIC_COGNITO_REDIRECT_URI!; // e.g. https://admin.akara.studio/auth/callback
 
 export default function LoginPage() {
+  const go = () => {
+    const url = new URL(`https://${domain}/login`);
+    url.searchParams.set('client_id', clientId);
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('redirect_uri', redirect);
+    window.location.href = url.toString();
+  };
+
   return (
-    <div className="max-w-md mx-auto py-16">
-      <h1 className="text-2xl font-semibold mb-4">Login</h1>
-      <p className="text-sm opacity-80">
-        This is a placeholder. Wire this to Cognito Hosted UI or your auth flow next.
-      </p>
-      <div className="mt-6">
-        <a
-          className="inline-block rounded bg-black px-4 py-2 text-white"
-          href="/auth/callback"
-        >
-          Continue
-        </a>
-      </div>
+    <div style={{maxWidth:720, margin:'80px auto'}}>
+      <h1>Login</h1>
+      <p>This will open Cognito Hosted UI.</p>
+      <button onClick={go} style={{padding:'10px 16px', borderRadius:8}}>Continue</button>
     </div>
   );
 }

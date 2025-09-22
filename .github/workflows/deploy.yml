@@ -622,6 +622,7 @@ jobs:
           echo "API_BASE_URL=$(jq -r .api_base_url.value infrastructure-outputs.json)" >> $GITHUB_ENV
           echo "COGNITO_USER_POOL_ID=$(jq -r .cognito_user_pool_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
           echo "COGNITO_CLIENT_ID=$(jq -r .cognito_user_pool_client_id.value infrastructure-outputs.json)" >> $GITHUB_ENV
+          echo "COGNITO_DOMAIN=$(jq -r .cognito_domain.value infrastructure-outputs.json)" >> $GITHUB_ENV
           echo "AWS_REGION_OUTPUT=$(jq -r .aws_region.value infrastructure-outputs.json)" >> $GITHUB_ENV
 
       - name: Build Admin
@@ -631,6 +632,8 @@ jobs:
           NEXT_PUBLIC_ASSETS_CDN_URL: https://${{ env.ADMIN_DOMAIN }}/content
           NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ env.COGNITO_USER_POOL_ID }}
           NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ env.COGNITO_CLIENT_ID }}
+          NEXT_PUBLIC_COGNITO_DOMAIN: ${{ env.COGNITO_DOMAIN }}
+          NEXT_PUBLIC_COGNITO_REDIRECT_URI: https://${{ env.ADMIN_DOMAIN }}/auth/callback
           NEXT_PUBLIC_AWS_REGION: ${{ env.AWS_REGION_OUTPUT }}
           NEXT_PUBLIC_ENVIRONMENT: ${{ needs.setup.outputs.environment }}
         run: |
