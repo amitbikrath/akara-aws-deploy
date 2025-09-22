@@ -1,5 +1,6 @@
 'use client';
 import React, { useState } from 'react';
+import { loadTokens } from '@/src/lib/auth';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
 
@@ -12,11 +13,23 @@ export default function UploadPage() {
   async function handleUpload() {
     try {
       if (!file) { setMsg('Pick a file first.'); return; }
+      
+      const t = loadTokens();
+      const idToken = t?.idToken;
+      
+      if (!idToken) {
+        setMsg('Please login first.');
+        return;
+      }
+      
       setStatus('presigning'); setMsg('Requesting upload URL …');
 
       // 1) GET presigned URL — NO body for GET
       const qs = new URLSearchParams({ filename: file.name, contentType: file.type || 'application/octet-stream' });
-      const presignRes = await fetch(`${API_BASE}/api/upload-url?${qs.toString()}`, { method: 'GET' });
+      const presignRes = await fetch(`${API_BASE}/api/upload-url?${qs.toString()}`, { 
+        method: 'GET',
+        headers: idToken ? { 'Authorization': `Bearer ${idToken}` } : {},
+      });
       const text = await presignRes.text();
       let data: any;
       try { data = JSON.parse(text); } catch { throw new Error(`Bad JSON from presign: ${text.slice(0,200)}`); }

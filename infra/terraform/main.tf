@@ -375,28 +375,34 @@ resource "aws_cognito_user_pool_client" "main" {
   name         = "${var.project}-client"
   user_pool_id = aws_cognito_user_pool.main.id
 
-  generate_secret = false
-  explicit_auth_flows = [
-    "ALLOW_USER_SRP_AUTH",
-    "ALLOW_REFRESH_TOKEN_AUTH"
-  ]
-
+  # Hosted UI / OAuth (implicit for SPA)
+  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_flows  = ["implicit"]  # no backend exchange required
+  allowed_oauth_scopes = ["openid", "email", "profile"]
   supported_identity_providers = ["COGNITO"]
-  
+
+  # Callback / logout must match admin app routes
   callback_urls = [
     "https://${var.admin_domain}/auth/callback",
     "http://localhost:3001/auth/callback"
   ]
-  
   logout_urls = [
     "https://${var.admin_domain}/auth/logout",
     "http://localhost:3001/auth/logout"
   ]
+
+  # We are a public SPA
+  generate_secret = false
+
+  explicit_auth_flows = [
+    "ALLOW_REFRESH_TOKEN_AUTH",
+    "ALLOW_USER_SRP_AUTH"
+  ]
 }
 
-# Hosted UI domain for Cognito
+# Cognito Hosted UI domain
 resource "aws_cognito_user_pool_domain" "main" {
-  domain       = "${var.project}-${var.account_id}"
+  domain       = "${var.project}-auth-${var.account_id}"
   user_pool_id = aws_cognito_user_pool.main.id
 }
 
@@ -633,8 +639,8 @@ resource "aws_apigatewayv2_route" "get_upload_url" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "GET /api/upload-url"
   target    = "integrations/${aws_apigatewayv2_integration.get_upload_url.id}"
-  # Public until Hosted UI is wired; CORS on API + Lambda is already permissive.
-  authorization_type = "NONE"
+  authorization_type = "JWT"
+  authorizer_id = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_apigatewayv2_route" "get_catalog" {
@@ -661,7 +667,7 @@ output "admin_domain"            { value = aws_cloudfront_distribution.admin.dom
 output "api_base_url"            { value = aws_apigatewayv2_stage.main.invoke_url }
 output "cognito_user_pool_id"    { value = aws_cognito_user_pool.main.id }
 output "cognito_user_pool_client_id" { value = aws_cognito_user_pool_client.main.id }
-output "cognito_domain"          { value = "${aws_cognito_user_pool_domain.main.domain}.auth.${var.region}.amazoncognito.com" }
-output "cognito_hosted_ui_domain" { value = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${var.region}.amazoncognito.com" }
+output "cognito_domain"          { value = aws_cognito_user_pool_domain.main.domain }
+output "cognito_hosted_ui_base"  { value = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${var.region}.amazoncognito.com" }
 output "aws_region"              { value = var.region }
 output "catalog_table_name"      { value = aws_dynamodb_table.catalog.name }

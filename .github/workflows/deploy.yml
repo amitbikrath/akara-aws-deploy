@@ -609,25 +609,24 @@ jobs:
           name: infrastructure-outputs-${{ needs.setup.outputs.environment }}
           path: .
 
-      - name: Generate .env.production for Admin
+      - name: Create .env.production for Admin
         run: |
           set -euo pipefail
           cat infrastructure-outputs.json
           API_BASE=$(jq -r '.api_base_url' infrastructure-outputs.json)
-          : "${API_BASE:?api_base_url missing in infra outputs}"
-          {
-            echo "NEXT_PUBLIC_API_BASE=${API_BASE}"
-            # These three are optional until Hosted UI is enabled.
-            if jq -e '.cognito_hosted_ui_domain' infrastructure-outputs.json > /dev/null; then
-              DOMAIN=$(jq -r '.cognito_hosted_ui_domain' infrastructure-outputs.json)
-              CLIENT_ID=$(jq -r '.cognito_user_pool_client_id' infrastructure-outputs.json)
-              echo "NEXT_PUBLIC_COGNITO_DOMAIN=${DOMAIN}"
-              echo "NEXT_PUBLIC_COGNITO_CLIENT_ID=${CLIENT_ID}"
-              echo "NEXT_PUBLIC_COGNITO_REDIRECT_URI=https://admin.akara.studio/auth/callback"
-            fi
-          } > admin/.env.production
-          echo "---- admin/.env.production ----"
-          cat admin/.env.production
+          COG_DOMAIN=$(jq -r '.cognito_domain' infrastructure-outputs.json)
+          COG_CLIENT=$(jq -r '.cognito_user_pool_client_id' infrastructure-outputs.json)
+          AWS_REGION=$(jq -r '.aws_region' infrastructure-outputs.json)
+
+          mkdir -p admin
+          cat > admin/.env.production <<EOF
+          NEXT_PUBLIC_API_BASE=${API_BASE}
+          NEXT_PUBLIC_COGNITO_DOMAIN=${COG_DOMAIN}
+          NEXT_PUBLIC_COGNITO_CLIENT_ID=${COG_CLIENT}
+          NEXT_PUBLIC_AWS_REGION=${AWS_REGION}
+          NEXT_PUBLIC_COGNITO_REDIRECT_URI=https://admin.akara.studio/auth/callback
+          EOF
+        shell: bash
 
       - name: Show downloaded infra outputs
         run: |

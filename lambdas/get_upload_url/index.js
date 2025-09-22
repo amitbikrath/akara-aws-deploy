@@ -5,19 +5,27 @@ import { v4 as uuid } from "uuid";
 
 const s3 = new S3Client({});
 
+const cors = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET,PUT,OPTIONS",
+  "access-control-allow-headers": "authorization,content-type"
+};
+
 const allowCors = (body, statusCode = 200) => ({
   statusCode,
   headers: {
     "content-type": "application/json",
-    // Allow both CloudFront domains just in case
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization",
-    "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS"
+    ...cors
   },
   body: JSON.stringify(body)
 });
 
 export const handler = async (event) => {
+  // Handle OPTIONS preflight
+  if (event.requestContext?.http?.method === "OPTIONS") {
+    return { statusCode: 200, headers: cors, body: "" };
+  }
+
   // Accept GET with queryStringParameters (no body) to avoid "GET cannot have body" errors
   const qs = event?.queryStringParameters || {};
   const filename = (qs.filename || "").toString().trim();
