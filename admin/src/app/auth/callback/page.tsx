@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { saveTokens } from '@/src/lib/auth';
+import { saveTokens } from '@/lib/auth';
 
 export const revalidate = false;
 
@@ -24,7 +24,7 @@ export default function Callback() {
       const expiresAt = Math.floor(Date.now()/1000) + (isFinite(expiresIn) ? expiresIn : 3600);
       saveTokens({ idToken, accessToken, expiresAt });
       setMsg('Signed in. Redirecting...');
-      setTimeout(() => { window.location.href = '/upload'; }, 600);
+      setTimeout(() => { window.location.href = '/'; }, 600);
     } catch (e) {
       setMsg('Failed to process callback.');
     }

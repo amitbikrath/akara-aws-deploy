@@ -34,3 +34,6 @@ rm -rf temp
 
 echo "Lambda functions packaged successfully!"
 ls -la *.zip
+
+
+
