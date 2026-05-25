@@ -1,0 +1,16 @@
+{
+  "name": "akara-times-daily",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Daily SEO editorial generator for the Akara Times — picks a topic (panchang/festival/deity/evergreen/trend), writes a flagship article via Claude, matches a catalog image, and emits crawlable static pages + sitemap.",
+  "main": "index.js",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.40.0",
+    "@aws-sdk/client-cloudfront": "^3.1053.0",
+    "@aws-sdk/client-dynamodb": "^3.1053.0",
+    "@aws-sdk/client-s3": "^3.1053.0",
+    "@aws-sdk/client-ssm": "^3.1053.0",
+    "@aws-sdk/lib-dynamodb": "^3.1053.0",
+    "astronomy-engine": "^2.1.19"
+  }
+}
