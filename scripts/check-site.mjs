@@ -11,9 +11,9 @@ const fail = [];
 // 1. The ordered script list must match in all three shells.
 const layout = fs.readFileSync(path.join(root, 'frontend/src/app/layout.tsx'), 'utf8');
 const block = layout.match(/AKARA_SCRIPTS = \[([\s\S]*?)\]/)?.[1] ?? '';
-const fromLayout = [...block.matchAll(/'\/akara\/([^']+\.jsx)'/g)].map(m => m[1]);
+const fromLayout = [...block.matchAll(/'\/akara\/(js\/[^']+\.js)'/g)].map(m => m[1]);
 const fromHtml = f => [...fs.readFileSync(path.join(pub, 'akara', f), 'utf8')
-  .matchAll(/<script type="text\/babel" src="([^"]+\.jsx)"/g)].map(m => m[1]);
+  .matchAll(/<script src="(js\/[^"]+\.js)"/g)].map(m => m[1]);
 for (const f of ['index.html', 'akara.html']) {
   const list = fromHtml(f);
   if (list.join() !== fromLayout.join())

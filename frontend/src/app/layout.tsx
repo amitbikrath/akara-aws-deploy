@@ -3,27 +3,28 @@ import fs from 'fs';
 import path from 'path';
 import './globals.css';
 
-// The real akara.studio UI is the Babel/React bundle at public/akara/*.jsx.
+// The real akara.studio UI is the React bundle at public/akara/*.jsx, compiled
+// to public/akara/js/*.js by scripts/build-jsx.mjs (no Babel in the browser).
 // This layout is ONLY the shell that loads it — keep the script list below in
-// lockstep with public/akara/akara.html (see CLAUDE.md at the repo root).
+// lockstep with public/akara/akara.html and index.html (scripts/check-site.mjs).
 // Missing a script here renders a blank page: app.jsx references components
 // defined by the earlier files.
 const AKARA_SCRIPTS = [
-  '/akara/tweaks-panel.jsx',
-  '/akara/lib.jsx',
-  '/akara/protected-image.jsx',
-  '/akara/auth.jsx',
-  '/akara/panchang.jsx',
-  '/akara/nav-hero.jsx',
-  '/akara/lightbox.jsx',
-  '/akara/wallpapers.jsx',
-  '/akara/gallery.jsx',
-  '/akara/shop.jsx',
-  '/akara/shop-page.jsx',
-  '/akara/music-story.jsx',
-  '/akara/socials.jsx',
-  '/akara/footer.jsx',
-  '/akara/app.jsx',
+  '/akara/js/tweaks-panel.js',
+  '/akara/js/lib.js',
+  '/akara/js/protected-image.js',
+  '/akara/js/auth.js',
+  '/akara/js/panchang.js',
+  '/akara/js/nav-hero.js',
+  '/akara/js/lightbox.js',
+  '/akara/js/wallpapers.js',
+  '/akara/js/gallery.js',
+  '/akara/js/shop.js',
+  '/akara/js/shop-page.js',
+  '/akara/js/music-story.js',
+  '/akara/js/socials.js',
+  '/akara/js/footer.js',
+  '/akara/js/app.js',
 ];
 
 // Site CSS inlined at build time — mirrors the live prerendered head. Classes
@@ -33,6 +34,10 @@ const siteCss = fs.readFileSync(
   path.join(process.cwd(), 'src/app/akara-site.css'),
   'utf8'
 );
+
+// Read by auth.jsx and lib.jsx. Copied from the live prerender (2026-07-04).
+const AUTH_CONFIG =
+  'window.__AKARA_API_BASE = "";window.__AKARA_AUTH = {"hostedUI":"https://auth.akara.studio","clientId":"tdvllhi43hnfi1ibn21an410d","redirectUri":"https://www.akara.studio/auth/callback","logoutUri":"https://www.akara.studio/","scope":"openid email profile"};';
 
 export const metadata: Metadata = {
   title: 'Akara — Awaken the Inner Sanatani',
@@ -64,16 +69,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
         <style dangerouslySetInnerHTML={{ __html: siteCss }} />
+        <script dangerouslySetInnerHTML={{ __html: AUTH_CONFIG }} />
       </head>
       <body>
         {children}
         <div className="grain" />
-        <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossOrigin="anonymous" />
-        <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossOrigin="anonymous" />
-        <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossOrigin="anonymous" />
-        <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js" crossOrigin="anonymous" />
+        <script src="/akara/vendor/react-18.3.1.production.min.js" />
+        <script src="/akara/vendor/react-dom-18.3.1.production.min.js" />
+        <script src="/akara/vendor/astronomy-engine-2.1.19.min.js" />
         {AKARA_SCRIPTS.map(src => (
-          <script key={src} type="text/babel" src={src} />
+          <script key={src} src={src} />
         ))}
       </body>
     </html>

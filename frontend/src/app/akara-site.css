@@ -179,3 +179,59 @@
     .nav-links .link-u,.tbtn .tb-ic{transition:none}
     .nav-links:hover .link-u{opacity:1;filter:none}
   }
+
+  /* ── boot veil (2026-10-13): shown inside #root until the app replaces it ──
+     Markup: BOOT_HTML in src/app/page.tsx. app.jsx re-renders it as a fading
+     overlay (.is-static.is-leaving) so the hand-off is a crossfade, not a cut.
+     Nothing appears for the first ~0.4s, so fast loads never see it. */
+  .ak-boot{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(60% 45% at 50% 46%,rgba(197,160,89,.07),transparent 70%),#030303;
+    color:var(--fg);text-align:center;padding:0 24px}
+  .ak-boot-in{display:flex;flex-direction:column;align-items:center;width:min(440px,100%)}
+  .ak-boot-kicker{margin:0;font-family:var(--mono);font-size:10px;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--ice-muted);opacity:0;animation:akbIn 1.2s var(--ease-out) .35s both}
+  .ak-boot-rule{display:flex;align-items:center;gap:14px;width:100%;margin:22px 0 18px}
+  .ak-boot-rule i{position:relative;flex:1;height:1px;overflow:hidden;transform:scaleX(0);
+    background:linear-gradient(90deg,transparent,rgba(197,160,89,.55));animation:akbDraw 1.6s var(--ease-out) .5s both}
+  .ak-boot-rule i:first-child{transform-origin:100% 50%}
+  .ak-boot-rule i:last-child{transform-origin:0 50%;background:linear-gradient(270deg,transparent,rgba(197,160,89,.55))}
+  .ak-boot-rule i::after{content:"";position:absolute;inset:0;width:40%;
+    background:linear-gradient(90deg,transparent,rgba(241,214,160,.95),transparent);
+    transform:translateX(-120%);animation:akbGlint 3.4s cubic-bezier(.45,.05,.35,1) 2.2s infinite}
+  .ak-boot-rule i:first-child::after{animation-direction:reverse}
+  .ak-boot-rule b{width:6px;height:6px;flex:none;background:var(--gold);transform:rotate(45deg);
+    opacity:0;animation:akbIn .9s var(--ease-out) .45s both,akbBindu 3.2s ease-in-out 1.6s infinite}
+  .ak-boot-mark{margin:0;font-family:var(--display);font-style:italic;font-weight:400;letter-spacing:-.02em;
+    font-size:clamp(46px,13vw,76px);line-height:1;opacity:0;animation:akbRise 1.4s var(--ease-out) .55s both}
+  .ak-boot-dek{display:grid;margin:20px 0 0;font-family:var(--display);font-style:italic;font-size:16px;
+    line-height:1.45;color:rgba(245,241,234,.58);min-height:2.9em}
+  .ak-boot-dek span{grid-area:1/1;opacity:0}
+  .ak-boot-dek span:nth-child(1){animation:akbIn 1.2s var(--ease-out) .9s both,akbOut .9s ease 9s forwards}
+  .ak-boot-dek span:nth-child(2){animation:akbIn 1.2s var(--ease-out) 9.7s both,akbOut .9s ease 24s forwards}
+  .ak-boot-dek span:nth-child(3){animation:akbIn 1.2s var(--ease-out) 24.7s both}
+  .ak-boot-foot{position:absolute;left:0;right:0;bottom:calc(28px + env(safe-area-inset-bottom));margin:0;
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.32em;text-transform:uppercase;
+    color:rgba(151,169,195,.5);opacity:0;animation:akbIn 1.6s var(--ease-out) 1.1s both}
+  @keyframes akbIn{from{opacity:0}to{opacity:1}}
+  @keyframes akbOut{to{opacity:0}}
+  @keyframes akbRise{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:none}}
+  @keyframes akbDraw{to{transform:scaleX(1)}}
+  @keyframes akbGlint{0%{transform:translateX(-120%)}55%,100%{transform:translateX(260%)}}
+  @keyframes akbBindu{0%,100%{box-shadow:0 0 0 rgba(225,169,95,0)}50%{box-shadow:0 0 14px rgba(225,169,95,.55)}}
+  /* hand-off copy rendered by app.jsx: final state, then fade away */
+  .ak-boot.is-static *{animation:none!important}
+  .ak-boot.is-static .ak-boot-kicker,.ak-boot.is-static .ak-boot-rule b,.ak-boot.is-static .ak-boot-mark,
+  .ak-boot.is-static .ak-boot-foot,.ak-boot.is-static .ak-boot-dek span:nth-child(1){opacity:1}
+  .ak-boot.is-static .ak-boot-rule i{transform:none}
+  .ak-boot.is-static .ak-boot-rule i::after{display:none}
+  .ak-boot.is-static{transition:opacity 1.1s var(--ease)}
+  .ak-boot.is-static .ak-boot-in{transition:transform 1.3s var(--ease-out),filter 1.1s var(--ease)}
+  .ak-boot.is-leaving{opacity:0;pointer-events:none}
+  .ak-boot.is-leaving .ak-boot-in{transform:translate3d(0,-10px,0);filter:blur(3px)}
+  @media (prefers-reduced-motion:reduce){
+    .ak-boot-rule i{animation:none;transform:none}
+    .ak-boot-rule i::after{display:none}
+    .ak-boot-rule b{animation:akbIn .9s ease .45s both}
+    .ak-boot-mark{animation:akbIn 1.2s ease .55s both}
+    .ak-boot.is-leaving .ak-boot-in{transform:none;filter:none}
+  }

@@ -183,10 +183,29 @@ function App(){
 // Guard for routes that load this layout without a #root mount point
 // (e.g. /auth/callback). Avoids a console error there.
 const _akRootEl = document.getElementById("root");
+// The shell ships a boot veil inside #root (src/app/page.tsx). Our first render
+// clears #root, so re-draw the veil on top and fade it out: a crossfade, not a cut.
+function AkBootVeil({ html }){
+  const [gone, setGone] = apS(false);
+  const ref = apR(null);
+  apE(()=>{
+    let r2 = 0;
+    const r1 = requestAnimationFrame(()=>{ r2 = requestAnimationFrame(()=>{
+      if (ref.current) ref.current.classList.add("is-leaving");
+    }); });
+    const t = setTimeout(()=> setGone(true), 1500);
+    return ()=>{ cancelAnimationFrame(r1); cancelAnimationFrame(r2); clearTimeout(t); };
+  },[]);
+  if (gone) return null;
+  return <div ref={ref} className="ak-boot is-static" aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }}/>;
+}
+
 if (_akRootEl) {
+  const _akBoot = _akRootEl.querySelector(".ak-boot");
+  const _akBootHtml = _akBoot ? _akBoot.innerHTML : null;
   let _akMount = _akRootEl;
   let _akRoot = ReactDOM.createRoot(_akMount);
-  _akRoot.render(<App/>);
+  _akRoot.render(<React.Fragment><App/>{_akBootHtml && <AkBootVeil html={_akBootHtml}/>}</React.Fragment>);
   // Watchdog: on deep links like /shop the Next.js shell can fail hydration and
   // client-render a fresh, empty #root AFTER we rendered into the old one —
   // the visitor then sees a blank page. If our mount node is detached or

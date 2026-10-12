@@ -5,6 +5,9 @@
 #   scripts/ship.sh --dry-run <files...>     show the plan, upload nothing
 #   scripts/ship.sh --verify  <files...>     only compare live bytes to local
 #
+# A .jsx in the list is compiled first and its public/akara/js/*.js is shipped with it
+# (browsers load the .js; the .jsx stays live for old pages still on Babel).
+#
 # Each file path must sit under frontend/public/; its S3 key is the path below that.
 # Steps: check.sh -> back up the live object -> upload with the live object's own
 # Content-Type/Cache-Control -> one CloudFront invalidation -> wait -> curl each URL
@@ -19,8 +22,15 @@ MODE=ship
 case "${1:-}" in --dry-run) MODE=dry; shift ;; --verify) MODE=verify; shift ;; esac
 [ $# -gt 0 ] || { sed -n '2,12p' "$0"; exit 2; }
 
-keys=()
+[ "$MODE" = verify ] || node scripts/build-jsx.mjs 2>/dev/null
+files=()
 for f in "$@"; do
+  files+=("$f")
+  case "$f" in frontend/public/akara/*.jsx) b=${f##*/}; files+=("frontend/public/akara/js/${b%.jsx}.js") ;; esac
+done
+IFS=$'\n' read -r -d '' -a files < <(printf '%s\n' "${files[@]}" | awk '!seen[$0]++' && printf '\0')
+keys=()
+for f in "${files[@]}"; do
   [ -f "$f" ] || { echo "no such file: $f"; exit 2; }
   case "$f" in frontend/public/*) ;; *) echo "refused: $f is not under frontend/public/"; exit 2 ;; esac
   key=${f#frontend/public/}
@@ -54,6 +64,8 @@ for key in "${keys[@]}"; do
   if [ "$meta" = NEW ]; then
     case "$key" in
       *.html) ctype="text/html; charset=utf-8"; cache="no-cache" ;;
+      akara/vendor/*.js) ctype="text/javascript; charset=utf-8"; cache="public, max-age=31536000, immutable" ;;
+      *.js) ctype="text/javascript; charset=utf-8"; cache="public, max-age=300" ;;
       *.json|*.xml) ctype=$([ "${key##*.}" = json ] && echo application/json || echo application/xml); cache="no-cache" ;;
       *) ctype="binary/octet-stream"; cache="public, max-age=300" ;;
     esac
