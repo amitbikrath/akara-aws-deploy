@@ -8,9 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "clean": "rm -rf .next out node_modules",
-    "export": "next build && next export",
-    "deploy": "npm run build && aws s3 sync out/ s3://akara-frontend-prod --delete"
+    "clean": "rm -rf .next out node_modules"
   },
   "dependencies": {
     "next": "^14.0.4",

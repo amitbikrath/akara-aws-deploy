@@ -9,20 +9,27 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf .next out node_modules",
-    "export": "next build && next export",
-    "deploy": "npm run build && aws s3 sync out/ s3://akara-admin-prod --delete"
+    "export": "next build && next export"
   },
   "dependencies": {
+    "@aws-amplify/ui-react": "^6.0.0",
+    "@hookform/resolvers": "^3.3.0",
+    "@radix-ui/react-icons": "^1.3.0",
+    "@radix-ui/react-select": "^2.1.0",
+    "@radix-ui/react-slider": "^1.2.0",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@radix-ui/react-tooltip": "^1.1.0",
+    "aws-amplify": "^6.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.0.0",
+    "framer-motion": "^11.18.2",
     "next": "^14.0.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "clsx": "^2.0.0",
-    "tailwind-merge": "^2.2.0",
-    "@aws-amplify/ui-react": "^6.0.0",
-    "aws-amplify": "^6.0.0",
-    "react-hook-form": "^7.48.0",
     "react-dropzone": "^14.2.0",
-    "@hookform/resolvers": "^3.3.0",
+    "react-easy-crop": "^6.0.2",
+    "react-hook-form": "^7.48.0",
+    "tailwind-merge": "^2.2.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
@@ -36,6 +43,7 @@
     "eslint-config-next": "^14.0.4",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.3.0"
   },
   "engines": {

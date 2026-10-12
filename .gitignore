@@ -112,3 +112,17 @@ jspm_packages/
 # Temporary folders
 tmp/
 temp/
+
+# Akara: media lives in S3 (akara-frontend-738983679688-us-east-1), not git
+*.webp
+*.png
+*.jpg
+*.jpeg
+*.mp3
+*.mp4
+*.mov
+*.webm
+# Build caches and editor backups
+*.tsbuildinfo
+*.bak
+__pycache__/
