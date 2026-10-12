@@ -93,7 +93,7 @@ function SpecimenCard({ item, index }){
   return (
     <a ref={ref}
       href={item.href}
-      onClick={(e)=>e.preventDefault()}
+      onClick={(e)=>{ e.preventDefault(); if(window.__openShop) window.__openShop({ aisle:item.aisle }); }}
       onMouseEnter={()=>setHover(true)}
       onMouseLeave={()=>setHover(false)}
       style={{
@@ -318,7 +318,7 @@ function ShopSection({ tweaks }){
             <span style={{ fontSize:16, fontWeight:400 }}>→</span>
           </button>
           <div className="mono" style={{ fontSize:9, letterSpacing:".32em", color:"rgba(197,160,89,.7)", textTransform:"uppercase" }}>
-            15 pieces · across 3 aisles · ships from Delhi
+            First drop live · three aisles · printed to order in India
           </div>
         </div>
 

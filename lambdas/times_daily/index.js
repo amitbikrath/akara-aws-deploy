@@ -12,12 +12,10 @@
 // SecureString (/akara/anthropic/key) instead of a plaintext env var, prompt
 // caching on the system block, and a dual EventBridge/HTTP handler shape.
 
-const { SSMClient, GetParameterCommand, PutParameterCommand } = require('@aws-sdk/client-ssm');
-const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
-const { CloudFrontClient, CreateInvalidationCommand } = require('@aws-sdk/client-cloudfront');
-const { Anthropic } = require('@anthropic-ai/sdk');
+const { createDesk } = require('@akara/editorial-desk');
 
 const { computePanchang, recurringObservances } = require('./panchang');
 const { pickTopic, DEITIES } = require('./topics');
@@ -38,10 +36,12 @@ const MODEL_PARAM = process.env.MODEL_PARAM || '/akara/times/article_model';
 const PROMPT_PARAM = process.env.PROMPT_PARAM || '/akara/times/article_prompt';
 const STATE_PARAM = process.env.STATE_PARAM || '/akara/times/topic_state';
 const DEFAULT_MODEL = process.env.DEFAULT_MODEL || 'claude-sonnet-4-6';
+const MAX_TOKENS = 6000;
 
-const ssm = new SSMClient({ region: REGION });
+// Shared Editorial Desk (Lambda layer): SSM params, Claude, S3 put, CloudFront.
+const desk = createDesk({ region: REGION, apiKeyParam: ANTHROPIC_KEY_PARAM, distributionId: DISTRIBUTION_ID });
+
 const s3 = new S3Client({ region: REGION });
-const cf = new CloudFrontClient({ region: 'us-east-1' });
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }));
 
 const DEFAULT_SYSTEM_PROMPT = `You are the editorial desk of the Akara Times — a devotional broadsheet published from Pune in the spirit of Sanatana Dharma. Akara also crafts devotional wallpapers, music, and art. Your readers are seekers and devotees worldwide.
@@ -108,19 +108,8 @@ const ARTICLE_SCHEMA = {
   additionalProperties: false,
 };
 
-async function getParam(name, { decrypt = false, fallback = null } = {}) {
-  if (!name) return fallback;
-  try {
-    const r = await ssm.send(new GetParameterCommand({ Name: name, WithDecryption: decrypt }));
-    return r.Parameter?.Value ?? fallback;
-  } catch (e) {
-    if (e.name === 'ParameterNotFound') return fallback;
-    throw e;
-  }
-}
-async function putParam(name, value) {
-  await ssm.send(new PutParameterCommand({ Name: name, Value: value, Type: 'String', Overwrite: true }));
-}
+const getParam = desk.getParam;
+const putParam = desk.putParam;
 
 function istNow(base) {
   // Shift to IST so "today" and weekday reflect the Indian audience.
@@ -131,56 +120,14 @@ function istDayKey(d) {
   return new Date(new Date(d).getTime() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
-function extractJson(text) {
-  if (!text) throw new Error('empty model output');
-  let s = text.trim();
-  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fence) s = fence[1].trim();
-  const start = s.indexOf('{');
-  const end = s.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new Error('no JSON object in model output');
-  return JSON.parse(s.slice(start, end + 1));
-}
-
-async function generateArticle(anthropic, { systemPrompt, model, topic }) {
-  const userTurn = `${topic.brief}\n\nSuggested keywords to weave in naturally: ${(topic.keywords || []).join(', ')}.\n\nReturn the single JSON object now.`;
-
-  const baseReq = {
-    model,
-    max_tokens: 6000,
-    system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-    messages: [{ role: 'user', content: userTurn }],
-  };
-
-  // Web-search angles (festival/trend): give the model the search tool and parse
-  // the JSON it returns. Other angles: use structured output for reliability.
-  let response;
-  if (topic.useWebSearch) {
-    try {
-      response = await anthropic.messages.create({
-        ...baseReq,
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
-      });
-    } catch (e) {
-      console.warn('web_search unavailable, retrying without tools:', e.message);
-      response = await anthropic.messages.create(baseReq);
-    }
-  } else {
-    try {
-      response = await anthropic.messages.create({
-        ...baseReq,
-        output_config: { format: { type: 'json_schema', schema: ARTICLE_SCHEMA } },
-      });
-    } catch (e) {
-      console.warn('structured output unavailable, retrying plain:', e.message);
-      response = await anthropic.messages.create(baseReq);
-    }
-  }
-
-  const textBlocks = (response.content || []).filter((b) => b.type === 'text').map((b) => b.text);
-  const text = textBlocks.join('\n').trim();
-  const article = extractJson(text);
-  return { article, usage: response.usage || {} };
+// Web-search angles (festival/trend) get the search tool; other angles use
+// structured output. The Desk retries plain if the API rejects either.
+async function generateArticle({ systemPrompt, model, topic }) {
+  const user = `${topic.brief}\n\nSuggested keywords to weave in naturally: ${(topic.keywords || []).join(', ')}.\n\nReturn the single JSON object now.`;
+  return desk.writeArticle({
+    model, system: systemPrompt, user, schema: ARTICLE_SCHEMA, maxTokens: MAX_TOKENS,
+    webSearch: !!topic.useWebSearch,
+  });
 }
 
 function sanitizeArticle(raw, topic, date) {
@@ -255,23 +202,11 @@ function feedEntry(a) {
 }
 
 async function putObject(bucket, key, body, contentType, cacheControl) {
-  await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType, CacheControl: cacheControl }));
+  await desk.publish({ bucket, key, body, contentType, cacheControl });
 }
 
 async function invalidate(paths) {
-  if (!DISTRIBUTION_ID) {
-    console.warn('no FRONTEND_DISTRIBUTION_ID — skipping CloudFront invalidation');
-    return;
-  }
-  await cf.send(
-    new CreateInvalidationCommand({
-      DistributionId: DISTRIBUTION_ID,
-      InvalidationBatch: {
-        CallerReference: `times-${Date.now()}`,
-        Paths: { Quantity: paths.length, Items: paths },
-      },
-    })
-  );
+  await desk.invalidate(paths, { callerReference: `times-${Date.now()}` });
 }
 
 async function run(opts = {}) {
@@ -280,13 +215,11 @@ async function run(opts = {}) {
   const date = istNow(opts.date);
   const weekday = date.getUTCDay(); // IST weekday (date already shifted)
 
-  const [apiKey, model, systemPrompt, stateRaw] = await Promise.all([
-    getParam(ANTHROPIC_KEY_PARAM, { decrypt: true }),
+  const [model, systemPrompt, stateRaw] = await Promise.all([
     getParam(MODEL_PARAM, { fallback: DEFAULT_MODEL }),
     getParam(PROMPT_PARAM, { fallback: DEFAULT_SYSTEM_PROMPT }),
     getParam(STATE_PARAM, { fallback: '{}' }),
   ]);
-  if (!apiKey) throw new Error(`Anthropic key not found at SSM ${ANTHROPIC_KEY_PARAM}`);
   let state = {};
   try { state = JSON.parse(stateRaw || '{}'); } catch { state = {}; }
 
@@ -303,8 +236,7 @@ async function run(opts = {}) {
     return { ok: true, skipped: true, slug: existing[0].slug, date: istDayKey(baseInstant) };
   }
 
-  const anthropic = new Anthropic({ apiKey });
-  const { article: raw, usage } = await generateArticle(anthropic, { systemPrompt, model, topic });
+  const { article: raw, usage } = await generateArticle({ systemPrompt, model, topic });
   const article = sanitizeArticle(raw, topic, date);
   article.panchang = {
     tithi: panchang.tithi, paksha: panchang.paksha, nakshatra: panchang.nakshatra,
@@ -334,6 +266,9 @@ async function run(opts = {}) {
   const sitemap = render.sitemapXml([
     { loc: `${SITE}/`, changefreq: 'daily', priority: '1.0' },
     { loc: `${SITE}/times`, lastmod: article.datePublished, changefreq: 'daily', priority: '0.9' },
+    { loc: `${SITE}/ganpati`, changefreq: 'weekly', priority: '0.8' },
+    { loc: `${SITE}/vishwaroopa`, changefreq: 'weekly', priority: '0.8' },
+    { loc: `${SITE}/anantashayana`, changefreq: 'weekly', priority: '0.8' },
     ...feed.map((a) => ({ loc: `${SITE}/times/${a.slug}`, lastmod: a.datePublished, changefreq: 'monthly', priority: '0.7' })),
   ]);
   const robots = render.robotsTxt(SITE);

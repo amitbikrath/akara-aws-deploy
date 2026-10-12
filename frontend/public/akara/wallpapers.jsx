@@ -44,12 +44,7 @@ function WpTile({ w, idx, featured }){
         transform: hover?"scale(1.08)":"scale(1.02)",
         transition:"transform 1.2s var(--ease-out)",
       }}>
-        {(() => {
-          const signedIn = (typeof akCurrentUser === "function") && !!akCurrentUser();
-          const src = signedIn ? (w.originalUrl || w.fullUrl || w.imageUrl) : (w.previewUrl || w.imageUrl);
-          if (!src) return null;
-          return <ProtectedImage src={src} alt={w.title} fit="cover" watermark={false}/>;
-        })()}
+        <AkSlideTile w={w}/>
       </div>
       {/* ornamental linework */}
       <svg viewBox="-100 -100 200 200" style={{ position:"absolute", inset:0, width:"100%", height:"100%", opacity:0.22, mixBlendMode:"overlay", pointerEvents:"none" }}>
@@ -161,7 +156,16 @@ function WallpapersSection({ tweaks }){
                   ✦ &nbsp; Enter the Gallery &nbsp; →
                 </span>
               </button>
-              <MagButton>Sign up for Vol. 02</MagButton>
+              <a href="/darshan" data-track="darshan_entry_gallery"
+                style={{
+                  padding:"16px 24px", border:"1px solid rgba(197,160,89,.55)", borderRadius:999, color:"var(--gold)",
+                  fontFamily:"var(--mono)", fontSize:10, letterSpacing:".3em", textTransform:"uppercase", textDecoration:"none",
+                  display:"inline-flex", alignItems:"center", transition:"border-color 1s var(--ease-out), background 1s var(--ease-out)",
+                }}
+                onMouseEnter={(e)=>{ e.currentTarget.style.background="rgba(197,160,89,.1)"; e.currentTarget.style.borderColor="var(--gold)"; }}
+                onMouseLeave={(e)=>{ e.currentTarget.style.background="transparent"; e.currentTarget.style.borderColor="rgba(197,160,89,.55)"; }}>
+                Enter the Darśana &nbsp; →
+              </a>
             </div>
           </div>
         </div>

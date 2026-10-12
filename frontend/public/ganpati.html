@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ganpati · Akara — an online puja for Ganesh Chaturthi 2026</title>
+<meta name="description" content="Light a diya, ring the bell, offer a modak and recite the Ganesha stotras verse by verse. A quiet online puja from Akara, Pune, for Ganesh Chaturthi, 14–25 September 2026.">
+<link rel="canonical" href="https://www.akara.studio/ganpati">
+<meta property="og:title" content="Ganpati · Akara — online puja, Ganesh Chaturthi 2026">
+<meta property="og:description" content="A curtain of Ganesha hymns hangs under the mandap. Part it for darshan. Light a diya. Offer a modak.">
+<meta property="og:image" content="https://www.akara.studio/akara/ganesh/img/og.jpg">
+<meta property="og:url" content="https://www.akara.studio/ganpati">
+<meta name="theme-color" content="#e9dfc8">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=JetBrains+Mono:wght@300;400&family=Rozha+One&family=Tiro+Devanagari+Sanskrit:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#e9dfc8; --ink:#2a1f14; --ink-2:#4a3728; --ink-3:#7a6650;
+    --gold:#b8892b; --kumkum:#b3311f;
+    --display:'Instrument Serif',Georgia,serif; --cal:'Cormorant Garamond',Georgia,serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+    --dev:'Tiro Devanagari Sanskrit','Noto Serif Devanagari',serif; --devcal:'Rozha One','Tiro Devanagari Sanskrit',serif;
+    --ease:cubic-bezier(.22,.61,.36,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper) url(/akara/ganesh/img/paper.jpg) center/640px repeat;color:var(--ink);font-family:var(--cal);font-weight:400;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  .mono{font-family:var(--mono);letter-spacing:.18em;text-transform:uppercase;font-size:10px;color:var(--ink-3)}
+  .dev{font-family:var(--dev)}
+
+  header{position:absolute;inset:0 0 auto 0;z-index:40;display:flex;align-items:center;justify-content:space-between;padding:24px 40px}
+  header .brand{font-family:var(--mono);font-size:13px;letter-spacing:.06em;color:var(--ink)}
+  header nav{display:flex;gap:26px;margin-left:40px}
+  header nav a{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--ink-3)} header nav a:hover{color:var(--ink)}
+  .btn{font-family:var(--mono);font-size:11px;letter-spacing:.16em;background:var(--ink);color:#efe6d3;padding:11px 20px;border:0;border-radius:4px;cursor:pointer;transition:transform .5s var(--ease),background .5s}
+  .btn:hover{background:#3a2a1a;transform:translateY(-1px)}
+  /* Sarvam-style switches: tonal pill track, scalloped gold knob carrying a live icon */
+  .tog{display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;cursor:pointer;color:var(--ink)}
+  .tog .lbl{font-family:var(--cal);font-style:italic;font-size:16px;color:var(--ink-2);transition:color .5s} .tog[aria-checked="true"] .lbl{color:var(--ink)}
+  /* etched into the paper: a hairline ink groove with a light lip below it, no fill */
+  .tog .track{position:relative;display:block;width:44px;height:24px;border-radius:999px;background:none;box-shadow:inset 0 0 0 1px rgba(42,31,20,.32),inset 0 1px 2px rgba(42,31,20,.18),0 1px 0 rgba(255,250,240,.75);transition:box-shadow .7s var(--ease)}
+  .tog[aria-checked="true"] .track{box-shadow:inset 0 0 0 1px rgba(42,31,20,.6),inset 0 1px 2px rgba(42,31,20,.22),0 1px 0 rgba(255,250,240,.75)}
+  .tog .knob{position:absolute;left:1px;top:1px;width:22px;height:22px;transition:transform .7s var(--ease)} .tog[aria-checked="true"] .knob{transform:translateX(20px)}
+  .tog .knob svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .tog .knob .disc{fill:#ece2cc;stroke:rgba(42,31,20,.45);stroke-width:.6;filter:drop-shadow(0 1px 1px rgba(60,40,20,.25))}
+  .tog .drape{transform-origin:center;transform-box:fill-box;transition:transform .8s var(--ease)} .tog[aria-checked="true"] .drape.l{transform:translateX(-4px) scaleX(.55)} .tog[aria-checked="true"] .drape.r{transform:translateX(4px) scaleX(.55)}
+  .tog .mari{transform-origin:14px 14px} .tog[aria-checked="true"] .mari{animation:spin 9s linear infinite} @keyframes spin{to{transform:rotate(360deg)}}
+  .rule{position:absolute;left:32px;right:32px;top:12px;z-index:40;display:flex;align-items:center;gap:16px}
+  .rule span.l{flex:1;height:1px;background:var(--ink);opacity:.3}
+
+  #stage{position:relative;height:100vh;min-height:720px;overflow:hidden}
+  #rig{position:absolute;left:50%;top:4vh;width:min(38vw,640px);min-width:460px;transform:translateX(-50%);height:83vh}
+  #roof{position:absolute;left:0;top:0;width:100%;z-index:30;pointer-events:none;user-select:none;filter:drop-shadow(0 18px 22px rgba(60,40,20,.22));transition:opacity 1s var(--ease)}
+  #roof img,#roof video{display:block;width:100%;height:auto}
+  #roof .strip{position:absolute;display:block;width:auto;height:auto}
+  #hang{position:absolute;left:6%;right:6%;top:var(--eave,26%);bottom:0;z-index:20}
+  #curtain{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
+  #shadow{position:absolute;left:6%;right:-95%;top:4%;bottom:-4%;z-index:5;pointer-events:none;background:linear-gradient(100deg,rgba(60,40,20,.20),rgba(60,40,20,.06) 60%,transparent);transform:skewX(-28deg);filter:blur(28px);transition:opacity 1.4s var(--ease)}
+  #altar{position:absolute;left:0;right:0;top:calc(var(--eave,26%) + 2%);bottom:0;z-index:10;display:flex;align-items:flex-end;justify-content:center;pointer-events:none}
+  #murti{position:relative;width:62%;height:92%;transform-origin:50% 100%;transition:opacity 1.6s var(--ease),transform 1.6s var(--ease);opacity:.42;transform:translateY(2%) scale(.96)}
+  #murti img{position:absolute;left:0;right:0;bottom:0;width:100%;height:100%;object-fit:contain;object-position:50% 100%;opacity:0;transition:opacity 1.2s var(--ease)} #murti img.cur{opacity:1}
+  #stage.darshan #murti{opacity:1;transform:none} #stage.darshan #shadow{opacity:.55}
+  .item{position:absolute;bottom:1.5%;width:11%;pointer-events:none;cursor:pointer;opacity:0;transform:translateY(6%) scale(.92);transition:opacity 1.2s var(--ease),transform 1.4s var(--ease);filter:drop-shadow(0 10px 10px rgba(60,40,20,.28))} .item img{width:100%;display:block}
+  #stage.darshan .item{opacity:1;transform:none;pointer-events:auto;transition-delay:.5s} #stage.darshan .item:hover{transform:translateY(-3px)}
+  #diya{left:21%} #dhoop{right:21%} #modak{left:50%;transform:translateX(-50%) translateY(6%) scale(.92);width:17%;bottom:0} #stage.darshan #modak{transform:translateX(-50%)} #stage.darshan #modak:hover{transform:translateX(-50%) translateY(-3px)}
+  #modak.offered{animation:offer 1.6s var(--ease) forwards} @keyframes offer{to{transform:translateX(-50%) translateY(-34%) scale(.86)}}
+  /* the bell is not on the page at rest: on "Bell" it fades in at the roof's bottom centre, swings, and fades out */
+  #bellwrap{position:absolute;left:50%;top:calc(var(--eave,26%) - 4.5%);width:5.2%;min-width:30px;margin-left:-2.6%;z-index:35;pointer-events:none;opacity:0;transition:opacity 1.7s var(--ease);filter:drop-shadow(0 6px 6px rgba(60,40,20,.3))}
+  #bellwrap.show{opacity:1;transition-duration:.3s}
+  #bellwrap svg{display:block;transform-origin:50% 0}
+  #bellwrap.ring svg{animation:ring 1.2s var(--ease)} @keyframes ring{15%{transform:rotate(14deg)}40%{transform:rotate(-11deg)}65%{transform:rotate(6deg)}85%{transform:rotate(-3deg)}}
+  #altar-fx{position:absolute;inset:0;width:100%;height:100%;z-index:25;pointer-events:none}
+
+  /* temple cards, one each side like the reference */
+  /* Sarvam "Indus" medallion: a filled scalloped circle in one hue, rings radiating inward, the content centred inside */
+  .temple{position:absolute;top:26vh;z-index:40;width:150px;height:186px;cursor:pointer;border:0;padding:0;background:none;transition:transform .8s var(--ease)}
+  .temple:hover{transform:translateY(-4px)} .temple:hover .med{transform:rotate(6deg)}
+  .temple .med{position:absolute;left:0;top:0;width:150px;height:150px;transition:transform 1.2s var(--ease)}
+  .temple .glow{position:absolute;left:-14px;top:-14px;width:178px;height:178px;border-radius:50%;background:radial-gradient(circle,rgba(214,176,105,.28),rgba(214,176,105,0) 70%);filter:blur(12px);pointer-events:none}
+  .temple img{position:absolute;left:0;top:0;width:150px;height:150px;padding:30px;box-sizing:border-box;object-fit:contain;object-position:50% 50%;filter:drop-shadow(0 3px 5px rgba(60,40,20,.18))}
+  .temple .nm{position:absolute;left:0;right:0;top:156px;font-family:var(--cal);font-style:italic;font-size:16px;color:var(--ink);text-align:center;line-height:1.2}
+  .temple .nm:before,.temple .nm:after{content:"✦";font-style:normal;font-size:8px;color:var(--gold);vertical-align:2px;margin:0 8px}
+  .temple .hint{position:absolute;left:0;right:0;top:-22px;font-family:var(--mono);font-size:9px;letter-spacing:.24em;color:var(--ink-3);text-align:center;text-transform:uppercase}
+  .temple.l{left:3.4vw} .temple.r{right:3.4vw}
+
+  /* ── the bottom row: Offerings (centre) and Music (right), etched into the paper. No fills, no boxes.
+        One open at a time; the closed one is a small etched circle holding only its icon. */
+  /* one centred row under the rig: [Offerings][Music]. The open one takes the centre; the closed one slides beside it as a circle. */
+  #dock{position:absolute;left:50%;bottom:6.8vh;transform:translateX(-50%);height:44px;z-index:45;display:flex;align-items:center;gap:14px;width:max-content;max-width:min(40vw + 60px,700px)}
+  .grp{position:relative;display:flex;align-items:center;height:44px;min-width:0}
+  /* the selected shade: a translucent ochre wash with a ragged, slightly blurred edge (SVG #wash: noise-displaced), pigment pooling faintly at the rim. Sits IN the paper; no lip, no lift. */
+  .wash::before,#stotras button::before{content:"";position:absolute;inset:-1px -3px;border-radius:999px;background:rgba(214,178,108,.34);box-shadow:inset 0 0 0 1.5px rgba(184,137,43,.13),inset 0 0 12px rgba(184,137,43,.12);filter:url(#wash);pointer-events:none;z-index:-1;opacity:0;transition:opacity .6s var(--ease)}
+  .grp.open.wash::before,#stotras button.on::before,#stotras button:hover::before{opacity:1}
+  #gMusic.open{max-width:min(40vw,640px)}
+  .grp .tab{display:flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;background:none;border:0;padding:0;cursor:pointer;color:var(--ink);border-radius:50%;box-shadow:inset 0 0 0 1px rgba(42,31,20,.34),inset 0 1px 2px rgba(42,31,20,.16),0 1px 0 rgba(255,250,240,.8);transition:box-shadow .6s var(--ease),transform .6s var(--ease)}
+  .grp .tab:hover{box-shadow:inset 0 0 0 1px rgba(42,31,20,.6),inset 0 1px 2px rgba(42,31,20,.2),0 1px 0 rgba(255,250,240,.8)}
+  .grp.open .tab{box-shadow:none;width:34px;flex-basis:34px;cursor:default}
+  .grp.open{border-radius:999px;padding-left:6px}
+  .grp .tab .ic{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-family:var(--devcal);font-size:20px;line-height:1;color:var(--kumkum)} .grp .tab .ic svg{width:20px;height:20px}
+  .grp .tab .lbl,.grp .tab .cue{display:none}
+  .grp .body{display:grid;grid-template-columns:0fr;opacity:0;transition:grid-template-columns .9s var(--ease),opacity .5s var(--ease)} .grp.open .body{grid-template-columns:1fr;opacity:1;transition:grid-template-columns .9s var(--ease),opacity .7s var(--ease) .25s}
+  .grp .body>.in{overflow:hidden;min-width:0;display:flex;align-items:center;gap:6px;white-space:nowrap;height:44px} #gMusic .body>.in{width:100%}
+  .grp.open .body>.in{padding-right:12px}
+  .etch{position:relative}
+  #gOffer .sep{width:1px;height:22px;background:rgba(42,31,20,.22);box-shadow:1px 0 0 rgba(255,250,240,.8);margin:0 8px;flex:0 0 1px}
+  #gOffer .tog{gap:8px} #gOffer .tog .lbl{font-size:15px}
+  /* Rupa: prev/next through the murti forms, Indic petal chevrons */
+  #rupa{display:flex;align-items:center;gap:4px} #rupa .lbl{font-family:var(--cal);font-style:italic;font-size:15px;color:var(--ink-2);margin:0 2px}
+  #rupa button{background:none;border:0;padding:4px;cursor:pointer;width:30px;height:30px;border-radius:50%;transition:transform .4s} #rupa button:hover{transform:translateY(-1px)} #rupa button svg{width:100%;height:100%;display:block}
+  /* verse panel, bottom-left, on the bare paper as before */
+  #verse{position:absolute;left:3.4vw;bottom:5vh;z-index:40;width:min(30vw,440px);min-width:320px}
+  #stotras{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 14px}
+  #stotras button{position:relative;font-family:var(--cal);font-style:italic;font-size:15px;background:none;border:0;padding:4px 12px;color:var(--ink-3);cursor:pointer;border-radius:999px;transition:color .5s;z-index:0}   /* v13: z-index:0 gives the wash (z-index:-1) a stacking context so it paints under the text, not under the page */
+  #stotras button.on,#stotras button:hover{color:var(--ink)}
+  #vtitle{font-family:var(--devcal);font-weight:400;font-size:clamp(34px,3.2vw,48px);line-height:1.15;color:var(--ink);margin:0 0 2px;letter-spacing:.005em}
+  #vtitle .dash{display:inline-block;width:.7em;height:.06em;background:var(--ink);vertical-align:middle;margin:0 0 .12em .12em}
+  #vsub{font-family:var(--cal);font-style:italic;font-size:17px;color:var(--ink-3);margin:0 0 16px}
+  #vdev{font-family:var(--devcal);font-size:clamp(19px,1.55vw,24px);line-height:1.7;color:var(--kumkum);margin:0 0 10px;white-space:pre-line;transition:opacity .7s var(--ease)}
+  #viast{font-family:var(--cal);font-style:italic;font-size:17px;line-height:1.45;color:var(--ink-2);margin:0 0 8px;white-space:pre-line;transition:opacity .7s var(--ease)}
+  #ven{font-family:var(--cal);font-size:15px;line-height:1.5;color:var(--ink-2);margin:0 0 14px;transition:opacity .7s var(--ease)}
+  #vnav{display:flex;align-items:center;gap:14px}
+  #vnav button{font-family:var(--cal);font-size:18px;background:none;border:1px solid rgba(42,31,20,.35);color:var(--ink);width:34px;height:30px;border-radius:3px;cursor:pointer;transition:background .4s} #vnav button:hover{background:rgba(42,31,20,.08)}
+  #vnav .n{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--ink-3)} #vnav .auto{font-family:var(--cal);font-style:italic;font-size:15px;color:var(--ink-3);cursor:pointer;border-bottom:1px solid transparent} #vnav .auto.on{color:var(--ink);border-bottom-color:var(--gold)}
+  .fade{opacity:0}
+
+  /* player: one etched row — lotus · title · waveform · ‹ Play › · time · list */
+  #player{position:relative;display:flex;align-items:center;gap:8px;height:44px;min-width:0}
+  #player .mandala{display:none}
+  #player .k{display:flex;align-items:center;gap:6px} #player .k .lotus{width:14px;height:14px} #player .k .mono:first-child span{display:none}
+  #ptitle{font-family:var(--cal);font-style:italic;font-size:15px;line-height:1.2;color:var(--ink);margin:0;flex:1 1 40px;min-width:40px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #partist{display:none}
+  #pwave{display:block;width:56px;height:26px;margin:0;cursor:pointer;flex:0 0 56px}
+  #pbar{display:none}
+  /* v13: scrub slider — a hairline groove in the paper, played part in ink, a small gold knob */
+  #pseek{-webkit-appearance:none;appearance:none;flex:0 0 96px;width:96px;height:18px;margin:0 2px;background:none;cursor:pointer;--k:0%}
+  #pseek::-webkit-slider-runnable-track{height:2px;border-radius:1px;background:linear-gradient(90deg,rgba(42,31,20,.62) var(--k),rgba(42,31,20,.18) var(--k));box-shadow:0 1px 0 rgba(255,250,240,.8)}
+  #pseek::-moz-range-track{height:2px;border-radius:1px;background:rgba(42,31,20,.18)} #pseek::-moz-range-progress{height:2px;background:rgba(42,31,20,.62)}
+  #pseek::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;margin-top:-4.5px;border-radius:50%;background:var(--gold);box-shadow:inset 0 0 0 1px rgba(42,31,20,.45),0 1px 0 rgba(255,250,240,.8);transition:transform .4s var(--ease)} #pseek:hover::-webkit-slider-thumb,#pseek:active::-webkit-slider-thumb{transform:scale(1.25)}
+  #pseek::-moz-range-thumb{width:11px;height:11px;border:0;border-radius:50%;background:var(--gold);box-shadow:inset 0 0 0 1px rgba(42,31,20,.45)}
+  #pseek:focus-visible{outline:1px solid rgba(184,137,43,.6);outline-offset:2px}
+  #pctl{display:flex;align-items:center;gap:4px}
+  #pctl button,#plistBtn,.pico{background:none;border:0;color:var(--ink);width:30px;height:30px;padding:6px;border-radius:50%;cursor:pointer;transition:transform .4s,background .4s;flex:0 0 30px} #pctl button svg,#plistBtn svg,.pico svg{width:100%;height:100%;display:block} #pctl button:hover,#plistBtn:hover,.pico:hover{transform:translateY(-1px)}
+  /* v12: per-track link + download (download only for Akara's own songs; YouTube tracks get their watch link) */
+  .pico{display:inline-flex;box-sizing:border-box;text-decoration:none} .pico[hidden]{display:none} #pdl{box-shadow:inset 0 0 0 1px rgba(42,31,20,.4),0 1px 0 rgba(255,250,240,.8)}
+  #pctl button.play{box-shadow:inset 0 0 0 1px rgba(42,31,20,.4),0 1px 0 rgba(255,250,240,.8)} #pplay .i-pause{display:none} #pplay.playing .i-pause{display:block} #pplay.playing .i-play{display:none}
+  #pctl .t{margin-left:4px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--ink-3)}
+  #plist{position:absolute;right:0;bottom:52px;width:300px;max-height:170px;overflow:auto;display:none;padding:10px 12px;border-top:1px solid rgba(42,31,20,.22);border-bottom:1px solid rgba(42,31,20,.22);background:rgba(233,223,200,.92)} #plist.open{display:block}
+  #plist div{font-family:var(--cal);font-size:14px;color:var(--ink-2);padding:3px 0;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #plist div.on{color:var(--kumkum)} #plist div:hover{color:var(--ink)}
+  #ytwrap{position:absolute;width:2px;height:2px;left:-9999px;top:0;opacity:0;pointer-events:none;overflow:hidden}
+
+  /* v12: first-visit tour — an etched ring around each control and a paper note beside it. No dim, no overlay; the page stays live. */
+  #tour{position:fixed;inset:0;z-index:80;pointer-events:none;display:none} #tour.on{display:block}
+  #tourRing{position:fixed;border-radius:999px;pointer-events:none;opacity:0;box-shadow:inset 0 0 0 1.5px rgba(42,31,20,.55),0 0 0 1px rgba(255,250,240,.85),0 0 0 8px rgba(214,178,108,.2);transition:left .9s var(--ease),top .9s var(--ease),width .9s var(--ease),height .9s var(--ease),border-radius .9s var(--ease),opacity .7s var(--ease);animation:tourPulse 2.8s ease-in-out infinite}
+  @keyframes tourPulse{0%,100%{box-shadow:inset 0 0 0 1.5px rgba(42,31,20,.55),0 0 0 1px rgba(255,250,240,.85),0 0 0 8px rgba(214,178,108,.2)}50%{box-shadow:inset 0 0 0 1.5px rgba(42,31,20,.55),0 0 0 1px rgba(255,250,240,.85),0 0 0 16px rgba(214,178,108,.07)}}
+  #tourCard{position:fixed;width:min(88vw,300px);box-sizing:border-box;padding:14px 16px 12px;background:rgba(233,223,200,.97);border-top:1px solid rgba(42,31,20,.28);border-bottom:1px solid rgba(42,31,20,.28);box-shadow:0 18px 40px -20px rgba(42,31,20,.5);opacity:0;transform:translateY(8px);transition:opacity .7s var(--ease),transform .7s var(--ease),left .9s var(--ease),top .9s var(--ease);pointer-events:none}
+  #tour.on.show #tourCard{opacity:1;transform:none;pointer-events:auto} #tour.on.show #tourRing{opacity:1}
+  #tourCard .k{font-family:var(--mono);font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-3);margin:0 0 6px}
+  #tourCard .h{font-family:var(--devcal);font-weight:400;font-size:22px;line-height:1.15;color:var(--ink);margin:0 0 4px}
+  #tourCard .p{font-family:var(--cal);font-style:italic;font-size:16px;line-height:1.4;color:var(--ink-2);margin:0 0 12px}
+  #tourCard .row{display:flex;align-items:center;gap:16px}
+  #tourCard .row button{font-family:var(--cal);font-style:italic;font-size:15px;background:none;border:0;padding:4px 0;cursor:pointer;color:var(--ink-3);border-bottom:1px solid transparent;transition:color .4s,border-color .4s} #tourCard .row button:hover{color:var(--ink)}
+  #tourCard .row button.next{color:var(--ink);border-bottom-color:var(--gold);margin-left:auto}
+  #help{position:absolute;right:40px;top:22px;z-index:41;width:30px;height:30px;border-radius:50%;background:none;border:0;padding:0;cursor:pointer;font-family:var(--cal);font-style:italic;font-size:17px;color:var(--ink-2);box-shadow:inset 0 0 0 1px rgba(42,31,20,.34),0 1px 0 rgba(255,250,240,.8);transition:box-shadow .6s var(--ease),color .4s} #help:hover{color:var(--ink);box-shadow:inset 0 0 0 1px rgba(42,31,20,.6),0 1px 0 rgba(255,250,240,.8)}
+  /* v12: hover tip (fine pointers only) — the button's own title, set in the page's type instead of the browser's grey box */
+  #tip{position:fixed;z-index:82;font-family:var(--cal);font-style:italic;font-size:14px;color:var(--ink);background:rgba(233,223,200,.97);padding:4px 10px;border-top:1px solid rgba(42,31,20,.28);border-bottom:1px solid rgba(42,31,20,.28);pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .45s var(--ease),transform .45s var(--ease);white-space:nowrap} #tip.on{opacity:1;transform:none}
+  #tray{display:flex;gap:2px}
+  #tray button{width:34px;height:34px;padding:5px;background:transparent;border:0;cursor:pointer;border-radius:50%;transition:background .5s var(--ease),transform .5s var(--ease)} #tray button svg{width:100%;height:100%;display:block}
+  #tray button:hover{transform:translateY(-1px)} #tray button.on{background:rgba(255,250,240,.7);box-shadow:inset 0 0 0 1px rgba(42,31,20,.35)}
+  #veil{position:absolute;inset:0;z-index:50;background:var(--paper) url(/akara/ganesh/img/paper.jpg) center/640px repeat;opacity:0;pointer-events:none;transition:opacity 1s var(--ease)} #veil.on{opacity:1}
+
+  footer{padding:5vh 6vw 7vh;border-top:1px solid rgba(42,31,20,.25);display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;font-family:var(--cal);font-style:italic;font-size:15px;color:var(--ink-3)}
+
+  @media (prefers-reduced-motion:reduce){ *{transition-duration:.01ms!important;animation:none!important} }
+  @media (max-height:1000px) and (min-width:901px){ .temple{top:15vh} }
+  /* middle shapes: short or narrow desktops / tablets */
+  @media (max-width:1280px) and (min-width:901px), (max-height:880px) and (min-width:901px){
+    #rig{width:min(36vw,560px);min-width:400px}
+    .temple{top:14vh;width:120px;height:150px} .temple .med{width:120px;height:120px} .temple img{width:120px;height:120px;padding:24px} .temple .glow{left:-10px;top:-10px;width:140px;height:140px} .temple .nm{top:126px;font-size:14px}
+    #vtitle{font-size:clamp(28px,2.6vw,38px)} #vdev{font-size:clamp(16px,1.3vw,20px);line-height:1.6} #viast{font-size:15px} #ven{font-size:13px;line-height:1.45} #vsub{font-size:15px;margin-bottom:10px} #stotras{margin-bottom:8px} #stotras button{font-size:14px;padding:3px 10px}
+    #verse{width:min(27vw,380px);min-width:260px;bottom:4vh}
+    #gOffer .tog .lbl{display:none} #ptitle{max-width:160px} #pwave{display:none} #pseek{flex-basis:80px;width:80px}
+  }
+  /* measured fit: when the verse panel would still touch the medallion, drop the meaning, then the roman line */
+  body.fit1 #ven{display:none} body.fit2 #viast{display:none} body.fit3 #vsub{display:none}
+  @media (max-width:900px){
+    header{padding:16px 16px} header nav{display:none} #help{right:16px;top:14px} .rule{display:none} .btn{padding:9px 12px;font-size:10px;letter-spacing:.1em}
+    .tog .track{width:58px;height:30px} .tog .knob{width:24px;height:24px} .tog[aria-checked="true"] .knob{transform:translateX(28px)}
+    #stage{min-height:0;height:auto;padding-bottom:16px}
+    #rig{position:relative;left:auto;top:auto;transform:none;width:78vw;min-width:0;margin:10vh auto 0;height:70svh}
+    #shadow{display:none} #bellwrap{min-width:24px}
+    .temple{width:64px;height:84px;top:calc(10vh + 4px)} .temple .med{width:64px;height:64px} .temple img{width:64px;height:64px;padding:12px} .temple .glow{left:-6px;top:-6px;width:76px;height:76px} .temple .nm{font-size:10px;top:68px} .temple .nm:before,.temple .nm:after{display:none} .temple .hint{display:none} .temple.l{left:2.5vw} .temple.r{right:2.5vw}
+    /* phone: the page is a column — rig, then the bottom row (two circles + the open row), then the verse */
+    #stage{display:flex;flex-direction:column} #dock{order:1} #verse{order:2}
+    /* v9 phone: the two circles sit together in the centre (flex row), the open panel wraps to its own full-width line below them; grid let the panel's width push the circles apart */
+    #dock{position:relative;left:auto;right:auto;bottom:auto;transform:none;width:auto;max-width:none;height:auto;margin:14px 5vw 0;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px 18px}
+    .grp{display:contents}
+    .grp .tab{order:1;width:40px;height:40px;flex-basis:40px} .grp.open .tab{width:40px;flex-basis:40px;box-shadow:none;background:rgba(214,178,108,.34)}
+    .grp .body{order:3;flex:1 1 100%;width:100%;grid-template-columns:1fr;grid-template-rows:0fr;transition:grid-template-rows .9s var(--ease),opacity .5s var(--ease)} .grp.open .body{grid-template-rows:1fr;transition:grid-template-rows .9s var(--ease),opacity .7s var(--ease) .25s}
+    .grp .body>.in{height:auto;min-height:0;white-space:normal;flex-wrap:wrap;justify-content:center;gap:6px 10px;padding:0 10px} .grp.open .body>.in{padding:10px 10px 12px}
+    .grp.open{padding-left:0} .grp.open.wash::before{display:none} .grp.open .body>.in{position:relative;border-radius:22px} .grp.open .body>.in::before{content:"";position:absolute;inset:0;border-radius:22px;background:rgba(214,178,108,.34);box-shadow:inset 0 0 0 1.5px rgba(184,137,43,.13),inset 0 0 12px rgba(184,137,43,.12);filter:url(#wash);pointer-events:none;z-index:-1}
+    #gOffer .sep{display:block;flex:1 1 100%;height:0;margin:0;background:none;box-shadow:none} #gOffer .in>span.sep:nth-of-type(2){display:none} #gOffer .tog .lbl{display:none}   /* first sep = line break: icons above, switches + rupa below */ #tray{flex-wrap:wrap;justify-content:center} #tray button{padding:8px 8px;font-size:12px}
+    #player{flex-wrap:wrap;justify-content:center;height:auto;gap:8px 12px} #ptitle{flex:1 1 100%;max-width:100%;text-align:center} #pwave{display:none} #pseek{flex:1 1 100%;width:100%;height:24px;margin:0 6px}
+    #plist{position:static;width:100%;max-height:150px;margin-top:6px}
+    #verse{position:relative;left:auto;bottom:auto;width:auto;min-width:0;margin:28px 6vw 0}
+    #vtitle{font-size:30px}
+    #diya{left:16%;width:14%} #dhoop{right:16%;width:14%} #modak{width:22%}
+  }
+</style>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-BQEB260FD7"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-BQEB260FD7');
+</script>
+<script async src="/akara/ak-track.js"></script>
+</head>
+<body>
+
+<section id="stage">
+  <div class="rule"><span class="l"></span><span class="mono">Edit N° 01 · Bhādrapada Śukla Chaturthī · Pune</span><span class="l"></span></div>
+  <header>
+    <div style="display:flex;align-items:center">
+      <a class="brand" href="/">Akara</a>
+      <nav><a href="/">← akara.studio</a><a href="/times">Times</a><a href="/shop">Shop</a></nav>
+    </div>
+  </header>
+  <button id="help" aria-label="How this page works" title="How this page works">?</button>
+
+  <div id="rig">
+    <div id="shadow"></div>
+    <div id="altar">
+      <div id="murti"><img id="ganpati" class="cur" alt="Ganpati, seated, trunk to his left" src="/akara/ganesh/img/ganpati.webp"><img id="ganpatiB" alt="" aria-hidden="true"></div>
+      <div class="item" id="diya" title="Light the diya"><img alt="Brass diya" src="/akara/ganesh/img/diya.webp"></div>
+      <div class="item" id="dhoop" title="Light the dhoop"><img alt="Dhoop" src="/akara/ganesh/img/dhoop.webp"></div>
+      <div class="item" id="modak" title="Offer modak"><img alt="Plate of modak" src="/akara/ganesh/img/modak.webp"></div>
+    </div>
+    <div id="hang"><canvas id="curtain" aria-label="A curtain of Ganesha hymns. Move your pointer through it."></canvas></div>
+    <canvas id="altar-fx"></canvas>
+    <div id="roof"><img id="roofImg" alt="Mandap roof" src="/akara/ganesh/img/roof.webp"><img class="strip" id="flagAnim" alt="" aria-hidden="true"><img class="strip" id="toranAnim" alt="" aria-hidden="true"></div>
+    <svg width="0" height="0" style="position:absolute;width:0;height:0" aria-hidden="true"><defs><filter id="wash" x="-10%" y="-30%" width="120%" height="160%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".045 .09" numOctaves="2" seed="11" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" result="d"/><feGaussianBlur in="d" stdDeviation=".7"/></filter></defs></svg>
+<div id="bellwrap" aria-hidden="true"><svg viewBox="0 0 40 60" width="100%" aria-hidden="true"><path d="M20 0v10" stroke="#2a1f14" stroke-width="1.5"/><path d="M8 40c0-14 4-22 12-24 8 2 12 10 12 24H8z" fill="#c9a24a" stroke="#6b4c14" stroke-width="1"/><rect x="6" y="40" width="28" height="4" rx="2" fill="#a67f2a"/><circle cx="20" cy="50" r="4" fill="#6b4c14"/></svg></div>
+  </div>
+
+
+  <button class="temple l" data-roof="roof-shikhara" aria-label="Previous temple"><span class="hint">‹ temple</span><span class="glow"></span><svg class="med" viewBox="-100 -100 200 200" aria-hidden="true"></svg><img alt="" src="/akara/ganesh/img/roof-shikhara.webp"><span class="nm">Shikhara</span></button>
+  <button class="temple r" data-roof="roof-konkan" aria-label="Next temple"><span class="hint">temple ›</span><span class="glow"></span><svg class="med" viewBox="-100 -100 200 200" aria-hidden="true"></svg><img alt="" src="/akara/ganesh/img/roof-konkan.webp"><span class="nm">Konkan</span></button>
+
+  <div id="verse">
+    <div id="stotras"></div>
+    <h1 id="vtitle"></h1>
+    <p id="vsub"></p>
+    <p id="vdev"></p>
+    <p id="viast"></p>
+    <p id="ven"></p>
+    <div id="vnav"><button id="vprev" aria-label="Previous verse">‹</button><button id="vnext" aria-label="Next verse">›</button><span class="n" id="vcount"></span><span class="auto" id="vauto">recite slowly</span></div>
+  </div>
+
+  <div id="dock">
+    <section class="grp open wash" id="gOffer">
+      <button class="tab" aria-expanded="true" aria-label="Offerings" title="Offerings · diya, bell, dhoop, modak, flowers, darshan"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="15.5" rx="10" ry="4.2" fill="none" stroke="#b8892b" stroke-width="1.3"/><ellipse cx="12" cy="15.5" rx="6.5" ry="2.4" fill="none" stroke="#b8892b" stroke-width=".7" stroke-opacity=".7"/><path d="M12 6.2c1.2 1.6 1.9 2.9 1.9 4.2a1.9 1.9 0 0 1-3.8 0c0-1.3.7-2.6 1.9-4.2z" fill="#e89a2b"/><path d="M9.4 13.2h5.2c-.2 1-1.3 1.6-2.6 1.6s-2.4-.6-2.6-1.6z" fill="#c9a24a"/><circle cx="5.5" cy="15" r=".9" fill="#b3311f"/><circle cx="18.5" cy="15" r=".9" fill="#b3311f"/></svg></span></button>
+      <div class="body"><div class="in etch">
+        <div id="tray" role="group" aria-label="Offerings">
+          <button data-act="diya" title="Light the diya" aria-label="Diya"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c1.6 2.2 2.6 4 2.6 5.8A2.6 2.6 0 0 1 12 11.4a2.6 2.6 0 0 1-2.6-2.6C9.4 7 10.4 5.2 12 3z" fill="#e89a2b"/><path d="M3 14h18c-.6 3.2-4.4 5.5-9 5.5S3.6 17.2 3 14z" fill="#b8892b"/><path d="M8 13.2c0-1 1.8-1.8 4-1.8s4 .8 4 1.8H8z" fill="#c9a24a"/></svg></button><button data-act="bell" title="Ring the bell" aria-label="Bell"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v2.2" stroke="#2a1f14" stroke-width="1.4"/><path d="M6.5 16c0-6 2-9.4 5.5-10.4 3.5 1 5.5 4.4 5.5 10.4z" fill="#c9a24a" stroke="#6b4c14" stroke-width=".8"/><rect x="5" y="16" width="14" height="2.2" rx="1.1" fill="#b8892b"/><circle cx="12" cy="20.5" r="1.8" fill="#6b4c14"/></svg></button><button data-act="dhoop" title="Light the dhoop" aria-label="Dhoop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c1.2 2 .2 3-.6 4.2-.8 1.2-.6 2.2.6 3.3" fill="none" stroke="#2a1f14" stroke-opacity=".55" stroke-width="1.1" stroke-linecap="round"/><path d="M9.5 16.5 12 9.8l2.5 6.7z" fill="#5b3a1e"/><path d="M4 17.5h16c-.5 2.6-3.6 4-8 4s-7.5-1.4-8-4z" fill="#b8892b"/></svg></button><button data-act="modak" title="Offer a modak" aria-label="Modak"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c4.2 3.6 6.8 7.4 7.6 12.2H4.4C5.2 10.4 7.8 6.6 12 3z" fill="#f3e9d6" stroke="#c9a24a" stroke-width=".9"/><path d="M12 3.6v11.6M9.2 6.8l1.4 8.4M14.8 6.8l-1.4 8.4M7 10.4l2 4.8M17 10.4l-2 4.8" stroke="#c9a24a" stroke-width=".7" stroke-opacity=".8"/><path d="M3 16.4h18c-.4 2.2-3.8 3.6-9 3.6s-8.6-1.4-9-3.6z" fill="#b8b3a8"/></svg></button><button data-act="flowers" title="Shower flowers" aria-label="Flowers"><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="#f2b93b"><circle cx="12" cy="4.5" r="2.6"/><circle cx="12" cy="19.5" r="2.6"/><circle cx="4.5" cy="12" r="2.6"/><circle cx="19.5" cy="12" r="2.6"/><circle cx="6.7" cy="6.7" r="2.6"/><circle cx="17.3" cy="6.7" r="2.6"/><circle cx="6.7" cy="17.3" r="2.6"/><circle cx="17.3" cy="17.3" r="2.6"/></g><circle cx="12" cy="12" r="4.2" fill="#e89a2b"/><circle cx="12" cy="12" r="1.6" fill="#c8641a"/></svg></button>
+        </div>
+        <span class="sep"></span>
+        <button class="tog" id="togMari" role="switch" aria-checked="false" title="Turn the hymns into marigolds">
+          <span class="lbl">Marigold</span>
+          <span class="track"><span class="knob"><svg viewBox="0 0 28 28" aria-hidden="true"><path class="disc" id="knobDisc1"/><g class="mari"><circle cx="14" cy="14" r="9" fill="#e89a2b"/><path id="petals1" fill="#f2b93b"/><circle cx="14" cy="14" r="3.2" fill="#c8641a"/></g></svg></span></span>
+        </button>
+        <button class="tog" id="togCurtain" role="switch" aria-checked="false" title="Part the curtain for darshan">
+          <span class="lbl">Darshan</span>
+          <span class="track"><span class="knob"><svg viewBox="0 0 28 28" aria-hidden="true"><path class="disc" id="knobDisc2"/><rect x="6" y="7" width="16" height="1.6" rx=".8" fill="#7a5518"/><path class="drape l" d="M7 9h6v11c-1.5-1-3.5-1-5 0z" fill="#b3311f"/><path class="drape r" d="M15 9h6v11c-1.5-1-3.5-1-5 0z" fill="#b3311f"/><circle cx="14" cy="21" r="1.4" fill="#c99a45"/></svg></span></span>
+        </button>
+        <span class="sep"></span>
+        <div id="rupa" role="group" aria-label="Form of the deity">
+          <button id="rupaPrev" aria-label="Previous form" title="Previous rupa"><svg viewBox="0 0 30 30" aria-hidden="true"><path d="M19 5c-4 3-7.5 6.5-9.5 10 2 3.5 5.5 7 9.5 10-1.5-3.5-2.5-6.8-2.5-10s1-6.5 2.5-10z" fill="#b8892b"/><path d="M12.5 15c1.2-1 2.6-1 3.8 0-1.2 1-2.6 1-3.8 0z" fill="#b3311f"/></svg></button>
+          <span class="lbl" title="Form of the deity">✦</span>
+          <button id="rupaNext" aria-label="Next form" title="Next rupa"><svg viewBox="0 0 30 30" aria-hidden="true"><path d="M11 5c4 3 7.5 6.5 9.5 10-2 3.5-5.5 7-9.5 10 1.5-3.5 2.5-6.8 2.5-10s-1-6.5-2.5-10z" fill="#b8892b"/><path d="M13.7 15c1.2-1 2.6-1 3.8 0-1.2 1-2.6 1-3.8 0z" fill="#b3311f"/></svg></button>
+        </div>
+      </div></div>
+    </section>
+
+    <section class="grp wash" id="gMusic">
+      <button class="tab" aria-expanded="false" aria-label="Music" title="Music · aarti and bhajans"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="#b3311f"><path d="M12 4c1.6 2.4 2.2 5 2 8.2-1.4.9-2.6.9-4 0-.2-3.2.4-5.8 2-8.2z"/><path d="M6.2 6.4c2.4 1.2 4 3.3 4.7 6.2-1.1 1.3-2.3 1.7-3.9 1.3-1.6-2.4-1.9-4.9-.8-7.5z"/><path d="M17.8 6.4c1.1 2.6.8 5.1-.8 7.5-1.6.4-2.8 0-3.9-1.3.7-2.9 2.3-5 4.7-6.2z"/><path d="M2.6 11.2c2.6.2 4.7 1.5 6.3 3.9-.5 1.5-1.4 2.3-2.9 2.5-2.1-1.6-3.2-3.8-3.4-6.4z"/><path d="M21.4 11.2c-.2 2.6-1.3 4.8-3.4 6.4-1.5-.2-2.4-1-2.9-2.5 1.6-2.4 3.7-3.7 6.3-3.9z"/></g><path d="M4 17.5c2.6 1.6 5.3 2.3 8 2.3s5.4-.7 8-2.3c-2 2.6-4.7 3.9-8 3.9s-6-1.3-8-3.9z" fill="#b8892b"/></svg></span></button>
+      <div class="body"><div class="in etch">
+  <div id="player">
+    <div id="pctl"><button id="pprev" aria-label="Previous"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h1.8v12H4zM16 4v12L7 10z" fill="#2a1f14"/></svg></button><button id="pplay" class="play" aria-label="Play"><svg class="i-play" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5v13l10-6.5z" fill="#2a1f14"/></svg><svg class="i-pause" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 4h3.5v12H5zM11.5 4H15v12h-3.5z" fill="#2a1f14"/></svg></button><button id="pnext" aria-label="Next"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M14.2 4H16v12h-1.8zM4 4v12l9-6z" fill="#2a1f14"/></svg></button></div>
+    <p id="ptitle">Loading the playlist…</p>
+    <p id="partist">&nbsp;</p>
+    <canvas id="pwave" height="26" aria-hidden="true"></canvas>
+    <div id="pbar"><i id="pfill"></i></div>
+    <input type="range" id="pseek" min="0" max="1000" value="0" step="1" aria-label="Seek" title="Scrub through the track">
+    <span class="t mono" id="ptime" style="letter-spacing:.1em;flex:0 0 auto">0:00</span>
+    <button id="plistBtn" aria-label="Playlist" title="Playlist"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h10" stroke="#2a1f14" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+    <a id="plink" class="pico" target="_blank" rel="noopener" href="#" aria-label="Open this track" title="Open this track"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.6 11.4l2.8-2.8M7.2 12.8l-1 1a2.3 2.3 0 0 1-3.2-3.2l2.4-2.4a2.3 2.3 0 0 1 3.2 0M12.8 7.2l1-1a2.3 2.3 0 0 1 3.2 3.2l-2.4 2.4a2.3 2.3 0 0 1-3.2 0" stroke="#2a1f14" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg></a>
+    <a id="pdl" class="pico" download href="#" aria-label="Download this song" title="Download this song" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4.5 15.5h11" stroke="#2a1f14" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    <div id="plist"></div>
+    <div id="ytwrap"><div id="yt"></div></div>
+  </div>
+      </div></div>
+    </section>
+  </div>
+
+  <div id="veil"></div>
+</section>
+<div id="tour" aria-live="polite"><div id="tourRing"></div><div id="tourCard"><p class="k" id="tourK"></p><h2 class="h" id="tourH"></h2><p class="p" id="tourP"></p><div class="row"><button id="tourSkip">skip</button><button class="next" id="tourNext">next ›</button></div></div></div>
+<div id="tip" role="tooltip"></div>
+
+<footer>
+  <span>Akara · Pune · <a href="/">akara.studio</a></span>
+  <span>Your offerings stay on this page. Nothing is counted, nothing is sent. The diya you light here is a reminder to light the one at home.</span>
+  <span>Ganesh Chaturthi 14 Sep · Anant Chaturdashi 25 Sep 2026</span>
+</footer>
+
+<script src="/akara/ganesh/curtain.js"></script>
+<script src="/akara/ganesh/altar.js"></script>
+<script>
+(async function(){
+  const $ = (s, r) => (r || document).querySelector(s), $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+  const BASE = "/akara/ganesh/";
+  const VAKRATUNDA = { id:"vakratunda", title:"Vakratuṇḍa Mahākāya", titleDev:"वक्रतुण्ड महाकाय", subtitle:"The opening prayer of every beginning", author:"Traditional",
+    verses:[{ n:"१", scripts:{ dev:"वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ।\nनिर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा॥", iast:"vakratuṇḍa mahākāya sūryakoṭi samaprabha |\nnirvighnaṃ kuru me deva sarvakāryeṣu sarvadā ||" }, meaning:{ en:"O Ganesha of the curved trunk and mighty form, radiant as a million suns — make all my works free of obstacles, always, O Lord." } }] };
+  const GAYATRI = { id:"ganeshagayatri", title:"Gaṇeśa Gāyatrī", titleDev:"गणेश गायत्री", subtitle:"The Gāyatrī of the One-tusked", author:"Gaṇapati Upaniṣad",
+    verses:[{ n:"१", scripts:{ dev:"एकदन्ताय विद्महे वक्रतुण्डाय धीमहि।\nतन्नो दन्तिः प्रचोदयात्॥", iast:"ekadantāya vidmahe vakratuṇḍāya dhīmahi |\ntanno dantiḥ pracodayāt ||" }, meaning:{ en:"We know the One-tusked; we meditate on the One with the curved trunk. May that Tusked Lord awaken our understanding." } }] };
+  const GANANAM = { id:"gananam", title:"Gaṇānāṃ tvā", titleDev:"गणानां त्वा", subtitle:"The Vedic invocation of Gaṇapati", author:"Ṛg Veda 2.23.1",
+    verses:[{ n:"१", scripts:{ dev:"गणानां त्वा गणपतिं हवामहे\nकविं कवीनामुपमश्रवस्तमम्।\nज्येष्ठराजं ब्रह्मणां ब्रह्मणस्पत\nआ नः शृण्वन्नूतिभिः सीद सादनम्॥", iast:"gaṇānāṃ tvā gaṇapatiṃ havāmahe\nkaviṃ kavīnām upamaśravastamam |\njyeṣṭharājaṃ brahmaṇāṃ brahmaṇaspata\nā naḥ śṛṇvann ūtibhiḥ sīda sādanam ||" }, meaning:{ en:"We call upon you, Lord of the hosts, seer among seers, most renowned; eldest king, Lord of sacred speech — hear us, and with your protections come and sit in our seat." } }] };
+  const HYMNS = { vakratunda: VAKRATUNDA, ganeshagayatri: GAYATRI, gananam: GANANAM };
+  const ORDER = [["vakratunda","Vakratuṇḍa"],["ganeshagayatri","Gāyatrī"],["gananam","Gaṇānāṃ tvā"],["ganeshapancharatnam","Pañcharatnam"],["sankashtanashana","Saṅkaṣṭanāśana"],["ganeshadvadashanama","Twelve names"]];
+  async function load(id){ if (HYMNS[id]) return HYMNS[id]; const j = await (await fetch(BASE + "hymns/" + id + ".json")).json(); HYMNS[id] = j; return j; }
+  const devText = h => h.verses.map(v => (v.scripts && v.scripts.dev) || "").join(" ").replace(/\n/g, " ");
+  const str = v => (v && (v.en || (typeof v === "string" ? v : ""))) || "";
+
+  // roof eave → curtain top
+  const rig = $("#rig"), roof = $("#roof"), roofImg = $("#roofImg");
+  let curtain = null, currentRoof = "roof";
+  // the eave of each roof is measured once from the intact image: the last row where >= 40% of the width is opaque
+  // (the toran's bottom). The curtain hangs 10 px under that row on every roof, so the gap never changes.
+  const EAVE_FALLBACK = { "roof": 0.887, "roof-shikhara": 0.971, "roof-konkan": 0.906 }, eaveCache = {};
+  function measureEave(name){
+    return new Promise(res => {
+      if (eaveCache[name] != null) return res(eaveCache[name]);
+      const im = new Image(); im.crossOrigin = "anonymous";
+      im.onload = () => {
+        try {
+          const c = document.createElement("canvas"), w = c.width = Math.min(400, im.naturalWidth), h = c.height = Math.round(im.naturalHeight * w / im.naturalWidth);
+          const x = c.getContext("2d"); x.drawImage(im, 0, 0, w, h); const d = x.getImageData(0, 0, w, h).data;
+          let row = -1;
+          for (let y = h - 1; y >= 0 && row < 0; y--){ let n = 0; for (let i = 0; i < w; i++) if (d[(y * w + i) * 4 + 3] > 40) n++; if (n >= w * 0.4) row = y; }
+          eaveCache[name] = row >= 0 ? (row + 1) / h : (EAVE_FALLBACK[name] || 0.9);
+        } catch (e) { eaveCache[name] = EAVE_FALLBACK[name] || 0.9; }
+        res(eaveCache[name]);
+      };
+      im.onerror = () => res(eaveCache[name] = EAVE_FALLBACK[name] || 0.9);
+      im.src = BASE + "img/" + name + ".webp";
+    });
+  }
+  function setEave(){
+    const rr = rig.getBoundingClientRect(), fr = roofImg.getBoundingClientRect(), f = eaveCache[currentRoof] != null ? eaveCache[currentRoof] : (EAVE_FALLBACK[currentRoof] || 0.9);
+    if (rr.height < 10 || fr.height < 10) return;   // not laid out yet (hidden tab): keep the last good value
+    const eave = Math.max(0.12, Math.min(0.72, (fr.top - rr.top + fr.height * f + 10) / rr.height));
+    rig.style.setProperty("--eave", (eave * 100).toFixed(2) + "%");
+  }
+  window.__eave = { measure: measureEave, cache: eaveCache, set: setEave };
+  roofImg.addEventListener("load", () => { measureEave(currentRoof).then(() => { setEave(); if (curtain){ curtain._resize(); curtain.rebuild(); } }); });
+  measureEave("roof").then(setEave); window.addEventListener("resize", setEave);
+  // fit: shrink the verse panel step by step until it clears the left medallion (desktop only)
+  function fitLayout(){
+    if (window.innerWidth <= 900) return;
+    document.body.classList.remove("fit1", "fit2", "fit3");
+    const v = $("#verse"), m = $(".temple.l");
+    for (const cls of ["fit1", "fit2", "fit3"]){
+      if (v.getBoundingClientRect().top >= m.getBoundingClientRect().bottom + 14) break;
+      document.body.classList.add(cls);
+    }
+  }
+  window.addEventListener("resize", fitLayout);
+
+  try { await Promise.all([document.fonts.load("500 13px 'Tiro Devanagari Sanskrit'"), document.fonts.load("400 24px 'Rozha One'"), document.fonts.load("italic 400 17px 'Cormorant Garamond'")]); } catch (e) {}
+
+  const sheet = new Image(); sheet.src = BASE + "img/marigolds.webp";
+  curtain = new Curtain($("#curtain"), { marigoldSheet: sheet }); window.__curtain = curtain;
+  const altar = new Altar($("#altar-fx"), { audioBase: BASE + "audio/" }); window.__altar = altar;
+  const stage = $("#stage"), veil = $("#veil");
+
+  // ── roof = one still with the moving zones cut out + two looping animated WebP strips (flag, toran) laid exactly back.
+  //    Same mechanism in every browser (animated WebP with alpha plays on iOS, Android, desktop). Source: Seedance clips, keyed.
+  const STRIPS = {"roof": {"flag": {"l": 26.054, "t": 0.0, "w": 45.977}, "toran": {"l": 0.0, "t": 57.647, "w": 99.617}}, "roof-shikhara": {"flag": {"l": 38.009, "t": 0.0, "w": 28.054}, "toran": {"l": 0.0, "t": 71.765, "w": 100.0}}, "roof-konkan": {"flag": {"l": 47.103, "t": 1.176, "w": 20.187}, "toran": {"l": 0.0, "t": 61.176, "w": 100.0}}};
+  const flagAnim = $("#flagAnim"), toranAnim = $("#toranAnim"), MOBILE = () => window.innerWidth < 760;
+  const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function setRoofMedia(name){
+    roofImg.src = BASE + "img/" + name + "-base.webp";
+    for (const [el, key] of [[flagAnim, "flag"], [toranAnim, "toran"]]){
+      const z = STRIPS[name] && STRIPS[name][key];
+      if (!z || REDUCED){ el.removeAttribute("src"); el.style.display = "none"; continue; }
+      el.style.left = z.l + "%"; el.style.top = z.t + "%"; el.style.width = z.w + "%"; el.style.display = "block";
+      el.src = BASE + "img/" + name + "-" + key + (MOBILE() && key === "toran" ? "-m" : "") + ".webp";   // phone toran = lighter strip
+    }
+  }
+  setRoofMedia("roof");
+
+  // ── temples: a ring. Left card = previous, right card = next; clicking rotates the ring.
+  const RING = ["roof-shikhara", "roof", "roof-konkan"]; let ri = 1; currentRoof = RING[ri];
+  const NAMES = { "roof": "Mandap", "roof-shikhara": "Shikhara", "roof-konkan": "Konkan" };
+  function paintCards(){
+    const L = RING[(ri + 2) % 3], R = RING[(ri + 1) % 3];
+    for (const [el, name] of [[$(".temple.l"), L], [$(".temple.r"), R]]){ el.dataset.roof = name; el.querySelector("img").src = BASE + "img/" + name + ".webp"; el.querySelector(".nm").textContent = NAMES[name]; }
+  }
+  paintCards();
+  // scalloped path: n lobes on radius r, lobe depth k
+  function scallop(r, n, k){ let p = ""; for (let i = 0; i <= n; i++){ const a = i / n * Math.PI * 2, a2 = (i + 0.5) / n * Math.PI * 2, x = Math.cos(a) * r, y = Math.sin(a) * r;
+    p += (i === 0 ? `M${x.toFixed(1)} ${y.toFixed(1)}` : "") + (i < n ? ` Q${(Math.cos(a2) * (r + k)).toFixed(1)} ${(Math.sin(a2) * (r + k)).toFixed(1)} ${(Math.cos((i + 1) / n * Math.PI * 2) * r).toFixed(1)} ${(Math.sin((i + 1) / n * Math.PI * 2) * r).toFixed(1)}` : ""); } return p + "Z"; }
+  // temple medallions: one filled scalloped disc (single hue), three inner rings fading toward the centre
+  $$(".temple .med").forEach((m, idx) => {
+    const id = "mg" + idx;
+    m.innerHTML = `<defs><radialGradient id="${id}" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="#eed9a8" stop-opacity=".9"/><stop offset=".55" stop-color="#dcb96f"/><stop offset="1" stop-color="#c3923a" stop-opacity=".85"/></radialGradient></defs>
+      <path d="${scallop(86, 16, 9)}" fill="url(#${id})" fill-opacity=".5"/>
+      <path d="${scallop(70, 16, 7)}" fill="none" stroke="#fff4d6" stroke-opacity=".45" stroke-width="1.2"/>
+      <path d="${scallop(55, 16, 5)}" fill="none" stroke="#fff4d6" stroke-opacity=".32" stroke-width="1"/>
+      <path d="${scallop(41, 16, 4)}" fill="none" stroke="#fff4d6" stroke-opacity=".22" stroke-width=".8"/>
+      <circle r="98" fill="none" stroke="#c3923a" stroke-opacity=".28" stroke-width=".6" stroke-dasharray="1.5 4"/>`;
+  });
+  let sliding = false;
+  const easeIn = x => x * x * x, easeOut = x => 1 - Math.pow(1 - x, 3);
+  function slideRig(from, to, ms, ease){
+    return new Promise(res => {
+      let last = from, t0 = null;
+      const step = ts => {
+        if (t0 === null) t0 = ts;
+        const k = Math.min(1, (ts - t0) / ms), x = from + (to - from) * ease(k);
+        rig.style.transform = `translateX(calc(-50% + ${x}px))`;
+        curtain.shift(x - last, 0.35); last = x;
+        if (k < 1) requestAnimationFrame(step); else res();
+      };
+      requestAnimationFrame(step);
+    });
+  }
+  async function goTemple(dir){                                 // dir 1 = next (old leaves left, new enters from right)
+    if (sliding) return; sliding = true;
+    altar.sound("ghanta-swipe");                                // one temple-bell strike as the temple changes (Himachal field recording, Pixabay licence)
+    ri = (ri + dir + 3) % 3; const next = RING[ri];
+    const far = window.innerWidth * 0.75 + rig.getBoundingClientRect().width;
+    if (REDUCED){ veil.classList.add("on"); await new Promise(r => setTimeout(r, 600)); }
+    else await slideRig(0, -dir * far, 950, easeIn);          // v11: slower, graceful swipe (was 500) — matches the 0.9–1.7 s register and records cleanly
+    currentRoof = next; setRoofMedia(next); paintCards();
+    await new Promise(r => setTimeout(r, 450));
+    if (REDUCED){ veil.classList.remove("on"); rig.style.transform = ""; }
+    else { curtain.rebuild(); curtain.growT = 1; await slideRig(dir * far, 0, 850, easeOut); rig.style.transform = ""; }
+    sliding = false;
+  }
+  window.__goTemple = goTemple;
+  $$(".temple").forEach(t => t.addEventListener("click", () => goTemple(t.classList.contains("r") ? 1 : -1)));
+  // swipe across the rig (phone or mouse drag): >= 60 px sideways and clearly more sideways than up/down
+  (function(){
+    let sx = 0, sy = 0, sid = null;
+    rig.addEventListener("pointerdown", e => { if (e.button && e.button !== 0) return; sid = e.pointerId; sx = e.clientX; sy = e.clientY; });
+    const end = e => { if (sid !== e.pointerId) return; sid = null; const dx = e.clientX - sx, dy = e.clientY - sy; if (Math.abs(dx) >= 60 && Math.abs(dx) > 2 * Math.abs(dy)) goTemple(dx < 0 ? 1 : -1); };
+    rig.addEventListener("pointerup", end); rig.addEventListener("pointercancel", () => { sid = null; });
+  })();
+
+  // ── stotra + verse panel
+  const vtitle = $("#vtitle"), vsub = $("#vsub"), vdev = $("#vdev"), viast = $("#viast"), ven = $("#ven"), vcount = $("#vcount");
+  let hymn = null, vi = 0, autoT = null;
+  const stotras = $("#stotras");
+  for (const [id, label] of ORDER){ const b = document.createElement("button"); b.textContent = label; b.dataset.id = id; b.title = label; b.addEventListener("click", () => selectStotra(id)); stotras.appendChild(b); }
+  // v13: each pill's tip becomes "full title · author" once its JSON is in; fetched on idle so the tips are ready before the hand gets there
+  const tipFor = (id, h) => { const b = $(`#stotras button[data-id="${id}"]`), t = h.title + (h.author ? " \u00b7 " + h.author : ""); if (b){ b.dataset.tip = t; if (b.hasAttribute("title")) b.title = t; } };
+  (window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => ORDER.forEach(([id]) => load(id).then(h => tipFor(id, h)).catch(() => {})));
+  async function selectStotra(id){
+    $$("#stotras button").forEach(b => b.classList.toggle("on", b.dataset.id === id));
+    hymn = await load(id); vi = 0;
+    vtitle.innerHTML = (hymn.titleDev || hymn.title) + '<span class="dash"></span>';
+    vsub.textContent = hymn.title + (hymn.author ? " · " + hymn.author : "");
+    showVerse(0);
+    curtain.setText(devText(hymn));
+  }
+  function showVerse(i){
+    vi = (i + hymn.verses.length) % hymn.verses.length;
+    const v = hymn.verses[vi];
+    [vdev, viast, ven].forEach(e => e.classList.add("fade"));
+    setTimeout(() => {
+      vdev.textContent = v.scripts.dev; viast.textContent = v.scripts.iast || ""; ven.textContent = str(v.meaning);
+      vcount.textContent = "verse " + (vi + 1) + " / " + hymn.verses.length;
+      [vdev, viast, ven].forEach(e => e.classList.remove("fade")); fitLayout();
+    }, 350);
+  }
+  $("#vprev").addEventListener("click", () => showVerse(vi - 1));
+  $("#vnext").addEventListener("click", () => showVerse(vi + 1));
+  $("#vauto").addEventListener("click", (e) => { if (autoT){ clearInterval(autoT); autoT = null; e.target.classList.remove("on"); } else { autoT = setInterval(() => showVerse(vi + 1), 14000); e.target.classList.add("on"); } });
+  await selectStotra("ganeshapancharatnam");
+
+  // ── the bottom row: Offerings or Music is open; the other is a circle with its icon. Offerings opens on load.
+  const PHONE = () => window.innerWidth <= 900;
+  function openGroup(id, scroll){
+    $$("#dock .grp").forEach(g => { const on = g.id === id; g.classList.toggle("open", on); g.querySelector(".tab").setAttribute("aria-expanded", String(on)); });
+    if (scroll && id && PHONE()) setTimeout(() => { const g = $("#" + id + " .body"); if (g) g.scrollIntoView({ block: "end", behavior: REDUCED ? "auto" : "smooth" }); }, 950);
+  }
+  $$("#dock .grp .tab").forEach(t => t.addEventListener("click", () => { const g = t.parentElement; if (!g.classList.contains("open")) openGroup(g.id, true); }));
+  window.__openGroup = openGroup;
+
+  // ── rupa: the forms of the deity. Manual only (prev / next), 1.2 s cross-fade behind the curtain, one sway of the strands.
+  //    LIFE lists the murtis that have Seedance clips: {name}-idle.webp loops at rest, {name}-darshan.webp plays once when the curtain parts.
+  const MURTIS = ["ganpati", "rupa-blue", "rupa-watercolour", "rupa-ivory", "rupa-stone", "rupa-arch", "rupa-marble"];
+  const RUPA_ALT = { "ganpati": "Ganpati, seated, trunk to his left", "rupa-blue": "Ganesha in blue, seated, orange dhoti", "rupa-watercolour": "Ganesha in blue and gold watercolour", "rupa-ivory": "Ganesha in ivory and gold", "rupa-stone": "Dancing Ganesha in pale stone on a white lotus", "rupa-arch": "Ganesha in ivory with peonies", "rupa-marble": "Ganesha in white marble" };
+  //    At rest (curtain closed, murti dim behind the hymns) the crisp still is shown; darshan plays the clip once, then the idle loop breathes and blinks.
+  const LIFE = { "ganpati": 10, "rupa-blue": 10, "rupa-watercolour": 10, "rupa-ivory": 10, "rupa-stone": 10, "rupa-marble": 10 };   // v6 statue clips, 10 s darshan. rupa-arch has no clip: Seedance re-invents its arms (bust source), so it stays a still   // name → clip length in seconds
+  let mi = 0, murtiA = $("#ganpati"), murtiB = $("#ganpatiB"), lifeT = null;
+  function murtiSrc(name, state){ const l = LIFE[name] && !REDUCED, m = MOBILE() ? "-m" : ""; return BASE + "img/" + (l && state === "darshan" ? name + "-darshan" + m + ".webp" : l && state === "idle" ? name + "-idle" + m + ".webp" : name + ".webp"); }
+  function setLife(state){
+    const name = MURTIS[mi]; clearTimeout(lifeT); if (!LIFE[name] || REDUCED) return;
+    // v6: fade the clip in over the still on the spare <img> (1.2 s cross-fade) instead of a hard src swap; the darshan clip returns to its first frame, so idle takes over without a jump
+    murtiB.src = murtiSrc(name, state); murtiB.alt = murtiA.alt;
+    const swap = () => { murtiB.onload = null; murtiB.classList.add("cur"); murtiA.classList.remove("cur"); const t = murtiA; murtiA = murtiB; murtiB = t;
+      if (state === "darshan") lifeT = setTimeout(() => { murtiA.src = murtiSrc(name, "idle"); }, LIFE[name] * 1000); };
+    if (murtiB.complete && murtiB.naturalWidth) swap(); else murtiB.onload = swap;
+  }
+  function showMurti(i){
+    mi = (i + MURTIS.length) % MURTIS.length; const name = MURTIS[mi];
+    murtiB.src = murtiSrc(name, open ? "darshan" : "still"); murtiB.alt = RUPA_ALT[name] || "";
+    const swap = () => { murtiB.classList.add("cur"); murtiA.classList.remove("cur"); const t = murtiA; murtiA = murtiB; murtiB = t; curtain.ripple(); clearTimeout(lifeT); if (open && LIFE[name] && !REDUCED) lifeT = setTimeout(() => { murtiA.src = murtiSrc(name, "idle"); }, LIFE[name] * 1000); };
+    if (murtiB.complete && murtiB.naturalWidth) swap(); else murtiB.onload = swap;
+    const pre = new Image(); pre.src = murtiSrc(MURTIS[(mi + 1) % MURTIS.length], "still");
+  }
+  $("#rupaPrev").addEventListener("click", () => showMurti(mi - 1));
+  $("#rupaNext").addEventListener("click", () => showMurti(mi + 1));
+  window.__showMurti = showMurti;
+
+  // ── darshan
+  const togC = $("#togCurtain"), togM = $("#togMari"); let open = false, manual = false, closeT = null;
+  function darshan(on){ const was = open; open = on; curtain.part(on); stage.classList.toggle("darshan", on); togC.setAttribute("aria-checked", String(on)); if (on && !was) setLife("darshan"); else if (!on && was) setLife("still"); }
+  togC.addEventListener("click", () => { manual = !open; holding = null; clearTimeout(closeT); darshan(!open); });
+  let marigold = false, musicMari = false;   // musicMari: the marigold mode was switched on by the music, not by hand
+  function setMarigold(on){ marigold = on; curtain.setMode(on ? "marigold" : "hymn"); togM.setAttribute("aria-checked", String(on)); }
+  togM.addEventListener("click", () => { musicMari = false; togM.removeAttribute("data-by"); setMarigold(!marigold); if (marigold) count("marigold"); });
+  // ── playing state: while the playlist plays, the hymns turn to marigolds, petals fall, and a line-art mandala turns at the right.
+  //    Hand beats music: a hand-set Marigold is left alone; Darshan is never touched.
+  let musicOn = false, musicOffT = null;
+  function setMusicMode(on){
+    if (on === musicOn) return; musicOn = on;
+    if (on){ if (!marigold){ setMarigold(true); musicMari = true; togM.setAttribute("data-by", "music"); } altar.petalRain(true); }
+    else { if (musicMari){ musicMari = false; togM.removeAttribute("data-by"); setMarigold(false); } altar.petalRain(false); }
+  }
+  window.__setMusicMode = setMusicMode;
+  function onYtState(st){
+    clearTimeout(musicOffT);
+    if (st === 1){ setMusicMode(true); if (!$("#gMusic").classList.contains("open")) openGroup("gMusic", false); }
+    else if (st === 2 || st === 0) musicOffT = setTimeout(() => { const s = P.state(); if (s !== 1 && s !== 3) setMusicMode(false); }, 900);   // v10: P covers local + YouTube
+  }
+  // knob discs: a 12-lobe scallop centred at (14,14); marigold petals: 12 lobes around the centre
+  (function(){
+    const sc = (r, n, k) => { let p = ""; for (let i = 0; i <= n; i++){ const a = i / n * Math.PI * 2, a2 = (i + .5) / n * Math.PI * 2; const x = 14 + Math.cos(a) * r, y = 14 + Math.sin(a) * r; p += (i === 0 ? `M${x.toFixed(1)} ${y.toFixed(1)}` : "") + (i < n ? ` Q${(14 + Math.cos(a2) * (r + k)).toFixed(1)} ${(14 + Math.sin(a2) * (r + k)).toFixed(1)} ${(14 + Math.cos((i + 1) / n * Math.PI * 2) * r).toFixed(1)} ${(14 + Math.sin((i + 1) / n * Math.PI * 2) * r).toFixed(1)}` : ""); } return p + "Z"; };
+    $$("#knobDisc1, #knobDisc2").forEach(d => d.setAttribute("d", sc(12.2, 12, 1.6)));
+    $("#petals1").setAttribute("d", sc(6.5, 12, 5.5));
+  })();
+  // an offering while the curtain is closed: part it, wait for the reveal, act, hold, then close again
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  let holding = null;   // the offering currently holding the curtain open
+  async function withDarshan(act, hold, after, key){
+    clearTimeout(closeT);
+    // second tap on the same offering while it holds the curtain: undo it and close now
+    if (open && !manual && holding === key){ if (key === "diya" || key === "dhoop" || key === "flowers") act(); holding = null; closeT = setTimeout(() => { darshan(false); if (after) setTimeout(after, 1400); }, 500); return; }
+    const auto = !open;
+    if (auto){ manual = false; darshan(true); await sleep(1500); }
+    act(); holding = manual ? null : key;
+    if (!manual){ closeT = setTimeout(() => { holding = null; darshan(false); if (after) setTimeout(after, 1400); }, hold || 6500); }
+  }
+
+  // ── offerings
+  const offered = JSON.parse(localStorage.getItem("ak_ganesh_offerings") || "{}");
+  function count(k){ offered[k] = (offered[k] || 0) + 1; try { localStorage.setItem("ak_ganesh_offerings", JSON.stringify(offered)); } catch (e) {} }
+  const doDiya = () => { altar.lightDiya($("#diya")); $("[data-act=diya]").classList.toggle("on", altar.lit); if (altar.lit) count("diya"); };
+  const doDhoop = () => { altar.toggleDhoop($("#dhoop")); $("[data-act=dhoop]").classList.toggle("on", altar.dhoop); if (altar.dhoop) count("dhoop"); };
+  const doModak = () => { const m = $("#modak"); m.classList.remove("offered"); void m.offsetWidth; m.classList.add("offered"); altar.sound("chime"); count("modak"); setTimeout(() => m.classList.remove("offered"), 6000); };
+  let bellT = null;
+  const doBell = () => {
+    const b = $("#bellwrap"); clearTimeout(bellT);
+    b.classList.remove("ring"); void b.offsetWidth; b.classList.add("show", "ring");
+    setTimeout(() => altar.ringBell(), 300);
+    bellT = setTimeout(() => b.classList.remove("show", "ring"), 1500);   // then fades out over 1.7 s
+    count("bell");
+  };
+  const acts = {
+    diya(){ withDarshan(doDiya, 6000, null, "diya"); },
+    bell(){ withDarshan(doBell, 5000, null, "bell"); },
+    dhoop(){ withDarshan(doDhoop, 7000, null, "dhoop"); },
+    modak(){ withDarshan(doModak, 7000, null, "modak"); },
+    flowers(){ withDarshan(() => { if (holding !== "flowers"){ altar.shower(90); count("flowers"); } }, 7000, null, "flowers"); },
+  };
+  $$("#tray button").forEach(b => b.addEventListener("click", () => acts[b.dataset.act]()));
+  $("#diya").addEventListener("click", doDiya); $("#dhoop").addEventListener("click", doDhoop); $("#modak").addEventListener("click", doModak);
+
+  // ── player: YouTube playlist behind our own controls
+  // the owner's curated list, in this order (video IDs only; radio/list parameters dropped)
+  const IDS = ["ym4o5F8ncY0","TVQyllXcASE","KJF8t-BWVRM","mUYM3fA7Q5A","On8RhqLwLvw","xFiMhoPKmPw","Yuex2EnsGiY","bQrYmTfw59Q","N4Ilw97aKn0","HzGE_WaSqE4","IUzRhOJScuc","KYUURuT4W5Y","wEs5uyp8skY","GrVOG4POsko"];
+  const KNOWN = { ym4o5F8ncY0:"Ekadantaya Vakratundaya", TVQyllXcASE:"Sukh Karta Dukh Harta | Sadhana Sargam", "KJF8t-BWVRM":"Gajanana | Bajirao Mastani", mUYM3fA7Q5A:"Om Gananatha | Ganapati Mantra", On8RhqLwLvw:"Om Gan Ganpataye Namo Namah | Suresh Wadkar", xFiMhoPKmPw:"Om Gan Ganapataye Namah | 108 times", Yuex2EnsGiY:"Jai Ganesh Deva | Anuradha Paudwal", bQrYmTfw59Q:"Agajanana Padmarkam | Shri Ganesha Slokam", N4Ilw97aKn0:"Tuz Magato Mee Aata | Ganesh Bhajan", HzGE_WaSqE4:"Ya Re Ya | Ventilator", IUzRhOJScuc:"Sur Niragas Ho | Katyar Kaljat Ghusli", KYUURuT4W5Y:"Deva Shree Ganesha | Agneepath", wEs5uyp8skY:"Sampurna Jagala Tuzya Rupacha", GrVOG4POsko:"Mourya Re | Don" };
+  const ptitle = $("#ptitle"), partist = $("#partist"), pfill = $("#pfill"), ptime = $("#ptime"), pplay = $("#pplay"), plist = $("#plist");
+  let yt = null, ready = false, titles = Object.assign({}, KNOWN), blocked = [];
+  // v10: local tracks sit in front of the YouTube list. The owner's own song (made with Suno) plays through a native <audio>; P is one facade over both.
+  const LOCAL = [{ id: "local:om-gan", src: BASE + "audio/om-gan-ganapataye.mp3", title: "\u0950 \u0917\u0902 \u0917\u0923\u092a\u0924\u092f\u0947 \u0928\u092e\u094b \u0928\u092e\u0903", artist: "Akara", file: "Om Gan Ganapataye Namo Namah - Akara.mp3" }];
+  LOCAL.forEach(t => { titles[t.id] = t.title; });
+  const au = new Audio(); au.preload = "none"; let li = -1, lIdx = 0, mode = "local";
+  function loadLocal(i){ lIdx = i; if (li !== i){ au.src = LOCAL[i].src; li = i; } }
+  const ytState = () => (yt && yt.getPlayerState) ? yt.getPlayerState() : -1;
+  const P = {
+    state(){ return mode === "local" ? (au.paused ? (au.ended ? 0 : 2) : 1) : ytState(); },
+    time(){ return mode === "local" ? au.currentTime : (yt && yt.getCurrentTime ? yt.getCurrentTime() : 0); },
+    dur(){ return mode === "local" ? (au.duration || 0) : (yt && yt.getDuration ? yt.getDuration() : 0); },
+    ids(){ return LOCAL.map(t => t.id).concat((yt && yt.getPlaylist && yt.getPlaylist()) || IDS); },
+    index(){ return mode === "local" ? lIdx : LOCAL.length + (yt && yt.getPlaylistIndex ? Math.max(0, yt.getPlaylistIndex()) : 0); },
+    playAt(i){ const n = this.ids().length; i = ((i % n) + n) % n;
+      if (i < LOCAL.length){ if (ytState() === 1) yt.pauseVideo(); mode = "local"; loadLocal(i); au.play().catch(() => {}); }
+      else { if (!ready) return; au.pause(); mode = "yt"; yt.playVideoAt(i - LOCAL.length); } },
+    next(){ this.playAt(this.index() + 1); }, prev(){ this.playAt(this.index() - 1); },
+    toggle(){ if (mode === "local"){ if (au.paused){ loadLocal(lIdx); au.play().catch(() => {}); } else au.pause(); } else { if (!ready) return; ytState() === 1 ? yt.pauseVideo() : yt.playVideo(); } },
+    seek(k){ if (mode === "local"){ if (au.duration) au.currentTime = au.duration * k; } else if (ready) yt.seekTo(yt.getDuration() * k, true); },
+    title(){ if (mode === "local") return { title: LOCAL[lIdx].title, artist: LOCAL[lIdx].artist }; const d = yt && yt.getVideoData ? yt.getVideoData() : null; return d && d.title ? { id: d.video_id, raw: d.title, title: clean(d.title), artist: rest(d.title) || d.author || " " } : null; }
+  };
+  au.addEventListener("play", () => { mode = "local"; refresh(); onYtState(1); });
+  au.addEventListener("pause", () => { refresh(); if (!au.ended) onYtState(2); });
+  au.addEventListener("ended", () => { onYtState(0); P.next(); });
+  au.addEventListener("error", () => { ptitle.textContent = "This track cannot be played here."; setTimeout(() => P.next(), 1500); });
+  window.__P = P;
+  const fmt = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+  function clean(t){ const c = String(t || "").split(/\s*[|]\s*/)[0].replace(/\s*[\(\[].*$/, "").trim(); return c || t; }
+  function rest(t){ return String(t || "").split(/\s*[|]\s*/).slice(1).join(" · ").replace(/[\(\)\[\]]/g, "").trim(); }
+  function refresh(){
+    const t = P.title();
+    if (t){ if (t.id) titles[t.id] = t.raw; ptitle.textContent = t.title; partist.textContent = t.artist; ptitle.classList.toggle("dev", /[\u0900-\u097F]/.test(t.title)); }
+    const cur = P.time(), dur = P.dur();
+    pfill.style.width = dur ? (cur / dur * 100).toFixed(2) + "%" : "0%"; ptime.textContent = fmt(cur) + (dur ? " / " + fmt(dur) : "");
+    if (!scrubbing){ const k = dur ? cur / dur : 0; pseek.value = Math.round(k * 1000); pseek.style.setProperty("--k", (k * 100).toFixed(2) + "%"); }
+    const st = P.state(); pplay.classList.toggle("playing", st === 1); pplay.setAttribute("aria-label", st === 1 ? "Pause" : "Play");
+    wPlaying = st === 1; wProg = dur ? cur / dur : 0;
+    setLinks(); renderList();
+  }
+  // v12: the link and download buttons follow the current track. Akara's own songs: download the mp3 + a share link to this page that cues the song.
+  //      YouTube tracks: no download (not ours to give away); the link opens the video on YouTube.
+  const plink = $("#plink"), pdl = $("#pdl"); let linkId = null;
+  function setLinks(){
+    const id = P.ids()[P.index()]; if (id === linkId) return; linkId = id;
+    const loc = LOCAL.find(t => t.id === id);
+    if (loc){ pdl.hidden = false; pdl.href = loc.src; pdl.setAttribute("download", loc.file || "akara.mp3"); pdl.title = "Download this song (mp3)";
+      plink.href = location.origin + location.pathname + "?play=" + id.slice(6); plink.title = "Link to this song"; }
+    else { pdl.hidden = true; plink.href = "https://www.youtube.com/watch?v=" + id; plink.title = "Open on YouTube"; }
+    plink.setAttribute("aria-label", plink.title); pdl.setAttribute("aria-label", pdl.title);
+  }
+  // ?play=<slug> → open the Music row with that song cued (browsers block autoplay without a tap; the play button is ready)
+  { const q = new URLSearchParams(location.search).get("play"); const i = q ? LOCAL.findIndex(t => t.id === "local:" + q) : -1;
+    if (i >= 0){ loadLocal(i); openGroup("gMusic", true); } }
+  function renderList(){
+    if (!plist.classList.contains("open")) return;
+    const ids = P.ids(), idx = P.index();
+    plist.innerHTML = ids.map((id, i) => `<div class="${i === idx ? "on" : ""}${/^local:/.test(id) ? " dev" : ""}" data-i="${i}">${i + 1}. ${clean(titles[id] || "Track " + (i + 1))}</div>`).join("");
+    $$("#plist div").forEach(el => el.addEventListener("click", () => { P.playAt(+el.dataset.i); }));
+  }
+  // waveform: 48 bars, each a slow sum of sines so it breathes; played part in gold, rest in faint ink
+  const wave = $("#pwave"), wx = wave.getContext("2d"); let wt = 0, wPlaying = false, wProg = 0;
+  const seeds = Array.from({ length: 48 }, (_, i) => ({ a: 0.35 + 0.65 * Math.abs(Math.sin(i * 1.7)), f: 0.8 + (i % 7) * 0.23, p: i * 0.9 }));
+  function drawWave(ts){
+    const dpr = Math.min(devicePixelRatio || 1, 2), W = wave.clientWidth, H = 26;
+    if (wave.width !== Math.round(W * dpr)){ wave.width = Math.round(W * dpr); wave.height = Math.round(H * dpr); }
+    wx.setTransform(dpr, 0, 0, dpr, 0, 0); wx.clearRect(0, 0, W, H);
+    wt += wPlaying ? 0.045 : 0.006;
+    const n = seeds.length, gap = W / n, bw = Math.max(2, gap * 0.55);
+    for (let i = 0; i < n; i++){
+      const s = seeds[i];
+      const live = wPlaying ? (0.55 + 0.45 * Math.sin(wt * s.f + s.p)) * (0.7 + 0.3 * Math.sin(wt * 0.37 + i)) : 0.16;
+      const h = Math.max(3, (H - 4) * (0.18 + 0.82 * s.a * live));
+      wx.fillStyle = (i / n) <= wProg ? "rgba(42,31,20,0.62)" : "rgba(42,31,20,0.18)";
+      wx.fillRect(i * gap + (gap - bw) / 2, (H - h) / 2, bw, h);
+    }
+    requestAnimationFrame(drawWave);
+  }
+  requestAnimationFrame(drawWave);
+  wave.addEventListener("click", (e) => { const r = wave.getBoundingClientRect(); P.seek((e.clientX - r.left) / r.width); });
+  // v13: scrub slider. While the hand is on the knob the clock follows the knob, not the track; seek on every move (native audio seeks instantly, YouTube seeks on release too)
+  const pseek = $("#pseek"); let scrubbing = false;
+  const scrubK = () => pseek.value / 1000;
+  pseek.addEventListener("pointerdown", () => { scrubbing = true; });
+  pseek.addEventListener("input", () => { scrubbing = true; const k = scrubK(), dur = P.dur(); pseek.style.setProperty("--k", (k * 100).toFixed(2) + "%"); ptime.textContent = fmt(dur * k) + (dur ? " / " + fmt(dur) : ""); if (mode === "local") P.seek(k); });
+  pseek.addEventListener("change", () => { P.seek(scrubK()); scrubbing = false; });
+  pseek.addEventListener("pointerup", () => { setTimeout(() => { scrubbing = false; }, 50); });
+  pseek.addEventListener("pointercancel", () => { scrubbing = false; });
+  refresh(); setInterval(refresh, 250);
+  window.onYouTubeIframeAPIReady = function(){
+    yt = new YT.Player("yt", { height: "2", width: "2", playerVars: { controls: 0, rel: 0, playsinline: 1, modestbranding: 1, origin: location.origin },
+      events: {
+        onReady: () => { yt.cuePlaylist(IDS); ready = true; refresh(); },
+        onStateChange: e => { if (e.data === 1){ mode = "yt"; if (!au.paused) au.pause(); } refresh(); onYtState(e.data);
+          if (e.data === 0 && yt.getPlaylistIndex && yt.getPlaylistIndex() >= (yt.getPlaylist() || IDS).length - 1) P.playAt(0); },   // end of the YouTube list → back to the local song
+        onError: e => { const i = yt.getPlaylistIndex ? yt.getPlaylistIndex() : -1; blocked.push({ id: IDS[i] || "?", i, code: e.data }); ptitle.textContent = "This track cannot be played here."; setTimeout(() => yt.nextVideo(), 1500); }
+      } });
+    window.__yt = () => yt; window.__blocked = blocked;
+  };
+  const s = document.createElement("script"); s.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(s);
+  pplay.addEventListener("click", () => P.toggle());
+  $("#pnext").addEventListener("click", () => P.next());
+  $("#pprev").addEventListener("click", () => P.prev());
+  $("#pbar").addEventListener("click", (e) => { const r = e.currentTarget.getBoundingClientRect(); P.seek((e.clientX - r.left) / r.width); });
+  $("#plistBtn").addEventListener("click", () => { plist.classList.toggle("open"); renderList(); });
+
+  // ── v12: hover tips. Fine pointers only (phones get the tour instead). The element's title is moved to data-tip so the browser's grey box never shows.
+  const tip = $("#tip");
+  if (window.matchMedia("(hover:hover) and (pointer:fine)").matches){
+    $$("#dock [title], #stotras button, .temple, #help, #vnav .auto, #vnav button, #diya, #dhoop, #modak").forEach(el => {
+      const t = el.getAttribute("title") || el.getAttribute("aria-label") || (el.classList.contains("auto") ? "Turn the verses every 14 s" : ""); if (!t) return;
+      el.dataset.tip = t; el.removeAttribute("title");
+      el.addEventListener("mouseenter", () => { tip.textContent = el.dataset.tip; tip.classList.add("on"); const r = el.getBoundingClientRect(); tip.style.left = "0px"; tip.style.top = "0px";
+        const w = tip.offsetWidth, h = tip.offsetHeight; let x = r.left + r.width / 2 - w / 2, y = r.top - h - 10; if (y < 8) y = r.bottom + 10; x = Math.max(8, Math.min(innerWidth - w - 8, x)); tip.style.left = x + "px"; tip.style.top = y + "px"; });
+      el.addEventListener("mouseleave", () => tip.classList.remove("on")); el.addEventListener("click", () => tip.classList.remove("on"));
+    });
+  }
+
+  // ── v12: first-visit tour. Seven notes, each ringed on the live page (no dim). Runs once per browser (localStorage), again from the ? button or ?tour=1.
+  //        On phones each target is scrolled into view first; the card sits below or above it and never leaves the viewport.
+  const tour = $("#tour"), ring = $("#tourRing"), card = $("#tourCard");
+  const STEPS = [
+    { el: "#hang", pad: 6, radius: 18, h: "The curtain", p: () => PHONE() ? "Drag your finger through the hymns. The strands tangle, then settle." : "Move your pointer through the hymns. The strands tangle, then settle." },
+    { el: ".temple.r", pad: 8, h: "Three temples", p: () => PHONE() ? "Tap a medallion, or swipe the mandap sideways, to change the temple." : "Tap a medallion, or drag the mandap sideways, to change the temple." },
+    { el: "#tray", pad: 6, open: "gOffer", h: "Offerings", p: "Light the diya, ring the bell, light the dhoop, offer a modak, shower flowers." },
+    { el: "#togCurtain", pad: 8, open: "gOffer", h: "Darshan", p: "Part the curtain. The murti opens its eyes for ten seconds, then the curtain falls." },
+    { el: "#rupa", pad: 6, open: "gOffer", h: "R\u016bpa", p: "Seven forms of the deity. \u2039 and \u203a move between them." },
+    { el: "#player", pad: 6, open: "gMusic", h: "Aarti & bhajans", p: "Fourteen songs. The first is Akara\u2019s own: the arrow saves it to your device, the chain is its link." },
+    { el: "#stotras", pad: 6, h: "Stotras", p: "Six hymns to recite, verse by verse. \u2018recite slowly\u2019 turns the pages for you." },
+  ];
+  let ti = -1, tourT = null;
+  function placeTour(){
+    if (ti < 0) return; const st = STEPS[ti], el = $(st.el); if (!el) return;
+    const r = el.getBoundingClientRect(), pad = st.pad || 6;
+    ring.style.left = (r.left - pad) + "px"; ring.style.top = (r.top - pad) + "px"; ring.style.width = (r.width + pad * 2) + "px"; ring.style.height = (r.height + pad * 2) + "px"; ring.style.borderRadius = (st.radius || 999) + "px";
+    const cw = card.offsetWidth, ch = card.offsetHeight, m = 14; let x, y;
+    if (!PHONE() && r.right + m + cw <= innerWidth - 8){ x = r.right + m; y = r.top + r.height / 2 - ch / 2; }            // beside, to the right
+    else if (!PHONE() && r.left - m - cw >= 8){ x = r.left - m - cw; y = r.top + r.height / 2 - ch / 2; }             // beside, to the left
+    else if (r.bottom + m + ch <= innerHeight - 8){ x = r.left + r.width / 2 - cw / 2; y = r.bottom + m + pad; }      // below
+    else { x = r.left + r.width / 2 - cw / 2; y = r.top - m - ch - pad; }                                             // above
+    x = Math.max(8, Math.min(innerWidth - cw - 8, x)); y = Math.max(8, Math.min(innerHeight - ch - 8, y));
+    card.style.left = x + "px"; card.style.top = y + "px";
+  }
+  function showStep(i){
+    clearTimeout(tourT); ti = i; const st = STEPS[i], el = $(st.el);
+    if (st.open) openGroup(st.open, false);
+    $("#tourK").textContent = (i + 1) + " / " + STEPS.length; $("#tourH").textContent = st.h; $("#tourP").textContent = typeof st.p === "function" ? st.p() : st.p;
+    $("#tourNext").textContent = i === STEPS.length - 1 ? "done" : "next \u203a";
+    tour.classList.add("on"); tour.classList.remove("show");
+    if (el){ const r = el.getBoundingClientRect(); if (PHONE() || r.top < 0 || r.bottom > innerHeight) el.scrollIntoView({ block: "center", behavior: REDUCED ? "auto" : "smooth" }); }   // desktop fits as is; only scroll when the target is off-screen
+    tourT = setTimeout(() => { placeTour(); tour.classList.add("show"); }, st.open || PHONE() ? 950 : 350);   // wait for the row to open / the scroll to settle
+  }
+  function endTour(){ clearTimeout(tourT); ti = -1; tour.classList.remove("show"); setTimeout(() => tour.classList.remove("on"), 700); try { localStorage.setItem("ak_ganesh_tour", "1"); } catch (e) {} if (!$("#gOffer").classList.contains("open")) openGroup("gOffer", false); }
+  function startTour(){ if (ti >= 0) return; if (PHONE()) window.scrollTo({ top: 0, behavior: "auto" }); showStep(0); }
+  $("#tourNext").addEventListener("click", () => ti < STEPS.length - 1 ? showStep(ti + 1) : endTour());
+  $("#tourSkip").addEventListener("click", endTour);
+  $("#help").addEventListener("click", startTour);
+  document.addEventListener("keydown", e => { if (ti < 0) return; if (e.key === "Escape") endTour(); else if (e.key === "ArrowRight" || e.key === "Enter") $("#tourNext").click(); });
+  addEventListener("resize", placeTour); addEventListener("scroll", placeTour, { passive: true });
+  window.__tour = { start: startTour, end: endTour, step: showStep };
+  { let seen = false; try { seen = localStorage.getItem("ak_ganesh_tour") === "1"; } catch (e) {}
+    const force = new URLSearchParams(location.search).get("tour") === "1";
+    if (force || !seen) setTimeout(startTour, 2200); }   // let the curtain hang first
+})();
+</script>
+</body>
+</html>

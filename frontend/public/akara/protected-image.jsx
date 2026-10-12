@@ -14,7 +14,69 @@
 // capture pixels. Phase 3 (signed-cookie-gated full-res) is what locks the
 // originals away from non-members.
 
-const { useEffect: piE } = React;
+const { useEffect: piE, useState: piS } = React;
+
+// Members get /content/originals/* (gated by CloudFront signed cookies).
+// Without the cookies CloudFront answers 403 → index.html (200 text/html), so
+// a plain background-image just stays blank. Rule from the owner: a signed-in
+// member never sees a watermarked picture — show a shimmer until the clean
+// one has loaded. Flow: wait for the shared grant (akEnsureGrant), probe
+// src then fallbackSrc, on failure force one re-grant and retry with ?r=,
+// and retry again whenever auth.jsx fires "akara:image-access".
+function _piIsGated(src){ return /\/content\/originals\//.test(src || ""); }
+function _piLoad(u){
+  return new Promise((res) => { const im = new Image(); im.onload = () => res(true); im.onerror = () => res(false); im.src = u; });
+}
+function _piBust(u){ return `${u}${u.includes("?") ? "&" : "?"}r=${Date.now()}`; }
+function _piUseGatedSrc(src, fallbackSrc){
+  const gated = _piIsGated(src);
+  const [shown, setShown] = piS(gated ? null : src);
+  piE(() => {
+    if (!gated) { setShown(src); return; }
+    let alive = true, done = false, busy = false;
+    setShown(null);
+    const cands = [src, fallbackSrc].filter(Boolean);
+    const tryAll = async (bust) => {
+      for (const u of cands) {
+        const url = bust ? _piBust(u) : u;
+        if (!alive) return true;
+        if (await _piLoad(url)) { if (alive) { done = true; setShown(url); } return true; }
+      }
+      return false;
+    };
+    const run = async () => {
+      if (done || busy) return;
+      busy = true;
+      try {
+        try { if (typeof akEnsureGrant === "function") await akEnsureGrant(); } catch {}
+        if (await tryAll(false)) return;
+        try { if (typeof akEnsureGrant === "function") await akEnsureGrant(true); } catch {}
+        await tryAll(true);
+      } finally { busy = false; }
+    };
+    run();
+    window.addEventListener("akara:image-access", run);
+    return () => { alive = false; window.removeEventListener("akara:image-access", run); };
+  }, [src, fallbackSrc]);
+  return shown;
+}
+
+// Shimmer shown while a member's clean picture loads. Sits over the tile's
+// own gradient; slow sweep, still under prefers-reduced-motion.
+function _piInstallShimmerCss(){
+  if (typeof document === "undefined" || document.getElementById("ak-pi-shimmer-css")) return;
+  const st = document.createElement("style");
+  st.id = "ak-pi-shimmer-css";
+  st.textContent = `
+.ak-pi-wait{position:absolute;inset:0;overflow:hidden;pointer-events:none;background:rgba(5,5,6,.35)}
+.ak-pi-wait::after{content:"";position:absolute;inset:0;transform:translateX(-100%);
+  background:linear-gradient(100deg,transparent 30%,rgba(197,160,89,.10) 50%,transparent 70%);
+  animation:akPiSweep 1.6s cubic-bezier(.45,0,.25,1) infinite}
+@keyframes akPiSweep{to{transform:translateX(100%)}}
+@media (prefers-reduced-motion: reduce){.ak-pi-wait::after{animation:none;transform:none;opacity:.5}}`;
+  document.head.appendChild(st);
+}
+_piInstallShimmerCss();
 
 function _piBlock(e){
   e.preventDefault();
@@ -27,6 +89,7 @@ function _piBlock(e){
 // as the original <img> usage).
 function ProtectedImage({
   src,
+  fallbackSrc,              // tried if src fails (gated originals only)
   alt = "",
   className,
   style,
@@ -37,7 +100,9 @@ function ProtectedImage({
   watermarkOpacity = 0.18,
   children,
 }){
+  const shown = _piUseGatedSrc(src, fallbackSrc);
   if(!src) return null;
+  if(!shown) return <div className="ak-pi-wait" aria-busy="true" aria-label={alt}>{children}</div>;
   const cls = "ak-protected-img" + (className ? " " + className : "");
   return (
     <div
@@ -52,7 +117,7 @@ function ProtectedImage({
         inset: 0,
         width: "100%",
         height: "100%",
-        backgroundImage: `url("${src}")`,
+        backgroundImage: `url("${shown}")`,
         backgroundSize: fit,
         backgroundPosition: position,
         backgroundRepeat: "no-repeat",

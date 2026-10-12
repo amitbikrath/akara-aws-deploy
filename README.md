@@ -1,95 +1,54 @@
-# Akara Studio - AWS Native Platform
+# Akara — akara.studio
 
-Premium wallpapers and music platform built on AWS with modern web technologies.
+Sacred art for your screen — wallpapers, music, shop, and the Akara Times,
+served fully serverless on AWS (S3 + CloudFront + Lambda + Cognito).
 
-## Architecture
+> **Read the repo-root [`CLAUDE.md`](../CLAUDE.md) before changing anything.**
+> It documents the #1 recurring mistake (editing the wrong frontend) and the
+> only safe deploy workflow.
 
-- **Frontend**: Public site (Next.js 14 + TypeScript + Tailwind)
-- **Admin**: Private admin interface (Next.js 14 + TypeScript + Tailwind)
-- **Lambdas**: Serverless API (Node.js + TypeScript)
-- **Infra**: Infrastructure as Code (Terraform)
-- **Catalogs**: JSON schemas and data contracts
+## What actually renders akara.studio
 
-## Quick Start
+- **The site UI** is a React app delivered as Babel-compiled JSX:
+  [`frontend/public/akara/*.jsx`](frontend/public/akara/) — nav/hero, gallery,
+  wallpapers, music story, socials, shop, panchang rail, auth, lightbox, footer.
+  The Next.js app in `frontend/src/` is only the thin shell (`layout.tsx` +
+  `page.tsx`) that mounts this bundle into `<div id="root">`. The same script
+  list exists in `public/akara/akara.html` and `public/akara/index.html` —
+  keep all three in lockstep.
+- **Akara Times** (`/times/{slug}`) — one SEO article per day, written directly
+  to S3 by the `akara-times-daily` Lambda. Not present in this repo.
+- **Admin** — `admin/` Next.js app at admin.akara.studio.
+- **Lambdas** — `lambdas/` (catalog, auth/image protection, social pollers,
+  Times engine, and more; some live Lambdas exceed what Terraform declares).
+- **Infra** — `infra/terraform/` is PARTIAL vs live. Never `apply` blind.
 
-### Prerequisites
-
-- Node.js 18+ and npm 9+
-- AWS CLI configured
-- Terraform (for infrastructure)
-
-### Development
+## Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Start frontend development server
-npm run dev:frontend
-
-# Start admin development server
-npm run dev:admin
-
-# Build all workspaces
-npm run build:frontend
-npm run build:admin
-npm run build:lambdas
+npm run build:frontend   # static export to frontend/out/ (shell must match live)
 ```
 
-### Environment Setup
+There is no meaningful local dev server for the public site — the jsx bundle
+calls the production `/api/*`. Verify frontend changes by serving
+`frontend/out/` statically, then deploy targeted files.
 
-1. Copy environment files:
-   ```bash
-   cp frontend/.env.example frontend/.env.local
-   cp admin/.env.example admin/.env.local
-   cp lambdas/.env.example lambdas/.env
-   ```
+## Deployment (the only safe way)
 
-2. Configure AWS credentials and update environment variables
-
-### Deployment
+Targeted uploads + scoped invalidation. Example for a jsx change:
 
 ```bash
-# Deploy infrastructure first
-npm run deploy:infra
-
-# Deploy applications
-npm run deploy:frontend
-npm run deploy:admin
-npm run deploy:lambdas
+aws s3 cp frontend/public/akara/gallery.jsx \
+  s3://akara-frontend-738983679688-us-east-1/akara/gallery.jsx
+aws cloudfront create-invalidation --distribution-id EBWBTLYBASPTD \
+  --paths "/akara/gallery.jsx"
+# then: curl the live URL and grep for your change
 ```
 
-## Project Structure
-
-```
-akara/
-├── frontend/          # Public site (Next.js)
-├── admin/            # Admin interface (Next.js)
-├── lambdas/          # Serverless functions
-├── infra/            # Terraform infrastructure
-├── catalogs/         # Data schemas and samples
-└── .github/workflows/ # CI/CD pipelines
-```
-
-## Design Principles
-
-- **Static + CDN**: Public browsing uses static catalogs, no DB calls
-- **Manual-first Admin**: Upload, edit, publish workflow
-- **Premium Experience**: Apple-like quality, mobile-first, accessible
-- **Phase-based Delivery**: Ship incrementally with clear milestones
-
-## Data Flow
-
-1. **Admin**: Upload media → Edit metadata → Publish
-2. **Publish**: Generate catalogs → Update S3 → Invalidate CloudFront
-3. **Public**: Browse static catalogs → Stream optimized media
-
-## Environments
-
-- **Development**: Local development with sample data
-- **Staging**: AWS staging environment for testing
-- **Production**: Live site at akara.studio
+Never run `npm run deploy:*`, `deploy-all.sh` (archived), or unreviewed
+`terraform apply` — see `CLAUDE.md` and `docs/archive-2026-07-obsolete/`.
 
 ## License
 
-Private - All rights reserved
+Private — All rights reserved

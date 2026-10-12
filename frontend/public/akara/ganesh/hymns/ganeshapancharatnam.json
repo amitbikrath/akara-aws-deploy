@@ -1,0 +1,83 @@
+{
+  "author" : "Adi Shankaracharya",
+  "deityTag" : "ganesha",
+  "glyph" : "ग",
+  "id" : "ganeshapancharatnam",
+  "kind" : "Stotra",
+  "liveReciteEnabled" : false,
+  "primaryScript" : "dev",
+  "story" : {
+    "en" : "The Gaṇeśa Pañcaratnam — 'Five Jewels of Gaṇeśa' — is a stotra attributed to Ādi Śaṅkarācārya, the eighth-century Advaita philosopher who traversed the subcontinent establishing the four maṭhas. Each of the five verses is itself a jewel: tightly wrought, dense with compound epithets, and addressed wholly to Gaṇeśa — the elephant-headed son of Śiva and Pārvatī, remover of obstacles (Vighneśvara), lord of the gaṇas, and the deity customarily invoked at the threshold of every undertaking. The verses celebrate him as Vināyaka holding the joy-conferring modaka, as the refuge without a protector, as the destroyer of demonic pride, as the sole, unending abode of yogis, and as the one who is 'beyond the beyond.' The composition exemplifies Śaṅkara's gift for the stotra form: philosophy encoded in devotion, each line a moving meditation on a single divine form.\n\nThe sixth verse is the phalaśruti — the 'fruit of recitation' — which promises that whoever recites the Pañcaratnam at dawn with heartfelt remembrance of Gaṇeśa will soon receive health, freedom from fault, eloquence, worthy offspring, a long composed life, and eightfold prosperity. The stotra is chanted on Gaṇeśa Caturdaśī, at the start of pūjā, and whenever an auspicious endeavour is begun."
+  },
+  "subtitle" : "Adi Shankara · 5 verses",
+  "title" : "Ganesha Pancharatnam",
+  "titleDev" : "गणेशपञ्चरत्नम्",
+  "verses" : [
+    {
+      "id" : 0,
+      "meaning" : {
+        "en" : "I bow to Vināyaka — who joyfully holds the modaka, who ever leads devotees toward liberation, who wears the crescent moon as his crest-ornament, and who protects all the shining worlds. He is the sole guide of those who have no other refuge, the destroyer of elephant-demon pride, and the swift remover of inauspiciousness from all who bow to him."
+      },
+      "n" : "१",
+      "scripts" : {
+        "dev" : "मुदाकरात्तमोदकं सदा विमुक्तिसाधकं\nकलाधरावतंसकं विलासिलोकरक्षकम् ।\nअनायकैकनायकं विनाशितेभदैत्यकं\nनताशुभाशुनाशकं नमामि तं विनायकम् ॥",
+        "iast" : "mudākarāttamodakaṃ sadā vimuktisādhakaṃ\nkalādharāvataṃsakaṃ vilāsilokarakṣakam.\nanāyakaikanāyakaṃ vināśitebhadaityakaṃ\nnatāśubhāśunāśakaṃ namāmi taṃ vināyakam."
+      }
+    },
+    {
+      "id" : 1,
+      "meaning" : {
+        "en" : "I take refuge without cease in that Parameśvara who is fearsome to arrogance, radiant as the newly risen sun, who scatters the enemies of the gods and rescues devotees from the gravest calamity. He is lord of the gods, lord of all treasures, lord of the elephants, lord of the gaṇas, the great lord — the one who is beyond even the beyond."
+      },
+      "n" : "२",
+      "scripts" : {
+        "dev" : "नतेतरातिभीकरं नवोदितार्कभास्वरं\nनमत्सुरारिनिर्जरं नताधिकापदुद्धरम् ।\nसुरेश्वरं निधीश्वरं गजेश्वरं गणेश्वरं\nमहेश्वरं तमाश्रये परात्परं निरन्तरम् ॥",
+        "iast" : "natetarātibhīkaraṃ navoditārkabhāsvaraṃ\nnamatsurārinirjaraṃ natādhikāpaduddharam.\nsureśvaraṃ nidhīśvaraṃ gajeśvaraṃ gaṇeśvaraṃ\nmaheśvaraṃ tamāśraye parātparaṃ nirantaram."
+      }
+    },
+    {
+      "id" : 2,
+      "meaning" : {
+        "en" : "I bow to the resplendent Gaṇeśa — bringer of auspiciousness to all worlds, vanquisher of elephant-like demonic forces, the one who bears the vast belly, whose elephant-face is noble, and who is imperishable. He is the very source of compassion, forbearance, joy, good renown, and right thinking for all who make obeisance to him."
+      },
+      "n" : "३",
+      "scripts" : {
+        "dev" : "समस्तलोकशंकरं निरस्तदैत्यकुञ्जरं\nदरेतरोदरं वरं वरेभवक्त्रमक्षरम् ।\nकृपाकरं क्षमाकरं मुदाकरं यशस्करं\nमनस्करं नमस्कृतां नमस्करोमि भास्वरम् ॥",
+        "iast" : "samastaloka-śaṃkaraṃ nirasta-daitya-kuñjaraṃ\ndaretarodaraṃ varaṃ varebhavaktramakṣaram.\nkṛpākaraṃ kṣamākaraṃ mudākaraṃ yaśaskaraṃ\nmanaskaraṃ namaskṛtāṃ namaskaromi bhāsvaram."
+      }
+    },
+    {
+      "id" : 3,
+      "meaning" : {
+        "en" : "I adore the ancient elephant-faced one — who wipes away the suffering of the helpless, who is the vessel of eternal, authoritative utterance, who is the elder son of Śiva, and who crushes the arrogance of the enemies of the gods. He is terrible at the dissolution of the manifest world, adorned with the powers of Dhanañjaya and others, his lordly elephant-temples swelling with ichor — I adore that primordial, ancient elephant."
+      },
+      "n" : "४",
+      "scripts" : {
+        "dev" : "अकिंचनार्तिमार्जनं चिरन्तनोक्तिभाजनं\nपुरारिपूर्वनन्दनं सुरारिगर्वचर्वणम् ।\nप्रपञ्चनाशभीषणं धनंजयादिभूषणं\nकपोलदानवारणं भजे पुराणवारणम् ॥",
+        "iast" : "akiṃcanārtimārjanaṃ cirantanoktibhājanaṃ\npurāripūrvanandanaṃ surārigarvacarvaṇam.\nprapañcanāśabhīṣaṇaṃ dhanaṃjayādibhūṣaṇaṃ\nkapoladānavāraṇaṃ bhaje purāṇavāraṇam."
+      }
+    },
+    {
+      "id" : 4,
+      "meaning" : {
+        "en" : "I meditate without cease on that one-tusked lord — whose single tusk is radiant with perpetual beauty, who is the son of the destroyer of Kāma, whose form is beyond thought, who is without end, and who severs all obstacles. He dwells without interruption in the inner heart of every yogī — on that very Ekadanta I contemplate always."
+      },
+      "n" : "५",
+      "scripts" : {
+        "dev" : "नितान्तकान्तदन्तकान्तिमन्तकान्तकात्मजं\nअचिन्त्यरूपमन्तहीनमन्तरायकृन्तनम् ।\nहृदन्तरे निरन्तरं वसन्तमेव योगिनां\nतमेकदन्तमेव तं विचिन्तयामि सन्ततम् ॥",
+        "iast" : "nitāntakāntadantakānti-mantakāntakātmajaṃ\nacintyarūpamantahīnam-antarāyakṛntanam.\nhṛdantare nirantaraṃ vasantameva yogināṃ\ntamekadantameva taṃ vicintayāmi santatam."
+      }
+    },
+    {
+      "id" : 5,
+      "meaning" : {
+        "en" : "Whoever recites this Mahā Gaṇeśa Pañcaratnam with reverence every morning, holding Gaṇeśvara in the heart, shall swiftly attain freedom from disease, freedom from fault, eloquence and learning, worthy progeny, a long and composed life, and eightfold divine prosperity."
+      },
+      "n" : "फल",
+      "scripts" : {
+        "dev" : "महागणेशपञ्चरत्नमादरेण योऽन्वहं\nप्रजल्पति प्रभातके हृदि स्मरन् गणेश्वरम् ।\nअरोगतामदोषतां सुसाहितीं सुपुत्रतां\nसमाहितायुरष्टभूतिमभ्युपैति सोऽचिरात् ॥",
+        "iast" : "mahāgaṇeśapañcaratnamādareṇa yo'nvahaṃ\nprajalpati prabhātake hṛdi smaran gaṇeśvaram.\narogatāmadoṣatāṃ susāhitīṃ suputratāṃ\nsamāhitāyuraṣṭabhūtimabhyupaiti so'cirāt."
+      }
+    }
+  ]
+}

@@ -104,7 +104,7 @@ function Waveform({ active, progress, onSeek }){
 }
 
 // SPINNING VINYL RECORD
-function Vinyl({ playing }){
+function Vinyl({ playing, art }){
   return (
     <div style={{
       position:"relative", aspectRatio:"1", width:"100%",
@@ -144,22 +144,27 @@ function Vinyl({ playing }){
 
         {/* label */}
         <circle cx="100" cy="100" r="32" fill="url(#vinylLabel)"/>
+        {art && <clipPath id="vinylArtClip"><circle cx="100" cy="100" r="32"/></clipPath>}
+        {art && <image key={art} href={art} x="68" y="68" width="64" height="64" preserveAspectRatio="xMidYMid slice"
+          clipPath="url(#vinylArtClip)" className="vinyl-art"/>}
         <circle cx="100" cy="100" r="32" fill="none" stroke="#C5A059" strokeWidth="0.4" opacity="0.6"/>
         {/* label type — circular */}
         <defs>
           <path id="labelArcTop" d="M 100 100 m -22 0 a 22 22 0 1 1 44 0" fill="none"/>
           <path id="labelArcBot" d="M 100 100 m 22 0 a 22 22 0 1 1 -44 0" fill="none"/>
         </defs>
+        {!art && <g>
         <text fill="#C5A059" fontFamily="var(--mono)" fontSize="3.4" letterSpacing="0.6">
           <textPath href="#labelArcTop" startOffset="50%" textAnchor="middle">AKARA · SANATANI SOUND</textPath>
         </text>
         <text fill="#C5A059" fontFamily="var(--mono)" fontSize="3.4" letterSpacing="0.6" opacity="0.7">
           <textPath href="#labelArcBot" startOffset="50%" textAnchor="middle">VOL 01 · DIGITAL RITUAL</textPath>
         </text>
+        </g>}
         {/* mandala center */}
         <g transform="translate(100 100)">
-          {[6,10,14].map(r=>(<circle key={r} r={r} fill="none" stroke="#C5A059" strokeWidth="0.3" opacity="0.5"/>))}
-          {Array.from({length:12}).map((_,i)=>{
+          {!art && [6,10,14].map(r=>(<circle key={r} r={r} fill="none" stroke="#C5A059" strokeWidth="0.3" opacity="0.5"/>))}
+          {!art && Array.from({length:12}).map((_,i)=>{
             const a = (i/12)*Math.PI*2;
             return <line key={i} x1={Math.cos(a)*6} y1={Math.sin(a)*6} x2={Math.cos(a)*14} y2={Math.sin(a)*14} stroke="#C5A059" strokeWidth="0.25" opacity="0.6"/>;
           })}
@@ -174,18 +179,58 @@ function Vinyl({ playing }){
 function MusicSection(){
   const [idx, setIdx] = msS(0);
   const [playing, setPlaying] = msS(false);
-  const [prog, setProg] = msS(0.34);
+  const [prog, setProg] = msS(0);
+  const [ring, setRing] = msS(0); // increments on each play/pause press → remounts the ripple span so its animation replays
   const t = TRACKS[idx];
   const ref = msR(null);
   const inView = useInView(ref, { threshold:0.2 });
 
+  // One <audio> for the section. Nothing is fetched until the first play press.
+  const audioRef = msR(null);
+  const pendingSeek = msR(null); // seek made before metadata arrived
   msE(()=>{
-    if(!playing) return;
-    const id = setInterval(()=>{
-      setProg(p=>{ const np = p + 1/t.durSec; return np>=1 ? 0 : np; });
-    }, 1000);
-    return ()=>clearInterval(id);
-  },[playing, t.durSec]);
+    const a = new Audio();
+    a.preload = "none";
+    audioRef.current = a;
+    const onTime = ()=>{ if(a.duration) setProg(a.currentTime / a.duration); };
+    const onMeta = ()=>{ if(pendingSeek.current!=null){ a.currentTime = pendingSeek.current * a.duration; pendingSeek.current = null; } };
+    const onEnd  = ()=>{ window.akTrack && window.akTrack("music_complete", { track_id:a.dataset.track }); setProg(0); setIdx(i=>(i+1)%TRACKS.length); };
+    const onErr  = ()=>setPlaying(false);
+    a.addEventListener("timeupdate", onTime);
+    a.addEventListener("loadedmetadata", onMeta);
+    a.addEventListener("ended", onEnd);
+    a.addEventListener("error", onErr);
+    return ()=>{
+      a.pause();
+      a.removeEventListener("timeupdate", onTime);
+      a.removeEventListener("loadedmetadata", onMeta);
+      a.removeEventListener("ended", onEnd);
+      a.removeEventListener("error", onErr);
+      a.removeAttribute("src");
+      audioRef.current = null;
+    };
+  },[]);
+
+  msE(()=>{
+    const a = audioRef.current;
+    if(!a) return;
+    if(!playing){
+      if(a.dataset.track && !a.paused && window.akTrack) window.akTrack("music_pause", { track_id:a.dataset.track, seconds:Math.round(a.currentTime||0) });
+      a.pause(); return;
+    }
+    if(a.dataset.track !== t.id){ a.dataset.track = t.id; a.src = t.src; }
+    window.akTrack && window.akTrack("music_play", { track_id:t.id, track_title:t.title });
+    const p = a.play();
+    if(p && p.catch) p.catch(()=>setPlaying(false));
+  },[playing, t.id]);
+
+  const seek = (p)=>{
+    setProg(p);
+    const a = audioRef.current;
+    if(!a) return;
+    if(a.dataset.track === t.id && a.duration) a.currentTime = p * a.duration;
+    else pendingSeek.current = p;
+  };
 
   const fmt = (sec)=>`${Math.floor(sec/60)}:${String(Math.floor(sec%60)).padStart(2,"0")}`;
 
@@ -222,7 +267,7 @@ function MusicSection(){
         }}>
           {/* vinyl */}
           <div className="vinyl-wrap" style={{ position:"relative" }}>
-            <Vinyl playing={playing}/>
+            <Vinyl playing={playing} art={t.art}/>
             {/* tonearm */}
             <div aria-hidden style={{
               position:"absolute", top:-6, right:-10, width:86, height:12,
@@ -241,7 +286,7 @@ function MusicSection(){
           <div style={{ display:"flex", flexDirection:"column", gap:16, minWidth:0 }}>
             <div>
               <div className="mono" style={{ fontSize:9, letterSpacing:".32em", color:"var(--ice-muted)", textTransform:"uppercase" }}>
-                NOW PLAYING · SIDE A · {String(idx+1).padStart(2,"0")} / 05
+                NOW PLAYING · SIDE A · {String(idx+1).padStart(2,"0")} / {String(TRACKS.length).padStart(2,"0")}
               </div>
               <div className="display" style={{ fontSize:"clamp(26px,2.8vw,36px)", marginTop:6, letterSpacing:"-.01em", fontStyle:"italic", lineHeight:1.05 }}>{t.title}</div>
               <div style={{ display:"flex", gap:8, marginTop:10, flexWrap:"wrap" }}>
@@ -251,22 +296,36 @@ function MusicSection(){
                 <Chip k="Occasion" v={t.occasion}/>
               </div>
             </div>
-            <Waveform active={playing} progress={prog} onSeek={setProg}/>
+            <Waveform active={playing} progress={prog} onSeek={seek}/>
             <div style={{ display:"flex", justifyContent:"space-between", fontFamily:"var(--mono)", fontSize:10, letterSpacing:".12em", color:"var(--ice-muted)", marginTop:-6 }}>
               <span>{fmt(prog*t.durSec)}</span>
               <span>-{fmt((1-prog)*t.durSec)}</span>
             </div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:2 }}>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <button onClick={()=>{ setIdx((idx-1+TRACKS.length)%TRACKS.length); setProg(0); }} style={btn()}>⟵</button>
-                <button onClick={()=>setPlaying(p=>!p)} style={{
+                <button onClick={()=>{ setIdx((idx-1+TRACKS.length)%TRACKS.length); seek(0); }} className="tbtn tbtn-prev" aria-label="Previous track" style={btn()}>
+                  <span className="tb-ic" aria-hidden>⟵</span>
+                </button>
+                {/* play/pause: icon crossfade-morph + gold expand-ring on press */}
+                <button onClick={()=>{ setPlaying(p=>!p); setRing(r=>r+1); }} className="play-btn" aria-label={playing?"Pause":"Play"} style={{
+                  position:"relative",
                   width:46, height:46, borderRadius:"50%", background:"var(--gold)", border:"none",
                   color:"var(--navy-deep)", fontSize:15, cursor:"pointer",
                   boxShadow:"0 6px 18px rgba(197,160,89,.32), inset 0 1px 0 rgba(255,255,255,.3)",
                   transition:"transform .2s",
                   display:"grid", placeItems:"center",
-                }}>{playing?"❚❚":"▶"}</button>
-                <button onClick={()=>{ setIdx((idx+1)%TRACKS.length); setProg(0); }} style={btn()}>⟶</button>
+                }}>
+                  {ring>0 && <span key={ring} className="pb-ring" aria-hidden/>}
+                  <span aria-hidden style={{ gridArea:"1/1",
+                    opacity: playing?0:1, transform: playing?"scale(.5) rotate(60deg)":"scale(1) rotate(0deg)",
+                    transition:"opacity .22s var(--ease-out), transform .32s var(--ease-out)" }}>▶</span>
+                  <span aria-hidden style={{ gridArea:"1/1",
+                    opacity: playing?1:0, transform: playing?"scale(1) rotate(0deg)":"scale(.5) rotate(-60deg)",
+                    transition:"opacity .22s var(--ease-out), transform .32s var(--ease-out)" }}>❚❚</span>
+                </button>
+                <button onClick={()=>{ setIdx((idx+1)%TRACKS.length); seek(0); }} className="tbtn tbtn-next" aria-label="Next track" style={btn()}>
+                  <span className="tb-ic" aria-hidden>⟶</span>
+                </button>
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:14 }}>
                 <span className="mono" style={{ fontSize:9, letterSpacing:".28em", color:"var(--ice-muted)" }}>33⅓</span>
@@ -294,7 +353,7 @@ function MusicSection(){
           {TRACKS.map((tr,i)=>{
             const isActive = i===idx;
             return (
-              <button key={tr.id} onClick={()=>{ setIdx(i); setProg(0); setPlaying(true); }} className="playlist-row" style={{
+              <button key={tr.id} onClick={()=>{ setIdx(i); seek(0); setPlaying(true); }} className="playlist-row" style={{
                 display:"grid", gridTemplateColumns:"48px 1.6fr 1.1fr .9fr 1.1fr .8fr",
                 alignItems:"center", gap:20, padding:"20px 24px", width:"100%",
                 background: isActive? "rgba(197,160,89,.05)" : "transparent",
@@ -306,7 +365,12 @@ function MusicSection(){
                 <span className="mono" style={{ fontSize:11, color: isActive?"var(--gold)":"var(--ice-muted)", letterSpacing:".2em" }}>
                   {isActive && playing ? "♪" : String(i+1).padStart(2,"0")}
                 </span>
-                <span className="display" style={{ fontSize:22, fontStyle:"italic", color: isActive?"#fff":"#e7dfd2" }}>{tr.title}</span>
+                <span style={{ display:"flex", alignItems:"center", gap:14, minWidth:0 }}>
+                  <img src={tr.art} alt="" loading="lazy" width="40" height="40" style={{
+                    width:40, height:40, borderRadius:4, objectFit:"cover", flex:"none",
+                    border:"1px solid rgba(197,160,89,.28)", opacity:isActive?1:.78, transition:"opacity .6s var(--ease-out)" }}/>
+                  <span className="display" style={{ fontSize:22, fontStyle:"italic", color: isActive?"#fff":"#e7dfd2" }}>{tr.title}</span>
+                </span>
                 <span className="mono playlist-col-invokes" style={{ fontSize:11, letterSpacing:".18em", color:isActive?"var(--gold)":"#c9c2b4", textTransform:"uppercase" }}>{tr.invokes}</span>
                 <span className="playlist-col-mood" style={{ fontSize:13, color:"var(--ice-muted)" }}>{tr.mood}</span>
                 <span className="playlist-col-occasion" style={{ fontSize:13, color:"var(--ice-muted)" }}>{tr.occasion}</span>
@@ -319,10 +383,10 @@ function MusicSection(){
         {/* footer strip */}
         <div className="music-meta" style={{ marginTop:36, padding:"22px 0", borderTop:"1px solid rgba(255,255,255,.08)",
           display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:24 }}>
-          <Meta k="Mastered in" v="256kbps · Opus"/>
-          <Meta k="Durations" v="4:32 – 8:04"/>
+          <Meta k="Pressed as" v="MP3 · 184kbps"/>
+          <Meta k="Durations" v="1:31 – 6:20"/>
           <Meta k="Cadence" v="One new piece / moon"/>
-          <Meta k="Play anywhere" v="Stream · Offline · Loop"/>
+          <Meta k="Play anywhere" v="Stream · In the browser"/>
         </div>
       </div>
     </section>

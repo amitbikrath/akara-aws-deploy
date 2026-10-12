@@ -1,11 +1,9 @@
 'use client';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAccessToken } from '@/lib/auth';
 import { apiRequest, postCatalog } from '@/lib/api';
 import RouteGuard from '@/components/RouteGuard';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
 
 function UploadContent() {
   const router = useRouter();
@@ -13,7 +11,6 @@ function UploadContent() {
   const [status, setStatus] = useState<'idle'|'presigning'|'uploading'|'creating'|'done'|'error'>('idle');
   const [msg, setMsg] = useState<string>('');
   const [debug, setDebug] = useState<any>(null);
-  const [uploadedKey, setUploadedKey] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -23,31 +20,65 @@ function UploadContent() {
     style: '',
     ratio: '16:9',
     palette: '',
+    hiddenFromPublic: false,
   });
+
+  async function generateThumbnail(source: File, maxDim = 480): Promise<Blob> {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('Failed to read image for thumbnail'));
+      reader.readAsDataURL(source);
+    });
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('Failed to decode image for thumbnail'));
+      image.src = dataUrl;
+    });
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+    const width = Math.max(1, Math.round(img.width * scale));
+    const height = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Unable to create thumbnail canvas');
+    ctx.drawImage(img, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', 0.82);
+    });
+    if (!blob) throw new Error('Failed to generate thumbnail blob');
+    return blob;
+  }
 
   async function handleUpload() {
     try {
       if (!file) { setMsg('Pick a file first.'); return; }
-      
+
       if (!formData.title.trim()) {
         setMsg('Please enter a title.');
         return;
       }
 
-      const accessToken = getAccessToken();
-      
-      if (!accessToken) {
+      if (!getAccessToken()) {
         setMsg('Please login first.');
-        router.push('/login');
+        router.push('/login.html');
         return;
       }
-      
+
       setStatus('presigning'); setMsg('Requesting upload URL …');
 
-      // 1) GET presigned URL — NO body for GET
-      const qs = new URLSearchParams({ filename: file.name, contentType: file.type || 'application/octet-stream' });
-      const presignRes = await apiRequest(`/api/upload-url?${qs.toString()}`, { 
-        method: 'GET',
+      // 1) POST presign request with content type + extension
+      const dotIdx = file.name.lastIndexOf('.');
+      const fileExt = dotIdx >= 0 ? file.name.slice(dotIdx + 1).toLowerCase() : '';
+      const presignRes = await apiRequest('/api/upload-url', {
+        method: 'POST',
+        body: JSON.stringify({
+          contentType: file.type || 'application/octet-stream',
+          fileExt,
+          type: 'wallpaper',
+        }),
       });
       const text = await presignRes.text();
       let data: any;
@@ -65,11 +96,9 @@ function UploadContent() {
       const putRes = await fetch(uploadUrl, {
         method: 'PUT',
         headers: {
-          // This MUST match the contentType used in the presign
           'Content-Type': file.type || 'application/octet-stream',
-          // DO NOT add Authorization here; presign already authorizes the exact request
         },
-        body: file
+        body: file,
       });
 
       if (!putRes.ok) {
@@ -77,36 +106,80 @@ function UploadContent() {
         throw new Error(`S3 PUT failed ${putRes.status}: ${bodyText.slice(0,200)}`);
       }
 
-      setUploadedKey(s3Key);
-      setDebug((d:any) => ({ ...d, putStatus: putRes.status, s3Key }));
+      setDebug((d: any) => ({ ...d, putStatus: putRes.status, s3Key }));
 
-      // 3) Create catalog entry
+      // 3) Generate + upload a thumbnail for images (non-fatal on failure)
+      const isImage = file.type.startsWith('image/');
+      const mediaType = isImage ? 'image' : file.type.startsWith('video/') ? 'video' : 'asset';
+      let thumbKey = '';
+      try {
+        if (!isImage) throw new Error('Skipping thumbnail generation for non-image media');
+        const thumbBlob = await generateThumbnail(file);
+        const thumbPresignRes = await apiRequest('/api/upload-url', {
+          method: 'POST',
+          body: JSON.stringify({
+            contentType: 'image/jpeg',
+            fileExt: 'jpg',
+            type: 'wallpaper',
+          }),
+        });
+        const thumbText = await thumbPresignRes.text();
+        let thumbData: any;
+        try { thumbData = JSON.parse(thumbText); } catch { throw new Error(`Bad JSON from thumbnail presign: ${thumbText.slice(0,200)}`); }
+        if (!thumbPresignRes.ok || !thumbData?.uploadUrl) throw new Error(`Thumbnail presign failed ${thumbPresignRes.status}: ${thumbData?.error || thumbText}`);
+        thumbKey = String(thumbData.key || '');
+        const thumbPutRes = await fetch(thumbData.uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'image/jpeg',
+          },
+          body: thumbBlob,
+        });
+        if (!thumbPutRes.ok) {
+          const bodyText = await thumbPutRes.text().catch(() => '');
+          throw new Error(`Thumbnail S3 PUT failed ${thumbPutRes.status}: ${bodyText.slice(0,200)}`);
+        }
+        setDebug((d: any) => ({
+          ...d,
+          thumbPresignStatus: thumbPresignRes.status,
+          thumbPutStatus: thumbPutRes.status,
+          thumbKey,
+        }));
+      } catch (err: any) {
+        setDebug((d: any) => ({ ...d, thumbWarning: err?.message || String(err) }));
+      }
+
+      // 4) Create catalog entry
       setStatus('creating'); setMsg('Creating catalog entry …');
-      
+
       const catalogResult = await postCatalog({
         type: 'wallpaper',
         title: formData.title,
         fileKey: s3Key,
+        thumbKey,
+        mediaType,
+        mimeType: file.type || 'application/octet-stream',
         caption: formData.caption,
         shloka: formData.shloka,
         meaning: formData.meaning,
         ratio: formData.ratio,
         palette: formData.palette,
         style: formData.style,
-      });
+        hiddenFromPublic: formData.hiddenFromPublic,
+      } as any);
 
       if (!catalogResult.ok) {
         throw new Error(catalogResult.error || 'Failed to create catalog entry');
       }
 
       setStatus('done');
-      setMsg(`✅ Uploaded and cataloged successfully!`);
-      setDebug((d:any) => ({ ...d, catalogResult }));
+      setMsg('✅ Uploaded and cataloged successfully!');
+      setDebug((d: any) => ({ ...d, catalogResult }));
 
       // Redirect to wallpapers list after a short delay
       setTimeout(() => {
         if (catalogResult.item?.id) {
-          router.push(`/wallpapers/${catalogResult.item.id}`);
+          router.push(`/wallpapers/edit?id=${catalogResult.item.id}`);
         } else {
           router.push('/wallpapers');
         }
@@ -115,28 +188,28 @@ function UploadContent() {
     } catch (err: any) {
       setStatus('error');
       setMsg(`Upload Failed: ${err?.message || String(err)}`);
-      setDebug((d:any) => ({ ...d, errorStack: err?.stack || String(err) }));
+      setDebug((d: any) => ({ ...d, errorStack: err?.stack || String(err) }));
     }
   }
 
   return (
-    <div className="max-w-3xl mx-auto py-10">
+    <div className="mx-auto max-w-3xl py-10">
       <h1 className="text-2xl font-bold text-gray-900 mb-8">Upload Wallpaper</h1>
-      
+
       <div className="space-y-6">
         {/* File Upload */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="glass-panel p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">File</h2>
           <div>
             <label htmlFor="file" className="block text-sm font-medium text-gray-700 mb-2">
-              Choose Image File
+              Choose Media File
             </label>
             <input
               id="file"
               type="file"
-              accept="image/*"
+              accept="image/*,video/*,.gif"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              className="glass-input"
             />
             {file && (
               <p className="mt-2 text-sm text-gray-600">
@@ -147,7 +220,7 @@ function UploadContent() {
         </div>
 
         {/* Metadata Form */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="glass-panel p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Metadata</h2>
           <div className="space-y-4">
             <div>
@@ -160,7 +233,7 @@ function UploadContent() {
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 required
                 placeholder="e.g., Lord Shiva in Meditation"
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="glass-input"
               />
             </div>
 
@@ -174,7 +247,7 @@ function UploadContent() {
                   value={formData.style}
                   onChange={(e) => setFormData({ ...formData, style: e.target.value })}
                   placeholder="e.g., Sacred Art"
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="glass-input"
                 />
               </div>
 
@@ -187,7 +260,7 @@ function UploadContent() {
                   value={formData.ratio}
                   onChange={(e) => setFormData({ ...formData, ratio: e.target.value })}
                   placeholder="e.g., 16:9"
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="glass-input"
                 />
               </div>
             </div>
@@ -201,7 +274,7 @@ function UploadContent() {
                 onChange={(e) => setFormData({ ...formData, caption: e.target.value })}
                 rows={2}
                 placeholder="Brief description"
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="glass-input"
               />
             </div>
 
@@ -214,7 +287,7 @@ function UploadContent() {
                 onChange={(e) => setFormData({ ...formData, shloka: e.target.value })}
                 rows={2}
                 placeholder="Sanskrit verse"
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="glass-input"
               />
             </div>
 
@@ -227,7 +300,7 @@ function UploadContent() {
                 onChange={(e) => setFormData({ ...formData, meaning: e.target.value })}
                 rows={2}
                 placeholder="Translation or meaning"
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="glass-input"
               />
             </div>
 
@@ -240,8 +313,21 @@ function UploadContent() {
                 value={formData.palette}
                 onChange={(e) => setFormData({ ...formData, palette: e.target.value })}
                 placeholder="e.g., warm, cool, vibrant"
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="glass-input"
               />
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                id="hide-from-public"
+                type="checkbox"
+                checked={formData.hiddenFromPublic}
+                onChange={(e) => setFormData({ ...formData, hiddenFromPublic: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <label htmlFor="hide-from-public" className="text-sm text-gray-700 select-none">
+                Hide from public site (admin-only)
+              </label>
             </div>
           </div>
         </div>
@@ -251,9 +337,9 @@ function UploadContent() {
           <button
             onClick={handleUpload}
             disabled={status === 'presigning' || status === 'uploading' || status === 'creating' || !file || !formData.title.trim()}
-            className="w-full px-4 py-3 rounded bg-indigo-600 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 transition-colors font-medium"
+            className="glass-chip w-full px-4 py-3 text-center font-medium text-black disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {status === 'presigning' ? 'Requesting URL...' : 
+            {status === 'presigning' ? 'Requesting URL...' :
              status === 'uploading' ? 'Uploading to S3...' :
              status === 'creating' ? 'Creating catalog entry...' :
              status === 'done' ? '✅ Complete!' :

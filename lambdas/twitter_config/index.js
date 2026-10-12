@@ -43,7 +43,30 @@ function httpResponse(statusCode, body) {
   };
 }
 
-exports.handler = async (event) => {
+// ── Admin guard (2026-10-07) ─────────────────────────────────────────────
+// Every /api/* JWT route shares one authorizer with the public site, and the
+// user pool allows self sign-up, so the gateway alone lets ANY signed-in
+// visitor through. Require the Cognito "admin" group on JWT calls; calls with
+// no JWT (the /ios/* routes) must carry the iOS API key.
+function _akClaims(event) {
+  const a = (event.requestContext && event.requestContext.authorizer) || {};
+  return (a.jwt && a.jwt.claims) || a.claims || null;
+}
+function _akDeny(event) {
+  const method = (event.requestContext && event.requestContext.http && event.requestContext.http.method) || event.httpMethod;
+  if (method === 'OPTIONS') return 0;
+  const claims = _akClaims(event);
+  if (claims) {
+    const g = claims['cognito:groups'];
+    const groups = Array.isArray(g) ? g : String(g || '').replace(/[\[\]"]/g, '').split(/[\s,]+/).filter(Boolean);
+    return groups.includes('admin') ? 0 : 403;
+  }
+  const h = event.headers || {};
+  const key = h['x-akara-api-key'] || h['X-Akara-Api-Key'] || h['X-AKARA-API-KEY'];
+  return process.env.IOS_API_KEY && key === process.env.IOS_API_KEY ? 0 : 401;
+}
+
+const _akHandler = async (event) => {
   const method = event.requestContext?.http?.method || event.httpMethod;
 
   try {
@@ -94,4 +117,16 @@ exports.handler = async (event) => {
     console.error('Config handler failed:', err);
     return httpResponse(500, { ok: false, error: err.message });
   }
+};
+
+exports.handler = async (event) => {
+  const denied = _akDeny(event);
+  if (denied) {
+    return {
+      statusCode: denied,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ ok: false, error: denied === 403 ? 'Admin only' : 'Unauthorized' }),
+    };
+  }
+  return _akHandler(event);
 };

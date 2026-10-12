@@ -11,6 +11,7 @@ const { useState: lbS, useEffect: lbE, useRef: lbR, useMemo: lbM } = React;
 
 function Lightbox({ items, index, onIndex, onClose }){
   const w = items[index];
+  lbE(()=>{ if(w && window.akTrack) window.akTrack("artwork_view", { art_id:w.id, art_title:w.title, deity:w.deity }); },[w && w.id]);
   const [drag, setDrag] = lbS({ x:0, y:0, active:false });
   const startRef = lbR({ x:0, y:0, t:0 });
 
@@ -359,7 +360,10 @@ function Lightbox({ items, index, onIndex, onClose }){
       // touchAction:"none" lets us own the vertical gesture without the
       // browser stealing it for pull-to-refresh / page scroll.
       touchAction:"none",
-      overflow:"hidden",
+      // clip, not hidden: the blurred backdrop bleeds past the edges, and a
+      // hidden-overflow box still scrolls sideways when a button inside it
+      // takes focus (the whole lightbox jumped left on click).
+      overflow:"clip",
     }}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
 
@@ -369,7 +373,7 @@ function Lightbox({ items, index, onIndex, onClose }){
           space outside the photo on mobile. Heavy blur + low brightness
           masks the snap-update across navigations. */}
       {(() => {
-        const signedIn = (typeof akCurrentUser === "function") && !!akCurrentUser();
+        const signedIn = (typeof akHasSession === "function") ? akHasSession() : ((typeof akCurrentUser === "function") && !!akCurrentUser());
         const src = w && (signedIn ? (w.originalUrl || w.fullUrl || w.imageUrl) : (w.previewUrl || w.imageUrl));
         if (!src) return null;
         return <ProtectedImage className="lb-backdrop" src={src} alt="" fit="cover"/>;
@@ -383,7 +387,7 @@ function Lightbox({ items, index, onIndex, onClose }){
       }}>
         {(() => {
           if (!prevItem) return null;
-          const signedIn = (typeof akCurrentUser === "function") && !!akCurrentUser();
+          const signedIn = (typeof akHasSession === "function") ? akHasSession() : ((typeof akCurrentUser === "function") && !!akCurrentUser());
           const src = signedIn ? (prevItem.originalUrl || prevItem.fullUrl || prevItem.imageUrl) : (prevItem.previewUrl || prevItem.imageUrl);
           if (!src) return null;
           return (
@@ -399,17 +403,42 @@ function Lightbox({ items, index, onIndex, onClose }){
           <canvas ref={dotCanvasRef} className="lb-dots" aria-hidden/>
         )}
 
-        {(() => {
-          const signedIn = (typeof akCurrentUser === "function") && !!akCurrentUser();
-          const src = signedIn ? (w.originalUrl || w.fullUrl || w.imageUrl) : (w.previewUrl || w.imageUrl);
-          if (!src) return null;
+        {w && (() => {
+
+          const one = akSlideSources(w).length <= 1;
+
+          if (one) {
+
+            const src = akSlideSources(w)[0];
+
+            return src ? (
+
+              <ProtectedImage key={`lb-cur-${w.id}-${index}`}
+
+                src={src} alt={w.title}
+
+                className="lb-img lb-img-enter"
+
+                fit="contain"
+
+                watermark={false}/>
+
+            ) : null;
+
+          }
+
+          // Multi-image post: shared viewer (lib.jsx) owns strips/swipe/full.
+
           return (
-            <ProtectedImage key={`lb-cur-${w.id}-${index}`}
-              src={src} alt={w.title}
-              className="lb-img lb-img-enter"
-              fit="contain"
-              watermark={false}/>
+
+            <div key={`lb-cur-${w.id}-${index}`} className="lb-img-enter" style={{ position:"absolute", inset:0 }}>
+
+              <AkSlideViewer w={w}/>
+
+            </div>
+
           );
+
         })()}
       </div>
 

@@ -147,6 +147,19 @@ const FONTS_LINK =
   '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
   '<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">';
 
+// Google Analytics 4 + the shared Akara tracker (clicks, scroll, time).
+// Same tag as the main site (public/akara/lib.jsx) and /ganpati.html.
+const GA_ID = 'G-BQEB260FD7';
+const GA_SNIPPET = `<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=${GA_ID}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '${GA_ID}');
+</script>
+<script async src="/akara/ak-track.js"></script>`;
+
 function head({ title, description, canonical, image, keywords, type = 'website', extraJsonLd = [], published, modified, section, tags }) {
   const parts = [];
   parts.push('<meta charset="utf-8">');
@@ -184,6 +197,7 @@ function head({ title, description, canonical, image, keywords, type = 'website'
   parts.push(FONTS_LINK);
   for (const ld of extraJsonLd) parts.push(`<script type="application/ld+json">${jsonLd(ld)}</script>`);
   parts.push(`<style>${BASE_CSS}</style>`);
+  parts.push(GA_SNIPPET);
   return parts.join('\n');
 }
 
@@ -400,6 +414,7 @@ function robotsTxt(site = SITE_DEFAULT) {
     '',
     ...aiBots.flatMap((b) => [`User-agent: ${b}`, 'Allow: /', '']),
     `Sitemap: ${site}/sitemap.xml`,
+    `Sitemap: ${site}/sitemap-darshan.xml`, // every Darśana work page (written by akara-darshan-snapshot)
     '',
   ];
   return blocks.join('\n');

@@ -1,0 +1,11 @@
+{
+  "name": "akara-editorial-desk-layer",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.40.0",
+    "@aws-sdk/client-cloudfront": "^3.1053.0",
+    "@aws-sdk/client-s3": "^3.1053.0",
+    "@aws-sdk/client-ssm": "^3.1053.0"
+  }
+}

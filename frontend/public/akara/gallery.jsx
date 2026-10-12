@@ -199,6 +199,7 @@ function GalleryPage({ onClose, openItemId }){
   const [primary, setPrimary] = glS(null);
   const [secondary, setSecondary] = glS(null);
   const [pickerOpen, setPickerOpen] = glS(null); // "primary" | "secondary" | null
+  const [refineOpen, setRefineOpen] = glS(false); // style/orientation/palette drawer
   const [hovered, setHovered] = glS(null);
   const [lightboxIdx, setLightboxIdx] = glS(null); // index into filtered[]
 
@@ -236,6 +237,8 @@ function GalleryPage({ onClose, openItemId }){
   },[deity, styleF, orient, primary, secondary, sourceItems]);
 
   const anyFilter = deity!=="All" || styleF!=="All" || orient!=="All" || primary || secondary;
+  // filters living inside the Refine drawer — drives the button's active state
+  const hasRefine = styleF!=="All" || orient!=="All" || primary || secondary;
 
   // Auto-open the lightbox at a specific item when GalleryPage is launched from
   // a tile click on the landing page. Re-runs only when openItemId changes so
@@ -255,6 +258,28 @@ function GalleryPage({ onClose, openItemId }){
       background:"radial-gradient(ellipse at 50% -10%, #0a0f1a 0%, #030305 60%, #000 100%)",
       color:"#fff",
     }}>
+      {/* toolbar styles live here, NOT in index.html — the root page is a
+          Next.js prerender and editing its embedded CSS breaks hydration
+          (React #423, blank site). This component only mounts client-side,
+          so a scoped <style> is safe. */}
+      <style>{`
+        .gl-chip-scroll{display:flex;gap:8px;overflow-x:auto;padding:2px 0;
+          scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;
+          mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent);
+          -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent)}
+        .gl-chip-scroll::-webkit-scrollbar{display:none}
+        .gl-chip-scroll>*{flex-shrink:0;white-space:nowrap}
+        @keyframes glDrawerIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+        @media (max-width: 720px){
+          .gl-nav-row{padding:12px 16px 6px !important}
+          .gl-toolbar{padding:2px 16px 10px !important}
+          .gl-drawer{padding:0 16px 12px !important}
+          .gl-main{padding:10px 16px 90px !important}
+          .gl-grid{grid-template-columns:repeat(2, 1fr) !important;gap:10px !important}
+          .gl-tile-title{font-size:15px !important}
+        }
+      `}</style>
+
       {/* subtle mandala backdrop */}
       <svg aria-hidden viewBox="-100 -100 200 200" style={{
         position:"fixed", inset:0, width:"100%", height:"100%", opacity:.06,
@@ -269,13 +294,17 @@ function GalleryPage({ onClose, openItemId }){
         </g>
       </svg>
 
-      {/* TOP NAV — gallery-specific, matches the landing nav design language */}
-      <nav style={{
+      {/* TOP NAV — gallery-specific, matches the landing nav design language.
+          Art-first layout: wordmark row + one compact filter toolbar, both
+          sticky, so the first tiles are above the fold on every screen. */}
+      <nav className="gl-head" style={{
         position:"sticky", top:0, zIndex:30,
-        padding:"18px 40px",
-        background:"linear-gradient(180deg, rgba(3,3,5,.94) 0%, rgba(3,3,5,.72) 80%, transparent 100%)",
+        background:"linear-gradient(180deg, rgba(3,3,5,.97) 0%, rgba(3,3,5,.9) 85%, rgba(3,3,5,.82) 100%)",
         backdropFilter:"blur(14px) saturate(150%)", WebkitBackdropFilter:"blur(14px) saturate(150%)",
         borderBottom:"1px solid rgba(197,160,89,.14)",
+      }}>
+      <div className="gl-nav-row" style={{
+        padding:"14px 40px 8px",
         display:"flex", alignItems:"center", justifyContent:"space-between", gap:24,
       }}>
         {/* back-to-site */}
@@ -315,82 +344,97 @@ function GalleryPage({ onClose, openItemId }){
         onMouseLeave={(e)=>{ e.currentTarget.style.borderColor="rgba(255,255,255,.15)"; e.currentTarget.style.color="#fff"; e.currentTarget.style.background="rgba(255,255,255,.05)"; }}>
           ✕
         </button>
-      </nav>
-
-      {/* HEADER */}
-      <div style={{ maxWidth:1400, margin:"0 auto", padding:"48px 40px 24px", position:"relative" }}>
-        <SectionKicker num="∞ / ∞" label="The Complete Gallery"/>
-        <h1 className="display" style={{
-          fontSize:"clamp(56px,7vw,104px)", lineHeight:.95, margin:"8px 0 18px", fontWeight:400, letterSpacing:"-.015em",
-        }}>
-          Find the work that <em className="gold-text" style={{ fontStyle:"italic" }}>calls you</em>.
-        </h1>
-        <p style={{ fontSize:17, color:"var(--ice-muted)", fontWeight:300, maxWidth:620, lineHeight:1.6, margin:0 }}>
-          Filter by deity, art style, orientation, or pick the <span style={{color:"var(--gold)"}}>primary &amp; secondary colours</span> you love.
-          We'll surface the wallpapers whose palettes are closest to yours.
-        </p>
       </div>
 
-      {/* FILTERS */}
-      <div style={{ maxWidth:1400, margin:"0 auto", padding:"24px 40px 28px", position:"relative" }}>
-        <FilterRow label="Deity">
+      {/* COMPACT TOOLBAR — deity chips inline (highest-signal filter); style,
+          orientation and colour live in the Refine drawer below. */}
+      <div className="gl-toolbar" style={{
+        maxWidth:1400, margin:"0 auto",
+        padding:"2px 40px 12px",
+        display:"flex", alignItems:"center", gap:10,
+      }}>
+        <div className="gl-chip-scroll" style={{ flex:1, minWidth:0 }}>
           <FilterChip active={deity==="All"} onClick={()=>setDeity("All")}>All</FilterChip>
           {liveDeities.map(d=>(
             <FilterChip key={d} active={deity===d} onClick={()=>setDeity(d)}>{d}</FilterChip>
           ))}
-        </FilterRow>
-        <FilterRow label="Style">
-          <FilterChip active={styleF==="All"} onClick={()=>setStyleF("All")}>All</FilterChip>
-          {liveStyles.map(s=>(
-            <FilterChip key={s} active={styleF===s} onClick={()=>setStyleF(s)}>{s}</FilterChip>
-          ))}
-        </FilterRow>
-        <FilterRow label="Orientation">
-          <FilterChip active={orient==="All"} onClick={()=>setOrient("All")}>All</FilterChip>
-          <FilterChip active={orient==="portrait"} onClick={()=>setOrient("portrait")}>▯ Portrait</FilterChip>
-          <FilterChip active={orient==="landscape"} onClick={()=>setOrient("landscape")}>▭ Landscape</FilterChip>
-        </FilterRow>
-        <FilterRow label="Colour Palette">
-          <ColorSlotButton
-            label="Primary"
-            color={primary}
-            open={pickerOpen==="primary"}
-            onToggle={()=>setPickerOpen(pickerOpen==="primary" ? null : "primary")}
-            onPick={(hex)=>{ setPrimary(hex); setPickerOpen(null); }}
-            onClear={()=>setPrimary(null)}
-          />
-          <ColorSlotButton
-            label="Secondary"
-            color={secondary}
-            open={pickerOpen==="secondary"}
-            onToggle={()=>setPickerOpen(pickerOpen==="secondary" ? null : "secondary")}
-            onPick={(hex)=>{ setSecondary(hex); setPickerOpen(null); }}
-            onClear={()=>setSecondary(null)}
-          />
-          {(primary || secondary) && (
-            <span className="mono" style={{
-              fontSize:10, letterSpacing:".22em", textTransform:"uppercase",
-              color:"rgba(255,255,255,.4)", marginLeft:8, alignSelf:"center",
-            }}>
-              Sorted by closest match
-            </span>
-          )}
-        </FilterRow>
-
+        </div>
         {anyFilter && (
-          <div style={{ marginTop:20 }}>
-            <button onClick={()=>{ setDeity("All"); setStyleF("All"); setOrient("All"); setPrimary(null); setSecondary(null); setPickerOpen(null); }}
-              className="mono" style={{
-                background:"transparent", border:"none", color:"var(--gold)",
-                fontSize:10, letterSpacing:".3em", textTransform:"uppercase", cursor:"pointer",
-                padding:0,
-              }}>↺ Reset filters</button>
-          </div>
+          <button onClick={()=>{ setDeity("All"); setStyleF("All"); setOrient("All"); setPrimary(null); setSecondary(null); setPickerOpen(null); }}
+            aria-label="Reset filters"
+            className="mono" style={{
+              flexShrink:0, background:"transparent", border:"none", color:"var(--gold)",
+              fontSize:10, letterSpacing:".26em", textTransform:"uppercase", cursor:"pointer",
+              padding:"7px 2px",
+            }}>↺ Reset</button>
         )}
+        <button onClick={()=>{ setRefineOpen(!refineOpen); setPickerOpen(null); }}
+          aria-expanded={refineOpen}
+          className="mono" style={{
+            flexShrink:0, display:"inline-flex", alignItems:"center", gap:8,
+            padding:"7px 14px", borderRadius:999,
+            background: refineOpen ? "rgba(197,160,89,.12)" : "transparent",
+            border:`1px solid ${(refineOpen || hasRefine) ? "var(--gold)" : "rgba(255,255,255,.12)"}`,
+            color:(refineOpen || hasRefine) ? "var(--gold)" : "rgba(255,255,255,.75)",
+            fontSize:10, letterSpacing:".26em", textTransform:"uppercase",
+            cursor:"pointer", transition:"all .25s",
+          }}>
+          Refine
+          {hasRefine && <span style={{ width:6, height:6, borderRadius:"50%", background:"var(--gold)" }}/>}
+          <span style={{ fontSize:9, opacity:.7 }}>{refineOpen ? "▲" : "▼"}</span>
+        </button>
       </div>
 
+      {/* REFINE DRAWER — style / orientation / colour palette, on demand */}
+      {refineOpen && (
+        <div className="gl-drawer" style={{
+          maxWidth:1400, margin:"0 auto",
+          padding:"0 40px 16px",
+          animation:"glDrawerIn .55s var(--ease-out) both",
+        }}>
+          <FilterRow label="Style">
+            <FilterChip active={styleF==="All"} onClick={()=>setStyleF("All")}>All</FilterChip>
+            {liveStyles.map(s=>(
+              <FilterChip key={s} active={styleF===s} onClick={()=>setStyleF(s)}>{s}</FilterChip>
+            ))}
+          </FilterRow>
+          <FilterRow label="Orientation">
+            <FilterChip active={orient==="All"} onClick={()=>setOrient("All")}>All</FilterChip>
+            <FilterChip active={orient==="portrait"} onClick={()=>setOrient("portrait")}>▯ Portrait</FilterChip>
+            <FilterChip active={orient==="landscape"} onClick={()=>setOrient("landscape")}>▭ Landscape</FilterChip>
+          </FilterRow>
+          <FilterRow label="Colour Palette">
+            <ColorSlotButton
+              label="Primary"
+              color={primary}
+              open={pickerOpen==="primary"}
+              onToggle={()=>setPickerOpen(pickerOpen==="primary" ? null : "primary")}
+              onPick={(hex)=>{ setPrimary(hex); setPickerOpen(null); }}
+              onClear={()=>setPrimary(null)}
+            />
+            <ColorSlotButton
+              label="Secondary"
+              color={secondary}
+              open={pickerOpen==="secondary"}
+              onToggle={()=>setPickerOpen(pickerOpen==="secondary" ? null : "secondary")}
+              onPick={(hex)=>{ setSecondary(hex); setPickerOpen(null); }}
+              onClear={()=>setSecondary(null)}
+            />
+            {(primary || secondary) && (
+              <span className="mono" style={{
+                fontSize:10, letterSpacing:".22em", textTransform:"uppercase",
+                color:"rgba(255,255,255,.4)", marginLeft:8, alignSelf:"center",
+              }}>
+                Sorted by closest match
+              </span>
+            )}
+          </FilterRow>
+        </div>
+      )}
+      </nav>
+
       {/* GRID */}
-      <div style={{ maxWidth:1400, margin:"0 auto", padding:"16px 40px 120px", position:"relative" }}>
+      <div className="gl-main" style={{ maxWidth:1400, margin:"0 auto", padding:"16px 40px 120px", position:"relative" }}>
         {filtered.length === 0 ? (
           <div style={{
             padding:"120px 40px", textAlign:"center",
@@ -403,7 +447,7 @@ function GalleryPage({ onClose, openItemId }){
             </div>
           </div>
         ) : (
-          <div style={{
+          <div className="gl-grid" style={{
             display:"grid",
             gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))",
             gap:18,
@@ -492,12 +536,7 @@ function GalleryTile({ w, idx, hovered, setHovered, onOpen }){
         transform: isHovered?"scale(1.06)":"scale(1.01)",
         transition:"transform 1.2s var(--ease-out)",
       }}>
-        {(() => {
-          const signedIn = (typeof akCurrentUser === "function") && !!akCurrentUser();
-          const src = signedIn ? (w.originalUrl || w.fullUrl || w.imageUrl) : (w.previewUrl || w.imageUrl);
-          if (!src) return null;
-          return <ProtectedImage src={src} alt={w.title} fit="cover" watermark={false}/>;
-        })()}
+        <AkSlideTile w={w}/>
       </div>
       {/* ornamental linework */}
       <svg viewBox="-100 -100 200 200" style={{
@@ -540,7 +579,7 @@ function GalleryTile({ w, idx, hovered, setHovered, onOpen }){
         <div className="mono" style={{ fontSize:9, letterSpacing:".28em", color:w.accent, textTransform:"uppercase", marginBottom:6 }}>
           {w.deity} · {w.style}
         </div>
-        <div className="display" style={{ fontSize:20, fontStyle:"italic", lineHeight:1.1, color:"#fff" }}>{w.title}</div>
+        <div className="display gl-tile-title" style={{ fontSize:20, fontStyle:"italic", lineHeight:1.1, color:"#fff" }}>{w.title}</div>
       </div>
       {/* color strip */}
       <div style={{

@@ -1,0 +1,679 @@
+{
+"deity": {
+"Shiva": [
+"bholenath",
+"mahadev",
+"mahadeva",
+"nataraja",
+"rudra",
+"shankar",
+"shankara",
+"shiv",
+"shiva",
+"siva",
+"भोलेनाथ",
+"महादेव",
+"शिव"
+],
+"Krishna": [
+"gopal",
+"govinda",
+"kanha",
+"kanhaiya",
+"keshav",
+"krishn",
+"krishna",
+"krsna",
+"murlidhar",
+"shyam",
+"कान्हा",
+"कृष्ण",
+"श्याम"
+],
+"Ganesha": [
+"bappa",
+"gajanan",
+"ganapati",
+"ganesa",
+"ganesh",
+"ganesha",
+"ganpati",
+"vinayak",
+"गणपति",
+"गणेश"
+],
+"Hanuman": [
+"anjaneya",
+"bajrang",
+"bajrangbali",
+"hanuman",
+"maruti",
+"pawanputra",
+"बजरंगबली",
+"हनुमान",
+"हनुमान्"
+],
+"Rama": [
+"raam",
+"raghav",
+"raghunandan",
+"ram",
+"rama",
+"shri ram",
+"राम"
+],
+"Vishnu": [
+"hari",
+"narayan",
+"narayana",
+"vishnu",
+"vishnu bhagwan",
+"visnu",
+"विष्णु"
+],
+"Narasimha": [
+"narasimha",
+"narsimha",
+"narsingh",
+"nrisimha",
+"नरसिंह",
+"नृसिंह"
+],
+"Durga": [
+"ambe",
+"durga",
+"durga maa",
+"sherawali",
+"दुर्गा"
+],
+"Devi": [
+"devi",
+"devi maa",
+"maa",
+"mata",
+"देवी"
+],
+"Kali": [
+"kaali",
+"kali",
+"mahakali",
+"काली"
+],
+"Lakshmi": [
+"lakshmi",
+"laksmi",
+"laxmi",
+"mahalakshmi",
+"लक्ष्मी"
+],
+"Saraswati": [
+"sarasvati",
+"saraswati",
+"sharda",
+"सरस्वती"
+],
+"Murugan": [
+"kartikeya",
+"muruga",
+"murugan",
+"murugan  skanda",
+"skanda",
+"subramanya",
+"स्कन्द"
+],
+"Surya": [
+"sun god",
+"surya",
+"surya dev",
+"सूर्य"
+],
+"Radha": [
+"radha",
+"radharani",
+"radhe",
+"राधा"
+],
+"Parvati": [
+"gauri",
+"parvati",
+"shakti",
+"uma",
+"पार्वती"
+],
+"Sita": [
+"janaki",
+"sita",
+"siya",
+"vaidehi",
+"सीता"
+]
+},
+"story": {
+"kurukshetra": [
+"arjuna chariot",
+"battlefield",
+"kuruksetra",
+"kurukshetra",
+"kurukshetra war",
+"mahabharat",
+"mahabharata war"
+],
+"gita-upadesha": [
+"arjuna",
+"bhagavad gita",
+"geeta",
+"gita",
+"gita upadesa",
+"gita upadesha"
+],
+"vishwaroopa": [
+"cosmic form",
+"virat roop",
+"vishwaroop",
+"vishwaroopa",
+"visvarupa"
+],
+"govardhana": [
+"giridhari",
+"govardhan",
+"govardhana",
+"lifting mountain"
+],
+"kaliya-mardana": [
+"kaliya",
+"kaliya mardana",
+"serpent yamuna"
+],
+"makhan-chor": [
+"bal krishna butter",
+"butter",
+"makhan",
+"makhan chor"
+],
+"bala-lila": [
+"baby krishna",
+"bal krishna",
+"bala lila",
+"laddu gopal",
+"yashoda"
+],
+"krishna-janma": [
+"janmashtami",
+"krishna birth",
+"krishna janma",
+"krsna janma",
+"vasudeva yamuna"
+],
+"rasa-lila": [
+"gopis",
+"raas",
+"raas leela",
+"rasa lila",
+"vrindavan dance"
+],
+"murali": [
+"bansuri",
+"cows vrindavan",
+"flute",
+"murali",
+"murlidhar"
+],
+"sudama": [
+"friendship",
+"sudama"
+],
+"draupadi": [
+"cheer haran",
+"draupadi",
+"draupadi's honour",
+"vastraharan"
+],
+"samudra-manthan": [
+"amrit",
+"churning ocean",
+"kurma",
+"mohini",
+"samudra manthan"
+],
+"anantashayana": [
+"anantasayana",
+"anantashayana",
+"ksheer sagar",
+"padmanabha",
+"shesha",
+"sheshnag"
+],
+"dashavatara": [
+"avatars",
+"dasavatara",
+"dashavatara",
+"dashavtar",
+"ten avatars"
+],
+"varaha": [
+"bhudevi",
+"boar avatar",
+"varaha"
+],
+"vamana": [
+"bali",
+"three steps",
+"vamana",
+"vamana  trivikrama"
+],
+"narasimha-prahlada": [
+"hiranyakashipu",
+"holika",
+"narasimha  prahlada",
+"narasimha prahlada",
+"pillar",
+"prahlad",
+"prahlada"
+],
+"sita-swayamvara": [
+"bow breaking",
+"shiv dhanush",
+"sita svayamvara",
+"sita swayamvara",
+"swayamvar"
+],
+"vanavasa": [
+"exile",
+"forest",
+"lakshman",
+"van vas",
+"vanavasa"
+],
+"shabari": [
+"ber",
+"sabari",
+"shabari"
+],
+"setu-bandhan": [
+"bridge",
+"floating stones",
+"ram setu",
+"setu bandhan"
+],
+"lanka-yuddha": [
+"dussehra",
+"lanka yuddha",
+"ramayan war",
+"ravan",
+"ravana"
+],
+"rama-darbar": [
+"ayodhya",
+"diwali return",
+"rajyabhishek",
+"ram darbar",
+"rama darbar"
+],
+"sanjeevani": [
+"carrying mountain",
+"dronagiri",
+"hanuman mountain",
+"lifting mountain",
+"mountain",
+"mountain hanuman",
+"sanjeevani",
+"sanjivani"
+],
+"lanka-dahan": [
+"burning lanka",
+"lanka dahan",
+"tail fire"
+],
+"ocean-leap": [
+"flying hanuman",
+"leap",
+"ocean crossing",
+"ocean leap",
+"the great leap"
+],
+"rama-in-heart": [
+"chest open",
+"devotion",
+"heart",
+"rama in heart",
+"rama in his heart"
+],
+"bal-hanuman": [
+"baby hanuman",
+"bal hanuman",
+"bala hanuman",
+"sun fruit"
+],
+"tandava": [
+"cosmic dance",
+"nataraja",
+"tandav",
+"tandava"
+],
+"ganga-avatarana": [
+"bhagirath",
+"ganga",
+"ganga avatarana",
+"gangadhar"
+],
+"neelkantha": [
+"blue throat",
+"halahala",
+"neelkanth",
+"neelkantha",
+"nilakantha",
+"poison"
+],
+"kailasa-dhyana": [
+"kailasa dhyana",
+"kailash",
+"mahadev meditation",
+"meditation"
+],
+"shiva-parvati-vivaha": [
+"marriage",
+"shiv parvati wedding",
+"shiva parvati vivaha",
+"sivaparvati vivaha",
+"vivah"
+],
+"ardhanarishvara": [
+"ardhanarishvara",
+"ardhanarishwar",
+"ardhanarisvara",
+"half man half woman"
+],
+"bhairava": [
+"bhairav",
+"bhairava",
+"kaal bhairav",
+"kal bhairav"
+],
+"shiva-family": [
+"family",
+"shiv parivar",
+"shiva family",
+"siva parivara"
+],
+"parvati-tapasya": [
+"gauri",
+"parvati tapasya",
+"parvati's tapas",
+"penance",
+"tapasya"
+],
+"mahishasura-mardini": [
+"buffalo demon",
+"durga puja",
+"mahisasuramardini",
+"mahishasura",
+"mahishasura mardini"
+],
+"navaratri": [
+"dandiya",
+"garba",
+"navaratri",
+"navratri",
+"nine forms"
+],
+"kali-raktabija": [
+"kali  raktabija",
+"kali raktabija",
+"kali tongue",
+"raktabeej",
+"shiva under kali"
+],
+"ganesha-janma": [
+"elephant head",
+"ganesa janma",
+"ganesh birth",
+"ganesha janma"
+],
+"ganesha-chaturthi": [
+"bappa",
+"ganesa caturthi",
+"ganesha chaturthi",
+"ganeshotsav",
+"ganpati",
+"modak",
+"visarjan"
+],
+"lakshmi-diwali": [
+"deepavali",
+"dipavali",
+"diwali",
+"diya",
+"lakshmi diwali",
+"lamps"
+],
+"surya-ratha": [
+"chariot",
+"chhath",
+"seven horses",
+"sun god",
+"surya ratha"
+],
+"ashoka-vatika": [
+"ashok vatika",
+"ashoka vatika",
+"asoka vatika",
+"hanuman meets sita",
+"ring to sita"
+],
+"chiraharana": [
+"chiraharana",
+"ciraharana",
+"gopis clothes",
+"kadamba tree gopis",
+"vastraharan"
+],
+"draupadi-swayamvara": [
+"draupadi svayamvara",
+"draupadi swayamvar",
+"draupadi swayamvara",
+"fish eye",
+"matsya bhed"
+],
+"lingodbhava": [
+"brahma vishnu pillar",
+"jyotirlinga",
+"lingodbhava",
+"pillar of fire"
+],
+"tripurantaka": [
+"three cities",
+"tripura",
+"tripurantaka",
+"tripurari"
+],
+"kurma": [
+"kurma",
+"kurma avatar",
+"tortoise"
+],
+"kanakadhara": [
+"gold rain",
+"golden amla",
+"kanakadhara"
+]
+},
+"storyDeities": {
+"kurukshetra": [
+"Krishna"
+],
+"gita-upadesha": [
+"Krishna"
+],
+"vishwaroopa": [
+"Krishna",
+"Vishnu"
+],
+"govardhana": [
+"Krishna"
+],
+"kaliya-mardana": [
+"Krishna"
+],
+"makhan-chor": [
+"Krishna"
+],
+"bala-lila": [
+"Krishna"
+],
+"krishna-janma": [
+"Krishna"
+],
+"rasa-lila": [
+"Krishna",
+"Radha"
+],
+"murali": [
+"Krishna"
+],
+"sudama": [
+"Krishna"
+],
+"draupadi": [
+"Krishna"
+],
+"samudra-manthan": [
+"Vishnu",
+"Lakshmi",
+"Shiva"
+],
+"anantashayana": [
+"Vishnu",
+"Lakshmi"
+],
+"dashavatara": [
+"Vishnu"
+],
+"varaha": [
+"Vishnu"
+],
+"vamana": [
+"Vishnu"
+],
+"narasimha-prahlada": [
+"Narasimha",
+"Vishnu"
+],
+"sita-swayamvara": [
+"Rama",
+"Sita"
+],
+"vanavasa": [
+"Rama",
+"Sita"
+],
+"shabari": [
+"Rama"
+],
+"setu-bandhan": [
+"Rama",
+"Hanuman"
+],
+"lanka-yuddha": [
+"Rama",
+"Hanuman"
+],
+"rama-darbar": [
+"Rama",
+"Sita",
+"Hanuman"
+],
+"sanjeevani": [
+"Hanuman"
+],
+"lanka-dahan": [
+"Hanuman"
+],
+"ocean-leap": [
+"Hanuman"
+],
+"rama-in-heart": [
+"Hanuman"
+],
+"bal-hanuman": [
+"Hanuman"
+],
+"tandava": [
+"Shiva"
+],
+"ganga-avatarana": [
+"Shiva"
+],
+"neelkantha": [
+"Shiva"
+],
+"kailasa-dhyana": [
+"Shiva"
+],
+"shiva-parvati-vivaha": [
+"Shiva",
+"Parvati"
+],
+"ardhanarishvara": [
+"Shiva",
+"Parvati"
+],
+"bhairava": [
+"Shiva"
+],
+"shiva-family": [
+"Shiva",
+"Parvati",
+"Ganesha",
+"Murugan"
+],
+"parvati-tapasya": [
+"Parvati"
+],
+"mahishasura-mardini": [
+"Durga"
+],
+"navaratri": [
+"Durga",
+"Devi"
+],
+"kali-raktabija": [
+"Kali"
+],
+"ganesha-janma": [
+"Ganesha",
+"Shiva",
+"Parvati"
+],
+"ganesha-chaturthi": [
+"Ganesha"
+],
+"lakshmi-diwali": [
+"Lakshmi"
+],
+"surya-ratha": [
+"Surya"
+],
+"ashoka-vatika": [
+"Hanuman",
+"Sita"
+],
+"chiraharana": [
+"Krishna"
+],
+"draupadi-swayamvara": [
+"Krishna"
+],
+"lingodbhava": [
+"Shiva"
+],
+"tripurantaka": [
+"Shiva"
+],
+"kurma": [
+"Vishnu"
+],
+"kanakadhara": [
+"Lakshmi"
+]
+}
+}

@@ -148,7 +148,7 @@ async function akSignInWithPassword(username, password){
   if (!r.IdToken) throw new Error("sign-in returned no tokens");
   const expiresIn = Number(r.ExpiresIn || 3600);
   const expiresAt = Math.floor(Date.now() / 1000) + (isFinite(expiresIn) ? expiresIn : 3600);
-  _akWriteTokens({ idToken: r.IdToken, accessToken: r.AccessToken, expiresAt });
+  _akWriteTokens({ idToken: r.IdToken, accessToken: r.AccessToken, refreshToken: r.RefreshToken || null, expiresAt });
   try { await akGrantImageAccess(); } catch {}
   return akCurrentUser();
 }
@@ -200,6 +200,8 @@ async function akGrantImageAccess(){
     return { ok: false, status: res.status };
   }
   try { localStorage.setItem(AK_LAST_GRANT_KEY, String(Date.now())); } catch {}
+  // Tiles painted before the cookies existed re-probe their originals.
+  try { window.dispatchEvent(new Event("akara:image-access")); } catch {}
   return await res.json().catch(() => ({ ok: true }));
 }
 
@@ -226,6 +228,41 @@ function akEnsureImageAccess(){
   const ageS = (Date.now() - last) / 1000;
   if (ageS < AK_GRANT_REFRESH_S) return;
   akGrantImageAccess().catch(() => {});
+}
+
+// True while the visitor holds a session, even if the 1h ID token has lapsed
+// and a refresh is pending. Use this (not akCurrentUser) to decide whether
+// to show members' clean originals — an expired token is still a member.
+function akHasSession(){
+  if (akCurrentUser()) return true;
+  try {
+    const raw = JSON.parse(localStorage.getItem(AK_TOKENS_KEY) || "null");
+    return !!(raw && raw.refreshToken);
+  } catch { return false; }
+}
+
+// Resolves once the signed cookies should be in place. Shared by every image
+// on the page so one grant serves them all. force=true re-grants once per
+// page load (used after an image still fails with a recent grant on record).
+let _akGrantP = null;
+function akEnsureGrant(force){
+  if (force) {
+    if (window.__akForcedGrant) return _akGrantP || Promise.resolve(false);
+    window.__akForcedGrant = true;
+    _akGrantP = null;
+  } else {
+    let last = 0;
+    try { last = parseInt(localStorage.getItem(AK_LAST_GRANT_KEY) || "0", 10) || 0; } catch {}
+    if ((Date.now() - last) / 1000 < 40 * 60) return Promise.resolve(true);
+  }
+  if (_akGrantP) return _akGrantP;
+  _akGrantP = (async () => {
+    try { await akRefreshIfNeeded(); } catch {}
+    if (!akCurrentUser()) return false;
+    const r = await akGrantImageAccess().catch(() => ({ ok: false }));
+    return !!(r && r.ok !== false);
+  })().finally(() => { setTimeout(() => { _akGrantP = null; }, 0); });
+  return _akGrantP;
 }
 
 function akCurrentUser(){
@@ -267,6 +304,33 @@ function useAuth(){
   return { user, signedIn: !!user, signIn, signOut };
 }
 
+// Sign-ins used to end after 1 hour because the refresh token was never kept.
+// On boot (and on focus), swap an expired ID token for a fresh one silently.
+let _akRefreshing = null;
+async function akRefreshIfNeeded(){
+  let raw = null;
+  try { raw = JSON.parse(localStorage.getItem(AK_TOKENS_KEY) || "null"); } catch {}
+  if (!raw || !raw.refreshToken) return false;
+  if (raw.expiresAt && Math.floor(Date.now() / 1000) < raw.expiresAt - 300) return false; // still fresh
+  if (_akRefreshing) return _akRefreshing;
+  const cfg = _akAuthCfg();
+  _akRefreshing = fetch(`${cfg.hostedUI}/oauth2/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "refresh_token", client_id: cfg.clientId, refresh_token: raw.refreshToken }).toString(),
+  }).then(async (res) => {
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.id_token) { if (res.status === 400) _akClearTokens(); return false; }
+    const expiresIn = Number(json.expires_in || 3600);
+    _akWriteTokens({ idToken: json.id_token, accessToken: json.access_token, refreshToken: raw.refreshToken,
+      expiresAt: Math.floor(Date.now() / 1000) + (isFinite(expiresIn) ? expiresIn : 3600) });
+    try { window.dispatchEvent(new Event("akara:auth")); } catch {}
+    akGrantImageAccess().catch(() => {});
+    return true;
+  }).catch(() => false).finally(() => { _akRefreshing = null; });
+  return _akRefreshing;
+}
+
 // Used by /auth/callback.html
 async function akExchangeCodeForTokens(code){
   const cfg = _akAuthCfg();
@@ -289,7 +353,7 @@ async function akExchangeCodeForTokens(code){
   if (!res.ok) throw new Error(json.error_description || json.error || `token exchange failed (${res.status})`);
   const expiresIn = Number(json.expires_in || 3600);
   const expiresAt = Math.floor(Date.now() / 1000) + (isFinite(expiresIn) ? expiresIn : 3600);
-  _akWriteTokens({ idToken: json.id_token, accessToken: json.access_token, expiresAt });
+  _akWriteTokens({ idToken: json.id_token, accessToken: json.access_token, refreshToken: json.refresh_token || null, expiresAt });
   let returnTo = "/";
   try {
     returnTo = sessionStorage.getItem(AK_RETURN_TO_KEY) || "/";
@@ -301,8 +365,12 @@ async function akExchangeCodeForTokens(code){
 if (typeof window !== "undefined") {
   Object.assign(window, {
     akSignIn, akSignInWithPassword, akSignOut, akCurrentUser, useAuth, akExchangeCodeForTokens,
-    akGrantImageAccess, akRevokeImageAccess, akEnsureImageAccess,
+    akGrantImageAccess, akRevokeImageAccess, akEnsureImageAccess, akRefreshIfNeeded,
+    akHasSession, akEnsureGrant,
   });
+  try { akRefreshIfNeeded(); window.addEventListener("focus", () => { akRefreshIfNeeded(); }); } catch {}
   // Refresh CloudFront signed cookies on boot if the user is already signed in.
   try { akEnsureImageAccess(); } catch {}
+  // Cookies live 1h. Keep them fresh while the page stays open.
+  try { setInterval(() => { akRefreshIfNeeded(); akEnsureImageAccess(); }, 5 * 60 * 1000); } catch {}
 }

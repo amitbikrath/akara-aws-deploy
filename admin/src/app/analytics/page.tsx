@@ -28,7 +28,7 @@ function AnalyticsContent() {
 
       const token = getAccessToken();
       if (!token) {
-        router.push('/login');
+        router.push('/login.html');
         return;
       }
 
@@ -65,7 +65,7 @@ function AnalyticsContent() {
     } catch (err: any) {
       console.error('Error loading analytics:', err);
       if (err.message?.includes('401') || err.message?.includes('Unauthorized')) {
-        router.push('/login');
+        router.push('/login.html');
         return;
       }
       setError(err.message || 'Failed to load analytics');
@@ -121,17 +121,17 @@ function AnalyticsContent() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="glass-panel p-6">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Total Wallpapers</h3>
           <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="glass-panel p-6">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Unique Styles</h3>
           <p className="text-3xl font-bold text-gray-900">{Object.keys(stats.byStyle).length}</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="glass-panel p-6">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Aspect Ratios</h3>
           <p className="text-3xl font-bold text-gray-900">{Object.keys(stats.byRatio).length}</p>
         </div>
@@ -140,7 +140,7 @@ function AnalyticsContent() {
       {/* Breakdowns */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* By Style */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="glass-panel p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">By Style</h3>
           {sortedStyles.length === 0 ? (
             <p className="text-gray-500 text-sm">No style data available</p>
@@ -165,7 +165,7 @@ function AnalyticsContent() {
         </div>
 
         {/* By Aspect Ratio */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="glass-panel p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">By Aspect Ratio</h3>
           {sortedRatios.length === 0 ? (
             <p className="text-gray-500 text-sm">No ratio data available</p>
@@ -192,7 +192,7 @@ function AnalyticsContent() {
 
       {/* Palette Breakdown */}
       {sortedPalettes.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="glass-panel p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">By Palette</h3>
           <div className="space-y-3">
             {sortedPalettes.map(([palette, count]) => (

@@ -1,6 +1,6 @@
-const { SSMClient, GetParameterCommand, PutParameterCommand } = require('@aws-sdk/client-ssm');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-const { Anthropic } = require('@anthropic-ai/sdk');
+// akara-twitter-poller — reads the X feed and files each post through the
+// Editorial Desk (shared Lambda layer, see CONTEXT.md).
+const { createDesk } = require('@akara/editorial-desk');
 
 const BEARER = process.env.X_BEARER_TOKEN;
 const TARGET_USER_ID = process.env.X_TARGET_USER_ID;
@@ -11,15 +11,10 @@ const ARTICLE_MODEL_PARAM = process.env.ARTICLE_MODEL_PARAM_NAME;
 const POSTS_BUCKET = process.env.TWITTER_POSTS_S3_BUCKET;
 const POSTS_KEY = process.env.TWITTER_POSTS_S3_KEY;
 const POSTS_DISPLAY_COUNT = Number(process.env.TWITTER_POSTS_DISPLAY_COUNT || '4');
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const MAX_TOKENS = 1500;
 
-const ssm = new SSMClient({ region: process.env.AWS_REGION });
-const s3 = new S3Client({ region: process.env.AWS_REGION });
-const anthropic = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null;
+const desk = createDesk({ region: process.env.AWS_REGION, apiKey: process.env.ANTHROPIC_API_KEY });
 
-// json_schema enforced via output_config.format. Sonnet 4.6 supports
-// structured outputs, so the response.content[0].text is guaranteed to parse
-// into this shape.
 const ARTICLE_SCHEMA = {
   type: 'object',
   properties: {
@@ -32,31 +27,9 @@ const ARTICLE_SCHEMA = {
   additionalProperties: false,
 };
 
-async function getParam(name, fallback = null) {
-  if (!name) return fallback;
-  try {
-    const r = await ssm.send(new GetParameterCommand({ Name: name }));
-    return r.Parameter?.Value ?? fallback;
-  } catch (e) {
-    if (e.name === 'ParameterNotFound') return fallback;
-    throw e;
-  }
-}
-
 async function getLastSeenId() {
-  const v = await getParam(LAST_ID_PARAM);
+  const v = await desk.getParam(LAST_ID_PARAM);
   return v && v !== '0' ? v : null;
-}
-
-async function setLastSeenId(id) {
-  await ssm.send(
-    new PutParameterCommand({
-      Name: LAST_ID_PARAM,
-      Value: id,
-      Type: 'String',
-      Overwrite: true,
-    })
-  );
 }
 
 async function fetchLatestTweets() {
@@ -64,11 +37,8 @@ async function fetchLatestTweets() {
   url.searchParams.set('max_results', '10');
   url.searchParams.set('exclude', 'retweets,replies');
   url.searchParams.set('tweet.fields', 'created_at,referenced_tweets');
-
   const res = await fetch(url, { headers: { Authorization: `Bearer ${BEARER}` } });
-  if (!res.ok) {
-    throw new Error(`X API ${res.status}: ${await res.text()}`);
-  }
+  if (!res.ok) throw new Error(`X API ${res.status}: ${await res.text()}`);
   return (await res.json()).data || [];
 }
 
@@ -80,50 +50,18 @@ function tweetUrl(id) {
   return `https://twitter.com/${TARGET_HANDLE}/status/${id}`;
 }
 
-// Generate a newspaper-style article from one tweet using Claude. The system
-// prompt and model are read from SSM at invocation time so admin can tune
-// them without redeploying. cache_control on the system block makes calls
-// 2..N of a polling run hit the prompt cache (~10% the price).
-async function generateArticle({ tweet, systemPrompt, model }) {
-  if (!anthropic) {
-    return null; // API key missing — frontend uses a fallback layout
-  }
+// A failed article is not fatal: the post ships with article=null and the
+// frontend uses its fallback layout.
+async function articleFor(tweet, { systemPrompt, model }) {
   try {
-    const response = await anthropic.messages.create({
+    const { article } = await desk.writeArticle({
       model,
-      max_tokens: 1500,
-      system: [
-        {
-          type: 'text',
-          text: systemPrompt,
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
-      messages: [
-        {
-          role: 'user',
-          content: `Tweet to file on:\n\n${tweet.text}\n\nPosted ${tweet.created_at}.`,
-        },
-      ],
-      output_config: {
-        format: { type: 'json_schema', schema: ARTICLE_SCHEMA },
-      },
+      system: systemPrompt,
+      user: `Tweet to file on:\n\n${tweet.text}\n\nPosted ${tweet.created_at}.`,
+      schema: ARTICLE_SCHEMA,
+      maxTokens: MAX_TOKENS,
     });
-
-    // Find the text block (skip any thinking blocks) and parse.
-    const textBlock = response.content.find((b) => b.type === 'text');
-    if (!textBlock) return null;
-    const article = JSON.parse(textBlock.text);
-
-    return {
-      article,
-      usage: {
-        input_tokens: response.usage.input_tokens,
-        output_tokens: response.usage.output_tokens,
-        cache_creation_input_tokens: response.usage.cache_creation_input_tokens || 0,
-        cache_read_input_tokens: response.usage.cache_read_input_tokens || 0,
-      },
-    };
+    return article;
   } catch (err) {
     console.error(`Claude generation failed for tweet ${tweet.id}:`, err.message);
     return null;
@@ -132,84 +70,68 @@ async function generateArticle({ tweet, systemPrompt, model }) {
 
 async function writePostsJson({ originals, systemPrompt, model }) {
   const display = originals.slice(0, POSTS_DISPLAY_COUNT);
-  const generated = await Promise.all(
-    display.map(async (t) => {
-      const result = await generateArticle({ tweet: t, systemPrompt, model });
-      return {
-        id: t.id,
-        url: tweetUrl(t.id),
-        text: t.text,
-        created_at: t.created_at,
-        article: result?.article || null,
-      };
-    })
+  const posts = await Promise.all(
+    display.map(async (t) => ({
+      id: t.id,
+      url: tweetUrl(t.id),
+      text: t.text,
+      created_at: t.created_at,
+      article: await articleFor(t, { systemPrompt, model }),
+    }))
   );
-
-  const totals = generated.reduce(
-    (acc, _, i) => {
-      // We don't currently store usage per-post, just log the aggregate
-      return acc;
-    },
-    { input: 0, output: 0, cache_read: 0, cache_create: 0 }
-  );
-
-  const payload = {
-    updated_at: new Date().toISOString(),
-    handle: TARGET_HANDLE,
-    model,
-    posts: generated,
-  };
-
-  await s3.send(
-    new PutObjectCommand({
-      Bucket: POSTS_BUCKET,
-      Key: POSTS_KEY,
-      Body: JSON.stringify(payload),
-      ContentType: 'application/json',
-      CacheControl: 'public, max-age=300',
-    })
-  );
-
+  const payload = { updated_at: new Date().toISOString(), handle: TARGET_HANDLE, model, posts };
+  await desk.publish({
+    bucket: POSTS_BUCKET, key: POSTS_KEY, body: JSON.stringify(payload),
+    contentType: 'application/json', cacheControl: 'public, max-age=300',
+  });
   return payload;
 }
 
 function httpResponse(statusCode, body) {
   return {
     statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    },
+    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     body: JSON.stringify(body),
   };
+}
+
+// ── Admin guard (2026-10-07) ─────────────────────────────────────────────
+// The /api/*/refresh route shares one JWT authorizer with the public site, and
+// the user pool allows self sign-up, so the gateway alone lets ANY signed-in
+// visitor trigger a paid poll. HTTP calls must carry the Cognito "admin" group.
+// Scheduled EventBridge runs have no requestContext and skip this check.
+function _akDeny(event) {
+  const rc = event.requestContext;
+  if (!rc) return 0;
+  const method = (rc.http && rc.http.method) || event.httpMethod;
+  if (method === 'OPTIONS') return 0;
+  const a = rc.authorizer || {};
+  const claims = (a.jwt && a.jwt.claims) || a.claims || null;
+  if (!claims) return 401;
+  const g = claims['cognito:groups'];
+  const groups = Array.isArray(g) ? g : String(g || '').replace(/[\[\]"]/g, '').split(/[\s,]+/).filter(Boolean);
+  return groups.includes('admin') ? 0 : 403;
 }
 
 exports.handler = async (event) => {
   const isHttp = Boolean(event.requestContext);
   console.log('Trigger:', isHttp ? 'http' : event.source || 'unknown');
-
+  const denied = _akDeny(event);
+  if (denied) return httpResponse(denied, { ok: false, error: denied === 403 ? 'Admin only' : 'Unauthorized' });
   try {
     const [sinceId, systemPrompt, model] = await Promise.all([
       getLastSeenId(),
-      getParam(ARTICLE_PROMPT_PARAM, ''),
-      getParam(ARTICLE_MODEL_PARAM, 'claude-sonnet-4-6'),
+      desk.getParam(ARTICLE_PROMPT_PARAM, { fallback: '' }),
+      desk.getParam(ARTICLE_MODEL_PARAM, { fallback: 'claude-sonnet-4-6' }),
     ]);
 
     const tweets = await fetchLatestTweets();
     const original = tweets.filter(isOriginalPost);
-    const newOnes = sinceId
-      ? original.filter((t) => BigInt(t.id) > BigInt(sinceId))
-      : original;
-
-    console.log(
-      `since_id=${sinceId || '(none)'} fetched=${tweets.length} original=${original.length} new=${newOnes.length} model=${model}`
-    );
+    const newOnes = sinceId ? original.filter((t) => BigInt(t.id) > BigInt(sinceId)) : original;
+    console.log(`since_id=${sinceId || '(none)'} fetched=${tweets.length} original=${original.length} new=${newOnes.length} model=${model}`);
 
     const wire = await writePostsJson({ originals: original, systemPrompt, model });
-
-    if (tweets.length > 0) {
-      await setLastSeenId(tweets[0].id);
-    }
+    if (tweets.length > 0) await desk.putParam(LAST_ID_PARAM, tweets[0].id);
 
     const result = {
       ok: true,
@@ -222,7 +144,6 @@ exports.handler = async (event) => {
       model,
       newLastSeenId: tweets[0]?.id || sinceId || null,
     };
-
     return isHttp ? httpResponse(200, result) : result;
   } catch (err) {
     console.error('Poller failed:', err);

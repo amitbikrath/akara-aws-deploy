@@ -1,0 +1,105 @@
+{
+  "author" : "Narada (Narada Purana)",
+  "deityTag" : "ganesha",
+  "glyph" : "सं",
+  "id" : "sankashtanashana",
+  "kind" : "Stotra",
+  "liveReciteEnabled" : false,
+  "primaryScript" : "dev",
+  "story" : {
+    "en" : "The Saṅkaṣṭanāśana Gaṇeśa Stotram is a celebrated eight-verse hymn preserved in the Nārada Purāṇa, composed by the divine sage Nārada in praise of Gaṇeśa, the son of Gaurī and the remover of every obstacle. The hymn opens with obeisance to Vināyaka and then enumerates twelve sacred names of Gaṇeśa across four verses — Vakratuṇḍa, Ekadanta, Kṛṣṇapiṅgākṣa, Gajavaktra, Lambodara, Vikaṭa, Vighnarājendra, Dhūmravarṇa, Bhālacandra, Vināyaka, Gaṇapati, and Gajānana — each name being a facet of the Lord's nature and a bridge of devotion between the worshipper and the divine.\n\nThe closing verses form the phalaśruti: whoever recites these twelve names at the three junctions of the day is freed from all fear of obstacles; the student gains learning, the seeker of wealth gains prosperity, the one who desires progeny is blessed with children, and the seeker of liberation attains the highest goal. Six months of devoted recitation yields tangible fruit; a full year bestows complete siddhi. The hymn is especially recited on Caturthī (the fourth lunar day), before undertaking any new venture, and at the commencement of worship — because Gaṇeśa, the lord of beginnings, dissolves every saṅkaṣṭa, every knot of hardship, before it can take hold."
+  },
+  "subtitle" : "Narada Purana · 8 verses",
+  "title" : "Sankashtanashana Ganesha Stotra",
+  "titleDev" : "सङ्कष्टनाशनगणेशस्तोत्रम्",
+  "verses" : [
+    {
+      "id" : 0,
+      "meaning" : {
+        "en" : "Nārada speaks: Having bowed the head before the Lord — son of Gaurī, the great Vināyaka, the dwelling-place of devotees — one should remember him always, for the attainment of long life, desire and purpose."
+      },
+      "n" : "१",
+      "scripts" : {
+        "dev" : "नारद उवाच ।\nप्रणम्य शिरसा देवं गौरीपुत्रं विनायकम् ।\nभक्तावासं स्मरेन्नित्यमायुःकामार्थसिद्धये ॥",
+        "iast" : "nārada uvāca.\npraṇamya śirasā devaṃ gaurīputraṃ vināyakam.\nbhaktāvāsaṃ smaren nityam āyuḥ-kāmārtha-siddhaye."
+      }
+    },
+    {
+      "id" : 1,
+      "meaning" : {
+        "en" : "The first is Vakratuṇḍa; the second, Ekadanta; the third, Kṛṣṇapiṅgākṣa; and the fourth, Gajavaktra — these are the first four of the twelve names of Gaṇeśa."
+      },
+      "n" : "२",
+      "scripts" : {
+        "dev" : "प्रथमं वक्रतुण्डं च एकदन्तं द्वितीयकम् ।\nतृतीयं कृष्णपिङ्गाक्षं गजवक्त्रं चतुर्थकम् ॥",
+        "iast" : "prathamaṃ vakratuṇḍaṃ ca ekadantaṃ dvitīyakam.\ntṛtīyaṃ kṛṣṇapiṅgākṣaṃ gajavaktraṃ caturthakam."
+      }
+    },
+    {
+      "id" : 2,
+      "meaning" : {
+        "en" : "The fifth is Lambodara; the sixth, Vikaṭa; the seventh, Vighnarājendra, lord of obstacles; and the eighth, Dhūmravarṇa of the smoke-grey hue."
+      },
+      "n" : "३",
+      "scripts" : {
+        "dev" : "लम्बोदरं पञ्चमं च षष्ठं विकटमेव च ।\nसप्तमं विघ्नराजेन्द्रं धूम्रवर्णं तथाष्टमम् ॥",
+        "iast" : "lambodaram pañcamaṃ ca ṣaṣṭhaṃ vikaṭam eva ca.\nsaptamaṃ vighnarājendraṃ dhūmravarṇaṃ tathāṣṭamam."
+      }
+    },
+    {
+      "id" : 3,
+      "meaning" : {
+        "en" : "The ninth is Bhālacandra, moon-crested; the tenth, Vināyaka; the eleventh, Gaṇapati; and the twelfth, Gajānana, elephant-faced — thus the twelve names are complete."
+      },
+      "n" : "४",
+      "scripts" : {
+        "dev" : "नवमं भालचन्द्रं च दशमं तु विनायकम् ।\nएकादशं गणपतिं द्वादशं तु गजाननम् ॥",
+        "iast" : "navamaṃ bhālacandraṃ ca daśamaṃ tu vināyakam.\nekādaśaṃ gaṇapatiṃ dvādaśaṃ tu gajānanam."
+      }
+    },
+    {
+      "id" : 4,
+      "meaning" : {
+        "en" : "Whoever recites these twelve names at the three junctions of the day — that person has no fear of obstacles; for the Lord himself becomes the giver of all accomplishment."
+      },
+      "n" : "५",
+      "scripts" : {
+        "dev" : "द्वादशैतानि नामानि त्रिसन्ध्यं यः पठेन्नरः ।\nन च विघ्नभयं तस्य सर्वसिद्धिकरः प्रभुः ॥",
+        "iast" : "dvādaśaitāni nāmāni trisandhyaṃ yaḥ paṭhen naraḥ.\nna ca vighna-bhayaṃ tasya sarva-siddhikaraḥ prabhuḥ."
+      }
+    },
+    {
+      "id" : 5,
+      "meaning" : {
+        "en" : "The student gains learning; the seeker of wealth gains riches; the one who desires children is blessed with progeny; and the seeker of liberation attains the highest goal."
+      },
+      "n" : "फल",
+      "scripts" : {
+        "dev" : "विद्यार्थी लभते विद्यां धनार्थी लभते धनम् ।\nपुत्रार्थी लभते पुत्रान्मोक्षार्थी लभते गतिम् ॥",
+        "iast" : "vidyārthī labhate vidyāṃ dhanārthī labhate dhanam.\nputrārthī labhate putrān mokṣārthī labhate gatim."
+      }
+    },
+    {
+      "id" : 6,
+      "meaning" : {
+        "en" : "Whoever recites this Gaṇapati Stotra diligently obtains the fruit within six months; and without any doubt attains full siddhi within a year."
+      },
+      "n" : "फल",
+      "scripts" : {
+        "dev" : "जपेद्गणपतिस्तोत्रं षड्भिर्मासैः फलं लभेत् ।\nसंवत्सरेण सिद्धिं च लभते नात्र संशयः ॥",
+        "iast" : "japed gaṇapati-stotraṃ ṣaḍbhir māsaiḥ phalaṃ labhet.\nsaṃvatsareṇa siddhiṃ ca labhate nātra saṃśayaḥ."
+      }
+    },
+    {
+      "id" : 7,
+      "meaning" : {
+        "en" : "Whoever writes out this stotra and offers it to eight brāhmaṇas shall, by the grace of Gaṇeśa, attain all knowledge and learning."
+      },
+      "n" : "फल",
+      "scripts" : {
+        "dev" : "अष्टभ्यो ब्राह्मणेभ्यश्च लिखित्वा यः समर्पयेत् ।\nतस्य विद्या भवेत्सर्वा गणेशस्य प्रसादतः ॥",
+        "iast" : "aṣṭabhyo brāhmaṇebhyaś ca likhitvā yaḥ samarpayet.\ntasya vidyā bhavet sarvā gaṇeśasya prasādataḥ."
+      }
+    }
+  ]
+}

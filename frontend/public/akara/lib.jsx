@@ -2,6 +2,67 @@
 
 const { useState, useEffect, useRef, useLayoutEffect, useCallback, useMemo } = React;
 
+// ── Google Analytics 4 (2026-10-04) ─────────────────────────────────────────
+// Injected at runtime for the same reason as the CSS below: the live
+// prerendered index.html must not be patched (Next hydration crash).
+// GA4 "enhanced measurement" counts the in-app route changes (/shop etc.).
+// The same tag is inlined in public/ganpati.html and in the Times pages
+// (akara-times-daily Lambda template).
+if (typeof document !== "undefined" && !document.getElementById("ak-ga4")){
+  const AK_GA_ID = "G-BQEB260FD7";
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function(){ window.dataLayer.push(arguments); };
+  window.gtag("js", new Date());
+  window.gtag("config", AK_GA_ID);
+  const ga = document.createElement("script");
+  ga.id = "ak-ga4";
+  ga.async = true;
+  ga.src = "https://www.googletagmanager.com/gtag/js?id=" + AK_GA_ID;
+  document.head.appendChild(ga);
+}
+// Shared tracker (clicks, sections, scroll, time): /akara/ak-track.js.
+// akTrack() is defined here too so feature events sent before that file
+// loads still reach Google (gtag queues them).
+if (typeof window !== "undefined"){
+  window.akTrack = window.akTrack || function(name, params){ try{ window.gtag("event", name, params || {}); }catch(e){} };
+  if (!document.getElementById("ak-track-js")){
+    const tk = document.createElement("script");
+    tk.id = "ak-track-js"; tk.async = true; tk.src = "/akara/ak-track.js";
+    document.head.appendChild(tk);
+  }
+}
+
+// ── micro-interaction CSS (2026-07-23) ──────────────────────────────────────
+// Injected at runtime because the LIVE prerendered index.html's <style> block
+// cannot be safely patched (Next hydration replaces it with the string baked
+// into the deployed JS chunks). The same rules also live in the three static
+// style blocks (src/app/akara-site.css, akara.html, index.html) for the next
+// full-shell deploy — after which this injection is harmless duplication and
+// may be removed. Keep all copies in lockstep.
+if (typeof document !== "undefined" && !document.getElementById("ak-micro-css")){
+  const st = document.createElement("style");
+  st.id = "ak-micro-css";
+  st.textContent = `
+.nav-links .link-u{transition:opacity .35s var(--ease-out),filter .35s var(--ease-out)}
+.nav-links:hover .link-u{opacity:.4;filter:blur(1px)}
+.nav-links:hover .link-u:hover{opacity:1;filter:none}
+.tbtn .tb-ic{display:block;transition:transform .28s var(--ease-out)}
+.tbtn:hover{background:rgba(197,160,89,.14)!important;border-color:rgba(197,160,89,.5)!important}
+.tbtn-next:hover .tb-ic{transform:translateX(3px)}
+.tbtn-prev:hover .tb-ic{transform:translateX(-3px)}
+.tbtn:active .tb-ic{transform:scale(.82)}
+.play-btn:hover{transform:scale(1.06)}
+.play-btn:active{transform:scale(.94)}
+.pb-ring{position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--gold);opacity:0;pointer-events:none;animation:akRingOut .9s var(--ease-out) forwards}
+@keyframes akRingOut{0%{transform:scale(1);opacity:.85}100%{transform:scale(2.2);opacity:0}}
+@media (prefers-reduced-motion:reduce){
+.pb-ring{animation:none}
+.nav-links .link-u,.tbtn .tb-ic{transition:none}
+.nav-links:hover .link-u{opacity:1;filter:none}
+}`;
+  document.head.appendChild(st);
+}
+
 // Shared scroll bus — single rAF-throttled listener
 const scrollListeners = new Set();
 let latestScrollY = 0;
@@ -146,17 +207,58 @@ const WP_STYLES = ["Painterly","Ghiblish","Whitish","Stone Shrine","Neon Bhakti"
 const WP_DEITIES = ["Shiva","Krishna","Saraswati","Ganesha","Durga","Hanuman","Lakshmi","Kali","Rama","Yantra"];
 
 const SHOP_ITEMS = [
-  { id:"s-clothing", name:"Clothing",      lead:"Woven in Varanasi", sub:"Cotton · Silk · Linen",   video:"/akara/assets/shop-clothing.mp4",  img:"/akara/assets/shop-clothing-sm.png",  tint:"#d08a70", href:"/shop/clothing" },
-  { id:"s-prints",   name:"Fine Prints",   lead:"Giclée on cotton",  sub:"A2 · A3 · Editions",       video:"/akara/assets/shop-prints.mp4",    img:"/akara/assets/shop-prints-sm.png",     tint:"#e4b37a", href:"/shop/prints" },
-  { id:"s-merch",    name:"Merchandise",   lead:"Objects for living",sub:"Brass · Ceramic · Wood",   video:"/akara/assets/shop-merch.mp4",     img:"/akara/assets/shop-merch-sm.png",      tint:"#8fb5d6", href:"/shop/merch" },
+  { id:"s-clothing", name:"Clothing",      lead:"Printed to order", sub:"Supima · Cotton · Unisex", video:"/akara/assets/shop-clothing.mp4",  img:"/akara/assets/shop-clothing-sm.png",  tint:"#d08a70", href:"/shop?aisle=clothing", aisle:"clothing" },
+  { id:"s-prints",   name:"Fine Prints",   lead:"Giclée on cotton",  sub:"A2 · A3 · Editions",       video:"/akara/assets/shop-prints.mp4",    img:"/akara/assets/shop-prints-sm.png",     tint:"#e4b37a", href:"/shop?aisle=prints",   aisle:"prints" },
+  { id:"s-merch",    name:"Merchandise",   lead:"Objects for living",sub:"Brass · Ceramic · Wood",   video:"/akara/assets/shop-merch.mp4",     img:"/akara/assets/shop-merch-sm.png",      tint:"#8fb5d6", href:"/shop?aisle=merch",    aisle:"merch" },
 ];
 
+// ── Shopify Storefront (2026-09-06) ─────────────────────────────────────────
+// akara.studio is the face of the store; the Shopify Storefront is the till.
+// The token below is a PUBLIC Storefront token (read products, write carts).
+// It is safe in client code. Rotate it in Shopify admin → Headless channel.
+const AKARA_SHOPIFY = {
+  domain: "srfvqf-tj.myshopify.com",
+  token: "c19a6e5993655118c7b44df70ec9a3ad",
+  version: "2025-07",
+};
+// Judge.me PUBLIC token (2026-09-07). Read-only widget endpoints, CORS-open to
+// akara.studio. Rotate in Judge.me → Settings → Integrations → API.
+const AKARA_JUDGEME = {
+  token: "uYG86eq35fhsh2uH_6Rs6cbYT5g",
+  base: "https://judge.me/api/v1",
+};
+async function shopifyStorefront(query, variables = {}){
+  const res = await fetch(`https://${AKARA_SHOPIFY.domain}/api/${AKARA_SHOPIFY.version}/graphql.json`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Shopify-Storefront-Access-Token": AKARA_SHOPIFY.token },
+    body: JSON.stringify({ query, variables }),
+  });
+  if(!res.ok) throw new Error("storefront http " + res.status);
+  const j = await res.json();
+  if(j.errors && j.errors.length) throw new Error(j.errors[0].message || "storefront error");
+  return j.data;
+}
+
+// Akara's own recordings. Audio + square album art live in the frontend bucket
+// under /akara/music/ (public) — catalog originals/ are member-gated, so they
+// cannot back a public player. Album art = a crop of the matching deity wallpaper.
+const _akTrack = (slug, o) => ({ id:slug, src:`/akara/music/${slug}.mp3`, art:`/akara/music/art/${slug}.jpg`,
+  dur:`${Math.floor(o.durSec/60)}:${String(o.durSec%60).padStart(2,"0")}`, ...o });
 const TRACKS = [
-  { id:"t1", title:"Asato Mā Sadgamaya", invokes:"Saraswati", mood:"Stillness",  occasion:"Pre-dawn",     element:"Space",  dur:"4:32", durSec:272 },
-  { id:"t2", title:"Gāyatrī Mantra",       invokes:"Savitṛ",     mood:"Clarity",    occasion:"Sandhya",      element:"Light",  dur:"6:18", durSec:378 },
-  { id:"t3", title:"Śiva Tāṇḍava Stotra", invokes:"Shiva",      mood:"Ecstasy",    occasion:"Night · Moksha", element:"Fire",   dur:"5:47", durSec:347 },
-  { id:"t4", title:"Hanumān Chālīsā",      invokes:"Hanuman",    mood:"Devotion",   occasion:"Tuesday · Strength", element:"Earth", dur:"7:12", durSec:432 },
-  { id:"t5", title:"Lalitā Sahasranāma",   invokes:"Lalitā",     mood:"Grace",      occasion:"Friday · Aarti",  element:"Water", dur:"8:04", durSec:484 },
+  _akTrack("ganpati-bappa-morya",     { title:"Gaṇapati Bāppā Moryā",        invokes:"Ganesha",  mood:"Celebration", occasion:"Chaturthi · Visarjan", element:"Earth", durSec:227 }),
+  _akTrack("om-gan-ganapataye",       { title:"Oṃ Gaṃ Gaṇapataye Namo Namaḥ", invokes:"Ganesha",  mood:"Beginning",   occasion:"Before any work",     element:"Earth", durSec:224 }),
+  _akTrack("premsagar",               { title:"Premasāgara",                  invokes:"Shiva · Pārvatī", mood:"Longing", occasion:"Monday · Dusk",    element:"Water", durSec:252 }),
+  _akTrack("shankar-albele",          { title:"Śaṅkara Albele",               invokes:"Shiva",    mood:"Stillness",   occasion:"Monday · Pre-dawn",   element:"Space", durSec:148 }),
+  _akTrack("shishu-rama",             { title:"Śiśurāma Vibhor Akhilaṃ Lalitam", invokes:"Rama", mood:"Tenderness", occasion:"Navami · Lullaby", element:"Light", durSec:227 }),
+  _akTrack("jai-shri-ram",            { title:"Jaya Śrī Rāma",                invokes:"Rama",     mood:"Resolve",     occasion:"Navami · Morning",    element:"Light", durSec:179 }),
+  _akTrack("kah-sah",                 { title:"Kaḥ Saḥ?",                     invokes:"Hanuman",  mood:"Fury",        occasion:"Tuesday · Strength",  element:"Air",   durSec:293 }),
+  _akTrack("vajra-breath-choir",      { title:"Vajra Breath Choir",           invokes:"Hanuman",  mood:"Fierce",      occasion:"Saturday · Courage",  element:"Fire",  durSec:171 }),
+  _akTrack("aham-vayuh",              { title:"Aham Vāyuḥ",                   invokes:"Hanuman",  mood:"Ecstasy",     occasion:"Tuesday · Dawn",      element:"Air",   durSec:236 }),
+  _akTrack("manojavam",               { title:"Manojavam",                    invokes:"Hanuman",  mood:"Warmth",      occasion:"Evening · Rest",      element:"Air",   durSec:144 }),
+  _akTrack("padmahaste-padmalakshmi", { title:"Padmahaste Padmalakṣmī",       invokes:"Lakshmi",  mood:"Abundance",   occasion:"Friday · Aarti",      element:"Water", durSec:380 }),
+  _akTrack("shantakaram",             { title:"Śāntākāraṃ Bhujagaśayanam",    invokes:"Vishnu",   mood:"Grace",       occasion:"Ekadashi · Night",    element:"Space", durSec:207 }),
+  _akTrack("argala",                  { title:"Argalā Stotram",               invokes:"Durga",    mood:"Reverence",   occasion:"Navaratri",           element:"Fire",  durSec:196 }),
+  _akTrack("krishna-rain-song",       { title:"Krishna Rain Song",            invokes:"Krishna",  mood:"Poetry",      occasion:"Monsoon · Afternoon", element:"Water", durSec:91 }),
 ];
 
 const STORY_CHAPTERS = [
@@ -177,7 +279,8 @@ function _akInferDeity(text){
     ["hanuman","Hanuman"],["rama","Rama"],["yantra","Yantra"],
   ];
   for(const [k,v] of list) if(t.includes(k)) return v;
-  return "Krishna";
+  // No match → no deity. (Was "Krishna", which mislabelled every untagged image.)
+  return "";
 }
 function _akInferStyle(s){
   if(!s) return "Painterly";
@@ -227,7 +330,9 @@ const _AK_FALLBACK_GRADS = [
 
 function mapApiWallpaper(api, idx){
   const titleRaw = api.title || "Untitled";
-  const deity = _akInferDeity(`${api.title} ${api.caption||""}`);
+  // Owner-approved deities (admin Organize) win. Otherwise guess from the title
+  // only: many old captions were pasted from the wrong post.
+  const deity = (Array.isArray(api.deities) && api.deities[0]) || _akInferDeity(api.title);
   const titleClean = titleRaw.replace(/^\s*([A-Za-z]+)\s*[\/-]\s*/, "");
   const style = _akInferStyle(api.style);
   const orient = _akInferOrient(api.ratio);
@@ -240,7 +345,7 @@ function mapApiWallpaper(api, idx){
     : fb[0];
   return {
     id: api.id || `w-live-${idx}`,
-    title: `${deity} / ${titleClean.length>40 ? titleClean.slice(0,40)+"…" : titleClean}`,
+    title: (deity ? `${deity} / ` : "") + (titleClean.length>40 ? titleClean.slice(0,40)+"…" : titleClean),
     deity, style, orient, mood, grad,
     accent: (palette && palette[0]) || fb[1],
     colors,
@@ -256,28 +361,290 @@ function mapApiWallpaper(api, idx){
     caption: api.caption || "",
     // Phase 3 freemium teaser. When true: preview is full-res unwatermarked.
     freePreview: api.freePreview === true,
+    // "strip" = one wide artwork cut into strips (old rows have no field);
+    // "carousel" = separate images. Picks how AkSlideTile/AkSlideViewer show it.
+    layout: api.layout === "carousel" ? "carousel" : "strip",
+    // Carousel: extra slides after the cover. Same auth-gated url pairs as
+    // the cover, so tiles and lightbox pick with akSlideSources().
+    slides: (Array.isArray(api.slideKeys) ? api.slideKeys : []).map((k) => ({
+      imageUrl: _akPreviewUrl(k) || _akAssetUrl(k),
+      fullUrl: _akAssetUrl(k),
+      previewUrl: _akPreviewUrl(k),
+      originalUrl: _akAssetUrl(k),
+    })),
   };
+}
+
+// Cover + slides as one ordered list of image urls, respecting the auth gate
+// the single-image paths use. Empty `slides` → a one-element list, so every
+// caller can treat a plain wallpaper and a carousel the same way.
+function akSlideSources(w){
+  if(!w) return [];
+  const signedIn = (typeof akHasSession === "function") ? akHasSession() : ((typeof akCurrentUser === "function") && !!akCurrentUser());
+  const pick = (x) => signedIn ? (x.originalUrl || x.fullUrl || x.imageUrl) : (x.previewUrl || x.imageUrl);
+  return [w, ...(Array.isArray(w.slides) ? w.slides : [])].map(pick).filter(Boolean);
+}
+
+// ── Multi-image posts: one component for every surface (2026-10-09) ────────
+// Tiles (gallery, wallpapers) use AkSlideTile; the lightbox uses
+// AkSlideViewer. Change the look here, never in the callers.
+//   strip    → tile: strips side by side. Lightbox: Strips / Swipe / Full.
+//   carousel → tile: cover + "1 / N" badge. Lightbox: Swipe only.
+const AK_SLIDE_EASE = "cubic-bezier(.22,1,.36,1)";
+function _akReducedMotion(){
+  try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch(e){ return false; }
+}
+
+// Members' tiles: the 480px clean WebP at /content/originals/sm/{uuid}
+// (~44 KB) instead of the ~2 MB original. The original is the fallback for
+// the few uploads without an sm variant.
+function _akTileSrc(src){
+  const m = /^(.*\/content\/originals\/)([^/?#]+?)(\.[^./?#]+)?$/.exec(src || "");
+  return m ? `${m[1]}sm/${m[2]}` : src;
+}
+function AkTileImg({ src, alt, fit }){
+  const sm = _akTileSrc(src);
+  return <ProtectedImage src={sm} fallbackSrc={sm !== src ? src : undefined} alt={alt} fit={fit} watermark={false}/>;
+}
+
+function AkSlideTile({ w, alt }){
+  const srcs = akSlideSources(w);
+  if (!srcs.length) return null;
+  const title = alt != null ? alt : (w.title || "");
+  if (srcs.length === 1) return <AkTileImg src={srcs[0]} alt={title} fit="cover"/>;
+  if (w.layout === "carousel") return (
+    <>
+      <AkTileImg src={srcs[0]} alt={title} fit="cover"/>
+      <span className="mono" aria-label={`${srcs.length} images`} style={{
+        // Sits under the tile's top row (number + mood tag), right-aligned.
+        position:"absolute", top:44, right:14, zIndex:2, pointerEvents:"none",
+        fontSize:9, letterSpacing:".22em", color:"var(--gold)",
+        padding:"5px 8px 4px", border:"1px solid rgba(197,160,89,.55)",
+        background:"rgba(5,5,6,.62)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
+      }}>1 / {srcs.length}</span>
+    </>
+  );
+  // Strip: the strips are one wide artwork cut left→right, so laid side by
+  // side (thin gutters, like the feed) they read as the panorama.
+  return (
+    <div style={{ position:"absolute", inset:0, display:"flex", gap:3 }}>
+      {srcs.map((src, i) => (
+        <div key={i} style={{ position:"relative", flex:1, minWidth:0, overflow:"hidden" }}>
+          <AkTileImg src={src} alt={i === 0 ? title : ""} fit="cover"/>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Natural aspect ratios (w/h) of a list of image urls; null until all load.
+function _akUseRatios(srcs){
+  const key = srcs.join("|");
+  const [ratios, setRatios] = useState(null);
+  useEffect(() => {
+    let alive = true; setRatios(null);
+    Promise.all(srcs.map((src) => new Promise((res) => {
+      const im = new Image();
+      im.onload = () => res(im.naturalWidth && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 1);
+      im.onerror = () => res(1);
+      im.src = src;
+    }))).then((r) => { if (alive) setRatios(r); });
+    return () => { alive = false; };
+  }, [key]);
+  return ratios;
+}
+
+// Size of an element, kept current on resize.
+function _akUseBox(ref){
+  const [box, setBox] = useState({ w:0, h:0 });
+  useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    const read = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    read();
+    const ro = new ResizeObserver(read); ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return box;
+}
+
+function AkSlideViewer({ w, inset = "6% 4%" }){
+  const srcs = akSlideSources(w);
+  const isCarousel = w.layout === "carousel";
+  const modes = isCarousel ? ["swipe"] : ["strips", "swipe", "full"];
+  const [mode, setMode] = useState(modes[0]);
+  const [i, setI] = useState(0);
+  const [dx, setDx] = useState(0);
+  const touch = useRef(null); // { x, y, h: horizontal?, mx: last drag }
+  const stage = useRef(null);
+  const box = _akUseBox(stage);
+  const ratios = _akUseRatios(srcs);
+  const still = _akReducedMotion();
+  const n = srcs.length;
+  if (!n) return null;
+  if (n === 1) return (
+    <div style={{ position:"absolute", inset }}>
+      <ProtectedImage src={srcs[0]} alt={w.title} fit="contain" watermark={false}/>
+    </div>
+  );
+
+  const go = (k) => setI(Math.max(0, Math.min(n - 1, k)));
+  // Horizontal swipes belong to the slides; vertical ones still bubble up
+  // to the lightbox (up/down = next/previous post).
+  const onTouchStart = (e) => { const t = e.touches[0]; touch.current = { x:t.clientX, y:t.clientY, h:null }; };
+  const onTouchMove = (e) => {
+    const s = touch.current; if (!s) return;
+    const t = e.touches[0], mx = t.clientX - s.x, my = t.clientY - s.y;
+    if (s.h === null && (Math.abs(mx) > 8 || Math.abs(my) > 8)) s.h = Math.abs(mx) > Math.abs(my);
+    if (s.h) { e.stopPropagation(); s.mx = mx; setDx(mx); }
+  };
+  const onTouchEnd = (e) => {
+    const s = touch.current; touch.current = null;
+    if (!s || !s.h) return;
+    e.stopPropagation();
+    // Read the drag from the ref: a fast flick can end before React re-renders.
+    const width = box.w || 1, mx = s.mx || 0;
+    if (mx < -width * 0.18) go(i + 1); else if (mx > width * 0.18) go(i - 1);
+    setDx(0);
+  };
+
+  // Swipe: the dots ride the top edge of the current picture (object-fit:
+  // contain leaves letterbox space), under the mode switch when it shows,
+  // so they never land on the lightbox caption at the bottom.
+  let dotsTop = null;
+  if (ratios && box.w && box.h) {
+    const r = ratios[i] || 1;
+    const imgH = r > box.w / box.h ? box.w / r : box.h;
+    dotsTop = Math.max((box.h - imgH) / 2 + 12, modes.length > 1 ? 50 : 0);
+  }
+
+  let art;
+  if (mode === "swipe") {
+    const pct = box.w ? (dx / box.w) * 100 : 0;
+    art = (
+      <div style={{ position:"absolute", inset:0, overflow:"hidden" }}
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+        <div style={{
+          position:"absolute", inset:0, display:"flex",
+          transform:`translate3d(${-i * 100 + pct}%,0,0)`,
+          transition: dx || still ? "none" : `transform .9s ${AK_SLIDE_EASE}`,
+        }}>
+          {srcs.map((src, k) => (
+            <div key={k} style={{ position:"relative", flex:"0 0 100%", height:"100%" }}>
+              <ProtectedImage src={src} alt={k === 0 ? w.title : `${w.title}, ${k + 1} of ${n}`} fit="contain" watermark={false}/>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  } else {
+    // Strips / Full: every strip at one shared height, sized from the real
+    // aspect ratios so "Full" joins them with no seam.
+    const gap = mode === "strips" ? 6 : 0;
+    let W = 0, H = 0;
+    if (ratios && box.w && box.h) {
+      const sum = ratios.reduce((a, b) => a + b, 0);
+      const free = box.w - gap * (n - 1);
+      H = Math.min(box.h, free / sum);
+      W = H * sum + gap * (n - 1);
+    }
+    art = (
+      <div style={{ position:"absolute", inset:0, display:"grid", placeItems:"center" }}>
+        {W > 0 && (
+          <div style={{ display:"flex", gap, width:W, height:H, transition: still ? "none" : `gap .9s ${AK_SLIDE_EASE}` }}>
+            {srcs.map((src, k) => (
+              <div key={k} style={{ position:"relative", flex:`${ratios[k]} 1 0`, minWidth:0 }}>
+                <ProtectedImage src={src} alt={k === 0 ? w.title : ""} fit="cover" watermark={false}/>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const chip = { pointerEvents:"auto", background:"none", border:"none", cursor:"pointer", padding:"6px 2px",
+    fontSize:9, letterSpacing:".3em", textTransform:"uppercase", fontFamily:"inherit" };
+  const arrow = (dir) => ({ pointerEvents:"auto", position:"absolute", top:"50%", [dir < 0 ? "left" : "right"]:6,
+    transform:"translateY(-50%)", width:38, height:38, borderRadius:"50%", border:"1px solid rgba(197,160,89,.5)",
+    background:"rgba(5,5,6,.55)", color:"var(--gold)", cursor:"pointer", fontSize:15, display:"grid", placeItems:"center",
+    backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", transition:"opacity .6s ease" });
+
+  return (
+    <div style={{ position:"absolute", inset }}>
+      <div ref={stage} style={{ position:"absolute", inset:0 }}>{art}</div>
+      {mode === "swipe" && (
+        <>
+          <button aria-label="Previous image" onClick={(e) => { e.stopPropagation(); go(i - 1); }}
+            style={{ ...arrow(-1), opacity: i === 0 ? 0 : 1, pointerEvents: i === 0 ? "none" : "auto" }}>‹</button>
+          <button aria-label="Next image" onClick={(e) => { e.stopPropagation(); go(i + 1); }}
+            style={{ ...arrow(1), opacity: i === n - 1 ? 0 : 1, pointerEvents: i === n - 1 ? "none" : "auto" }}>›</button>
+          <div style={{ position:"absolute", left:"50%", top: dotsTop || 0, opacity: dotsTop == null ? 0 : 1,
+            transform:"translateX(-50%)", zIndex:3, display:"flex", gap:6, transition: still ? "none" : `top .9s ${AK_SLIDE_EASE}, opacity .9s ease`,
+            padding:"7px 10px", borderRadius:999, background:"rgba(5,5,6,.55)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)" }}>
+            {srcs.map((_, k) => (
+              <button key={k} aria-label={`Image ${k + 1} of ${n}`} onClick={(e) => { e.stopPropagation(); go(k); }} style={{
+                pointerEvents:"auto", width: k === i ? 16 : 5, height:5, borderRadius:3, border:"none", padding:0, cursor:"pointer",
+                background: k === i ? "var(--gold)" : "rgba(244,237,225,.35)",
+                transition: still ? "none" : `width .9s ${AK_SLIDE_EASE}, background .9s ease`,
+              }}/>
+            ))}
+          </div>
+        </>
+      )}
+      {modes.length > 1 && (
+        // Inside the art's top edge, so it never meets the lightbox's own top bar.
+        <div className="mono" role="group" aria-label="How to show this artwork" style={{
+          position:"absolute", left:"50%", top:12, transform:"translateX(-50%)", zIndex:3,
+          display:"flex", gap:16, padding:"2px 14px",
+          background:"rgba(5,5,6,.62)", border:"1px solid rgba(197,160,89,.3)", borderRadius:999,
+          backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)",
+        }}>
+          {modes.map((m) => (
+            <button key={m} aria-pressed={mode === m} onClick={(e) => { e.stopPropagation(); setMode(m); setI(0); }} style={{
+              ...chip, color: mode === m ? "var(--gold)" : "rgba(244,237,225,.55)",
+              borderBottom: `1px solid ${mode === m ? "var(--gold)" : "transparent"}`,
+              transition: still ? "none" : "color .9s ease, border-color .9s ease",
+            }}>{m === "strips" ? "Strips" : m === "swipe" ? "Swipe" : "Full"}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 let _akWallpapersLoaded = false;
 let _akWallpapersData = null;
 const _akWallpaperListeners = new Set();
 
-async function loadLiveWallpapers(){
-  if(_akWallpapersLoaded) return _akWallpapersData;
+let _akWallpapersPromise = null;
+function loadLiveWallpapers(){
+  if(_akWallpapersLoaded) return Promise.resolve(_akWallpapersData);
+  return _akWallpapersPromise || (_akWallpapersPromise = _akFetchAllWallpapers());
+}
+// Pages through the whole catalog (the API returns one page + lastEvaluatedKey).
+// The first page paints fast; every later page re-notifies with the full list.
+async function _akFetchAllWallpapers(){
   // Phase 3: empty string is a valid base (same-origin via CloudFront /api/*).
   // Treat undefined/null as missing config; "" is a green light.
   const baseRaw = (typeof window !== "undefined") ? window.__AKARA_API_BASE : undefined;
   if (baseRaw === undefined || baseRaw === null){ _akWallpapersLoaded = true; return null; }
   const base = baseRaw;
+  const all = [];
+  let key = null;
   try{
-    const res = await fetch(`${base}/api/catalog?type=wallpaper&limit=100`, { credentials:"omit" });
-    const json = await res.json();
-    if(json && json.ok && Array.isArray(json.items)){
-      _akWallpapersData = json.items.filter(i=>!i.archived).map(mapApiWallpaper);
+    for(let page = 0; page < 30; page++){
+      const res = await fetch(`${base}/api/catalog?type=wallpaper&limit=${page ? 500 : 100}` + (key ? `&lastEvaluatedKey=${key}` : ""), { credentials:"omit" });
+      const json = await res.json();
+      if(!(json && json.ok && Array.isArray(json.items))) break;
+      // hiddenFromPublic: duplicates and withdrawn pieces (Darśana honours it too).
+      all.push(...json.items.filter(i=>!i.archived && !i.hiddenFromPublic).map(mapApiWallpaper));
+      _akWallpapersData = all.slice();
       window.WALLPAPER_ITEMS_LIVE = _akWallpapersData;
+      _akWallpaperListeners.forEach(fn=>fn(_akWallpapersData));
+      key = json.lastEvaluatedKey;
+      if(!key) break;
     }
-  } catch(e){ /* fall back to static */ }
+  } catch(e){ /* keep what loaded; fall back to static if nothing did */ }
   _akWallpapersLoaded = true;
   _akWallpaperListeners.forEach(fn=>fn(_akWallpapersData));
   return _akWallpapersData;
@@ -290,6 +657,7 @@ function useLiveWallpapers(){
       if(_akWallpapersData && _akWallpapersData.length) setItems(_akWallpapersData);
       return;
     }
+    if(_akWallpapersData && _akWallpapersData.length) setItems(_akWallpapersData);
     const fn = (data)=>{ if(data && data.length) setItems(data); };
     _akWallpaperListeners.add(fn);
     loadLiveWallpapers();
@@ -302,4 +670,4 @@ if (typeof window !== "undefined"){ loadLiveWallpapers(); }
 
 Object.assign(window, { useScrollBus, useInView, useMagnetic, StaggerText, MagButton, SectionKicker,
   HERO, WALLPAPER_ITEMS, WP_SWATCHES, WP_STYLES, WP_DEITIES, SHOP_ITEMS, TRACKS, STORY_CHAPTERS,
-  useLiveWallpapers, loadLiveWallpapers, mapApiWallpaper });
+  useLiveWallpapers, loadLiveWallpapers, mapApiWallpaper, AKARA_SHOPIFY, shopifyStorefront, AKARA_JUDGEME });

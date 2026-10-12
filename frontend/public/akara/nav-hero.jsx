@@ -170,6 +170,8 @@ function TopNav(){
   const scrolled = y > 60;
   const items = [
     { id:"wallpapers",    label:"Wallpapers" },
+    // Darśana is its own page (/darshan): browse by deity, bhava and colour.
+    { id:"darshan",       label:"Darśana", href:"/darshan" },
     { id:"shop",          label:"Shop" },
     { id:"music",          label:"Music" },
     { id:"story",          label:"Our Story" },
@@ -179,6 +181,7 @@ function TopNav(){
     { id:"socials-page",   label:"The Edition", hash:true },
   ];
   const go = (item)=>{
+    if (item.href) { window.location.href = item.href; return; }
     if (item.hash) {
       window.location.hash = "#" + item.id;
       return;
@@ -435,7 +438,7 @@ function Hero({ tweaks }){
           <div className="fade-in hero-ctas" style={{ marginTop:36, display:"flex", gap:12, flexWrap:"wrap", justifyContent:"center", animationDelay:"2s" }}>
             <MagButton primary href="#wallpapers" onClick={(e)=>{e.preventDefault(); document.getElementById('wallpapers')?.scrollIntoView({behavior:'smooth'});}}>Explore Art</MagButton>
             <MagButton href="#shop" onClick={(e)=>{e.preventDefault(); document.getElementById('shop')?.scrollIntoView({behavior:'smooth'});}}>Shop · objects &amp; prints</MagButton>
-            <MagButton href="#music" onClick={(e)=>{e.preventDefault(); document.getElementById('music')?.scrollIntoView({behavior:'smooth'});}}>Listen · 05 tracks ▶</MagButton>
+            <MagButton href="#music" onClick={(e)=>{e.preventDefault(); document.getElementById('music')?.scrollIntoView({behavior:'smooth'});}}>Listen · {pad2(counts.tr)} tracks ▶</MagButton>
           </div>
         </div>
 

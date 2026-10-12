@@ -1,0 +1,61 @@
+{
+  "author" : "Traditional",
+  "deityTag" : "ganesha",
+  "glyph" : "ग",
+  "id" : "ganeshadvadashanama",
+  "kind" : "Stotra",
+  "liveReciteEnabled" : false,
+  "primaryScript" : "dev",
+  "story" : {
+    "en" : "The Gaṇeśa Dvādaśanāma Stotram is a four-verse hymn drawn from the Mudgala Purāṇa that encodes Gaṇeśa's twelve sovereign names: Sumukha (the auspicious-faced), Ekadanta (the single-tusked), Kapila (the tawny), Gajakarṇaka (the elephant-eared), Lambodara (the large-bellied), Vikaṭa (the formidable), Vighnanāśa (the destroyer of obstacles), Vināyaka (the supreme guide), Dhūmraketu (the smoke-bannered), Gaṇādhyakṣa (the lord of the gaṇas), Bhālacandra (the moon-crested), and Gajānana (the elephant-faced). Together they form a complete portrait of Gaṇeśa across his principal attributes — grace, power, removal of hindrance, and cosmic sovereignty.\n\nThe phalaśruti that follows the names makes the scope of the hymn explicit: it is to be recited at the start of learning, at weddings, on entering or leaving a place, before battle, and in times of calamity. One who seeks knowledge, wealth, fulfilment of desire, or liberation will find each granted. The hymn's brevity and comprehensive promise have made it among the most universally recited of all Gaṇeśa stotras, chanted as a threshold invocation before any new undertaking."
+  },
+  "subtitle" : "Traditional · 4 verses",
+  "title" : "Ganesha Dvadasanama Stotra",
+  "titleDev" : "गणेशद्वादशनामस्तोत्रम्",
+  "verses" : [
+    {
+      "id" : 0,
+      "meaning" : {
+        "en" : "Sumukha, Ekadanta, Kapila, Gajakarṇaka; Lambodara, Vikaṭa, Vighnanāśa, Vināyaka —"
+      },
+      "n" : "१",
+      "scripts" : {
+        "dev" : "सुमुखश्चैकदन्तश्च कपिलो गजकर्णकः ।\nलम्बोदरश्च विकटो विघ्ननाशो विनायकः ॥",
+        "iast" : "sumukhaś caikadantaś ca kapilo gajakarṇakaḥ |\nlambodaraś ca vikaṭo vighnanāśo vināyakaḥ ||"
+      }
+    },
+    {
+      "id" : 1,
+      "meaning" : {
+        "en" : "— Dhūmraketu, Gaṇādhyakṣa, Bhālacandra, Gajānana: these twelve names of Gaṇeśa, whoever recites them —"
+      },
+      "n" : "२",
+      "scripts" : {
+        "dev" : "धूम्रकेतुर्गणाध्यक्षो भालचन्द्रो गजाननः ।\nद्वादशैतानि नामानि गणेशस्य तु यः पठेत् ॥",
+        "iast" : "dhūmraketurgaṇādhyakṣo bhālacandro gajānanaḥ |\ndvādaśaitāni nāmāni gaṇeśasya tu yaḥ paṭhet ||"
+      }
+    },
+    {
+      "id" : 2,
+      "meaning" : {
+        "en" : "— the seeker of learning gains knowledge, the seeker of wealth gains abundant riches, the seeker of desire obtains cherished fulfilment, and the seeker of dharma attains imperishable liberation."
+      },
+      "n" : "३",
+      "scripts" : {
+        "dev" : "विद्यार्थी लभते विद्यां धनार्थी विपुलं धनम् ।\nइष्टकामं तु कामार्थी धर्मार्थी मोक्षमक्षयम् ॥",
+        "iast" : "vidyārthī labhate vidyāṃ dhanārthī vipulaṃ dhanam |\niṣṭakāmaṃ tu kāmārthī dharmārthī mokṣam akṣayam ||"
+      }
+    },
+    {
+      "id" : 3,
+      "meaning" : {
+        "en" : "At the commencement of learning, at a wedding, on entering or departing a place, in battle, and in calamity — no obstacle shall arise for him."
+      },
+      "n" : "फल",
+      "scripts" : {
+        "dev" : "विद्यारम्भे विवाहे च प्रवेशे निर्गमे तथा ।\nसङ्ग्रामे सङ्कटे चैव विघ्नस्तस्य न जायते ॥",
+        "iast" : "vidyārambhe vivāhe ca praveśe nirgame tathā |\nsaṅgrāme saṅkaṭe caiva vighnas tasya na jāyate ||"
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "name": "@akara/editorial-desk",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "description": "Editorial Desk — shared Lambda module: SSM config, Claude article writer, S3 publish, CloudFront invalidate."
+}

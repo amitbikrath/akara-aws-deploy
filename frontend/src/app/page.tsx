@@ -1,13 +1,5 @@
-import Hero from '@/components/Hero'
-import Navigation from '@/components/Navigation'
-import Footer from '@/components/Footer'
-
+// The homepage is just the mount point — the entire UI is rendered into #root
+// by the Babel/React bundle that layout.tsx loads from public/akara/*.jsx.
 export default function HomePage() {
-  return (
-    <main className="min-h-screen">
-      <Navigation />
-      <Hero />
-      <Footer />
-    </main>
-  )
+  return <div id="root" />;
 }

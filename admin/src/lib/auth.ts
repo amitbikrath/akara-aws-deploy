@@ -45,7 +45,7 @@ export function getCognitoLogoutUrl(): string {
   const redirect = process.env.NEXT_PUBLIC_COGNITO_REDIRECT_URI || 'https://admin.akara.studio';
   
   if (!hostedUIBase || !clientId) {
-    return '/login';
+    return '/login.html';
   }
   
   return `${hostedUIBase}/logout?client_id=${encodeURIComponent(clientId)}&logout_uri=${encodeURIComponent(redirect)}`;

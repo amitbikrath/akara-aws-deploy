@@ -157,6 +157,25 @@
 
   /* perf: defer paint until in view */
   .cv-auto{content-visibility:auto;contain-intrinsic-size:800px 900px}
+
+/* ── micro-interactions (2026-07-23): nav focus-blur · transport morph · play ring ── */
+.nav-links .link-u{transition:opacity .35s var(--ease-out),filter .35s var(--ease-out)}
+.nav-links:hover .link-u{opacity:.4;filter:blur(1px)}
+.nav-links:hover .link-u:hover{opacity:1;filter:none}
+.tbtn .tb-ic{display:block;transition:transform .28s var(--ease-out)}
+.tbtn:hover{background:rgba(197,160,89,.14)!important;border-color:rgba(197,160,89,.5)!important}
+.tbtn-next:hover .tb-ic{transform:translateX(3px)}
+.tbtn-prev:hover .tb-ic{transform:translateX(-3px)}
+.tbtn:active .tb-ic{transform:scale(.82)}
+.play-btn:hover{transform:scale(1.06)}
+.play-btn:active{transform:scale(.94)}
+.pb-ring{position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--gold);opacity:0;pointer-events:none;animation:akRingOut .9s var(--ease-out) forwards}
+@keyframes akRingOut{0%{transform:scale(1);opacity:.85}100%{transform:scale(2.2);opacity:0}}
+@media (prefers-reduced-motion:reduce){
+.pb-ring{animation:none}
+.nav-links .link-u,.tbtn .tb-ic{transition:none}
+.nav-links:hover .link-u{opacity:1;filter:none}
+}
 </style>
 </head>
 <body>
@@ -166,17 +185,21 @@
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js" crossorigin="anonymous"></script>
 
 <script type="text/babel" src="tweaks-panel.jsx"></script>
 <script type="text/babel" src="lib.jsx"></script>
 <script type="text/babel" src="protected-image.jsx"></script>
 <script type="text/babel" src="auth.jsx"></script>
+<script type="text/babel" src="panchang.jsx"></script>
 <script type="text/babel" src="nav-hero.jsx"></script>
 <script type="text/babel" src="lightbox.jsx"></script>
 <script type="text/babel" src="wallpapers.jsx"></script>
 <script type="text/babel" src="gallery.jsx"></script>
 <script type="text/babel" src="shop.jsx"></script>
+<script type="text/babel" src="shop-page.jsx"></script>
 <script type="text/babel" src="music-story.jsx"></script>
+<script type="text/babel" src="socials.jsx"></script>
 <script type="text/babel" src="footer.jsx"></script>
 <script type="text/babel" src="app.jsx"></script>
 </body>

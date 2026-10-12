@@ -357,6 +357,13 @@ resource "aws_dynamodb_table" "orders" {
 resource "aws_cognito_user_pool" "main" {
   name = "${var.project}-users"
 
+  # 2026-09-12 security hardening (applied live via CLI; kept here so apply does not regress)
+  deletion_protection = "ACTIVE"
+  user_pool_tier      = "PLUS"
+  user_pool_add_ons {
+    advanced_security_mode = "ENFORCED"
+  }
+
   username_attributes = ["email"]
   auto_verified_attributes = ["email"]
 
@@ -394,9 +401,12 @@ resource "aws_cognito_user_pool_client" "main" {
   # We are a public SPA
   generate_secret = false
 
+  # 2026-09-12: inline email+password panel needs USER_PASSWORD_AUTH; hide "user does not exist"
+  prevent_user_existence_errors = "ENABLED"
   explicit_auth_flows = [
     "ALLOW_REFRESH_TOKEN_AUTH",
-    "ALLOW_USER_SRP_AUTH"
+    "ALLOW_USER_SRP_AUTH",
+    "ALLOW_USER_PASSWORD_AUTH"
   ]
 }
 

@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0}iframe{border:0;display:block}</style></head><body>
+<script>
+// Test harness: renders a page inside an iframe of an exact width (headless Chrome
+// cannot make windows narrower than 500px) and copies the iframe's layout-check result out.
+var q=new URLSearchParams(location.search), w=+q.get('w')||375, h=+q.get('h')||2400;
+var f=document.createElement('iframe'); f.width=w; f.height=h; f.src=q.get('src'); document.body.appendChild(f);
+var t=setInterval(function(){ try{ var pre=f.contentDocument.getElementById('layout-check'); if(pre){ clearInterval(t); var o=document.createElement('pre'); o.id='layout-check'; o.textContent=pre.textContent; document.body.appendChild(o);} }catch(e){} },200);
+</script></body></html>

@@ -66,7 +66,11 @@ function App(){
   const [galleryOpen, setGalleryOpen] = apS(false);
   const [portalOrigin, setPortalOrigin] = apS({ x: 0, y: 0 });
   const [openItemId, setOpenItemId] = apS(null);
-  const [shopOpen, setShopOpen] = apS(false);
+  // /shop is a dedicated page: decide it from the URL before first paint so the
+  // home site never flashes underneath (and never renders behind it).
+  const shopFromUrl = ()=>/^\/shop(\/|$)/.test(window.location.pathname) || window.location.hash === "#shop";
+  const [shopOpen, setShopOpen] = apS(shopFromUrl);
+  const [shopAisle, setShopAisle] = apS(()=>{ try{ return new URLSearchParams(window.location.search).get("aisle") || null; }catch(e){ return null; } });
   const [socialsOpen, setSocialsOpen] = apS(false);
 
   apE(()=>{ document.documentElement.style.setProperty("--accent", v.accent); }, [v.accent]);
@@ -80,7 +84,11 @@ function App(){
       setGalleryOpen(true);
     };
     window.__closeGallery = ()=> setGalleryOpen(false);
-    window.__openShop = ()=> setShopOpen(true);
+    window.__openShop = (opts)=>{
+      setShopAisle((opts && opts.aisle) || null);
+      setShopOpen(true);
+      if(window.location.pathname !== "/shop") history.pushState({ akShop:true }, "", "/shop" + ((opts && opts.aisle) ? `?aisle=${opts.aisle}` : ""));
+    };
     window.__closeShop = ()=> setShopOpen(false);
     window.__openSocials = ()=> setSocialsOpen(true);
     window.__closeSocials = ()=> setSocialsOpen(false);
@@ -99,12 +107,30 @@ function App(){
         setGalleryOpen(true);
       }
       if(window.location.hash === "#shop") setShopOpen(true);
+      if(/^\/shop(\/|$)/.test(window.location.pathname)){
+        const a = new URLSearchParams(window.location.search).get("aisle");
+        setShopAisle(a || null);
+        setShopOpen(true);
+      }
       if(window.location.hash === "#socials-page") setSocialsOpen(true);
     };
+    // Browser back from /shop closes the shop.
+    const onPop = ()=>{ if(!/^\/shop(\/|$)/.test(window.location.pathname)) setShopOpen(false); else onHash(); };
     window.addEventListener("hashchange", onHash);
+    window.addEventListener("popstate", onPop);
     onHash();
-    return ()=>window.removeEventListener("hashchange", onHash);
+    return ()=>{ window.removeEventListener("hashchange", onHash); window.removeEventListener("popstate", onPop); };
   },[]);
+
+  if(shopOpen){
+    return (
+      <ShopPage initialAisle={shopAisle} onClose={()=>{
+        setShopOpen(false);
+        if(window.location.hash === "#shop") history.replaceState(null, "", window.location.pathname);
+        if(/^\/shop(\/|$)/.test(window.location.pathname)) history.replaceState(null, "", "/");
+      }}/>
+    );
+  }
 
   return (
     <React.Fragment>
@@ -126,11 +152,6 @@ function App(){
         setGalleryOpen(false);
         setOpenItemId(null);
         if(window.location.hash === "#gallery") history.replaceState(null, "", window.location.pathname);
-      }}/>}
-
-      {shopOpen && <ShopPage onClose={()=>{
-        setShopOpen(false);
-        if(window.location.hash === "#shop") history.replaceState(null, "", window.location.pathname);
       }}/>}
 
       {socialsOpen && <SocialsPage onClose={()=>{
@@ -162,4 +183,26 @@ function App(){
 // Guard for routes that load this layout without a #root mount point
 // (e.g. /auth/callback). Avoids a console error there.
 const _akRootEl = document.getElementById("root");
-if (_akRootEl) ReactDOM.createRoot(_akRootEl).render(<App/>);
+if (_akRootEl) {
+  let _akMount = _akRootEl;
+  let _akRoot = ReactDOM.createRoot(_akMount);
+  _akRoot.render(<App/>);
+  // Watchdog: on deep links like /shop the Next.js shell can fail hydration and
+  // client-render a fresh, empty #root AFTER we rendered into the old one —
+  // the visitor then sees a blank page. If our mount node is detached or
+  // emptied, remount into a node the shell never owns.
+  let _akTicks = 0;
+  const _akWatch = setInterval(()=>{
+    _akTicks++;
+    const lost = !_akMount.isConnected || _akMount.childElementCount === 0;
+    if(lost){
+      try{ _akRoot.unmount(); }catch(e){}
+      _akMount = document.createElement("div");
+      _akMount.id = "ak-root";
+      document.body.appendChild(_akMount);
+      _akRoot = ReactDOM.createRoot(_akMount);
+      _akRoot.render(<App/>);
+    }
+    if(_akTicks >= 40) clearInterval(_akWatch); // stop after ~10s
+  }, 250);
+}
