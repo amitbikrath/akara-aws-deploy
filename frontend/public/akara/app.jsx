@@ -200,7 +200,9 @@ function AkBootVeil({ html }){
   return <div ref={ref} className="ak-boot is-static" aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }}/>;
 }
 
-if (_akRootEl) {
+// A script that came back empty is loaded again first (boot-rescue.js, inlined
+// in the shell); mount once the components it defines exist.
+function _akStart(){
   const _akBoot = _akRootEl.querySelector(".ak-boot");
   const _akBootHtml = _akBoot ? _akBoot.innerHTML : null;
   let _akMount = _akRootEl;
@@ -224,4 +226,8 @@ if (_akRootEl) {
     }
     if(_akTicks >= 40) clearInterval(_akWatch); // stop after ~10s
   }, 250);
+}
+if (_akRootEl) {
+  const _akR = window.__akRescue;
+  if (_akR && _akR.failed.length) _akR.run().then(_akStart); else _akStart();
 }

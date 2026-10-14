@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Akara · load check</title>
+<style>
+  body{margin:0;padding:16px;background:#fff;color:#111;font:13px/1.4 ui-monospace,Menlo,monospace}
+  h1{font:600 16px/1.3 system-ui,sans-serif;margin:0 0 4px}
+  p{margin:0 0 12px;color:#555;font-family:system-ui,sans-serif}
+  table{border-collapse:collapse;width:100%}
+  td{padding:4px 6px;border-bottom:1px solid #eee;vertical-align:top;word-break:break-all}
+  .ok{color:#0a7d2c}.bad{color:#c00;font-weight:700}.wait{color:#b26b00;font-weight:700}
+</style>
+</head>
+<body>
+<!-- Diagnostic for "homepage stuck on the boot veil in one browser": loads the
+     homepage's own script URLs, in order, from this browser's cache, and shows
+     which one never finishes. Not linked from anywhere. -->
+<h1>Akara load check</h1>
+<p id="sum">Starting…</p>
+<table id="t"></table>
+<script>
+(function(){
+  var T0 = performance.now(), t = document.getElementById('t'), sum = document.getElementById('sum');
+  function ms(){ return Math.round(performance.now() - T0) + ' ms'; }
+  function row(name){ var tr = t.insertRow(); tr.insertCell().textContent = name; var c = tr.insertCell(); c.textContent = 'waiting'; c.className = 'wait'; return c; }
+  function desc(r, len){ return r.status + ' · ' + (r.headers.get('content-type') || '?').split(';')[0] + ' · ' + len + ' B · date ' + (r.headers.get('date') || '?') + ' · cache ' + (r.headers.get('cache-control') || 'NONE'); }
+  var info = row('browser'); info.className = ''; info.textContent = navigator.userAgent;
+  var home = row('GET /  (homepage HTML)');
+  fetch('/', { cache: 'default' }).then(function(r){
+    return r.text().then(function(html){
+      home.textContent = desc(r, html.length) + ' · ' + (html.indexOf('ak-boot') > -1 ? 'NEW page' : 'OLD page') + ' · ' + ms();
+      home.className = r.ok ? 'ok' : 'bad';
+      return html;
+    });
+  }).then(function(html){
+    var srcs = [], re = /<script[^>]+src="([^"]+)"([^>]*)>/g, m;
+    while ((m = re.exec(html))) if (!/async|noModule|nomodule/.test(m[2]) && !/^https?:/.test(m[1])) srcs.push(m[1]);
+    sum.textContent = srcs.length + ' scripts the homepage waits for, loaded one by one like the real page:';
+    var cells = srcs.map(row), i = 0, done = 0;
+    function next(){
+      if (i >= srcs.length) { sum.textContent = 'All ' + done + ' of ' + srcs.length + ' scripts loaded in ' + ms() + '. Take a screenshot.'; return; }
+      var k = i++, c = cells[k], start = performance.now(), s = document.createElement('script'), finished = false;
+      // Same URLs as the homepage, so the same cache entries. app.js finds no #root here and mounts nothing.
+      s.src = srcs[k];
+      var timer = setInterval(function(){ if (!finished) c.textContent = 'STILL WAITING ' + Math.round((performance.now() - start) / 1000) + ' s'; }, 1000);
+      // What the cache holds for this URL (an HTML page saved under a .js name shows here).
+      function detail(){ fetch(srcs[k], { cache: 'default' }).then(function(r){ return r.text().then(function(b){ c.textContent += ' | ' + desc(r, b.length); }); }).catch(function(e){ c.textContent += ' | fetch: ' + e.message; }); }
+      s.onload = function(){ finished = true; clearInterval(timer); done++; c.textContent = 'loaded · ' + Math.round(performance.now() - start) + ' ms'; c.className = 'ok'; detail(); next(); };
+      s.onerror = function(){ finished = true; clearInterval(timer); c.textContent = 'FAILED · ' + Math.round(performance.now() - start) + ' ms'; c.className = 'bad'; detail(); next(); };
+      setTimeout(function(){ if (!finished) detail(); }, 8000);
+      document.head.appendChild(s);
+    }
+    next();
+  }).catch(function(e){ home.textContent = 'FAILED: ' + e.message; home.className = 'bad'; });
+  window.onerror = function(msg, src, line){ var c = row('JS error'); c.className = 'bad'; c.textContent = msg + ' @ ' + (src || '').split('/').pop() + ':' + line; };
+})();
+</script>
+</body>
+</html>

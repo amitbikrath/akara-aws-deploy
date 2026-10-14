@@ -35,6 +35,13 @@ const siteCss = fs.readFileSync(
   'utf8'
 );
 
+// Re-loads app scripts that came back empty from a broken cache. Inlined (never
+// a file of its own) and placed before every script it watches.
+const BOOT_RESCUE = fs.readFileSync(
+  path.join(process.cwd(), 'src/app/boot-rescue.js'),
+  'utf8'
+);
+
 // Read by auth.jsx and lib.jsx. Copied from the live prerender (2026-07-04).
 const AUTH_CONFIG =
   'window.__AKARA_API_BASE = "";window.__AKARA_AUTH = {"hostedUI":"https://auth.akara.studio","clientId":"tdvllhi43hnfi1ibn21an410d","redirectUri":"https://www.akara.studio/auth/callback","logoutUri":"https://www.akara.studio/","scope":"openid email profile"};';
@@ -69,6 +76,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
         <style dangerouslySetInnerHTML={{ __html: siteCss }} />
+        <script dangerouslySetInnerHTML={{ __html: BOOT_RESCUE }} />
         <script dangerouslySetInnerHTML={{ __html: AUTH_CONFIG }} />
       </head>
       <body>

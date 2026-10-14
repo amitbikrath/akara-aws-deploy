@@ -46,5 +46,15 @@ for (const f of files.filter(f => f.endsWith('.html'))) {
   }
 }
 
+// 4. The boot rescue must be inlined, unchanged, in every shell (before the scripts it watches).
+const rescue = fs.readFileSync(path.join(root, 'frontend/src/app/boot-rescue.js'), 'utf8');
+if (!/BOOT_RESCUE[\s\S]*__html: BOOT_RESCUE/.test(layout)) fail.push('layout.tsx does not inline BOOT_RESCUE');
+for (const f of ['index.html', 'akara.html']) {
+  const html = fs.readFileSync(path.join(pub, 'akara', f), 'utf8');
+  const at = html.indexOf('<script>\n' + rescue + '</script>');
+  if (at < 0) fail.push(`akara/${f}: boot-rescue copy missing or differs from src/app/boot-rescue.js`);
+  else if (at > html.indexOf('<script src="vendor/')) fail.push(`akara/${f}: boot-rescue must come before the vendor scripts`);
+}
+
 if (fail.length) { console.error('check FAILED\n- ' + fail.join('\n- ')); process.exit(1); }
 console.log(`check ok: ${fromLayout.length} scripts in lockstep, ${files.filter(f => f.endsWith('.jsx')).length} jsx parse, html script refs resolve`);
