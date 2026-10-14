@@ -71,7 +71,8 @@ for key in "${keys[@]}"; do
     esac
   else
     ctype=$(cut -f1 <<<"$meta"); cache=$(cut -f2 <<<"$meta")
-    [ "$cache" = None ] && cache="public, max-age=300"
+    # No Cache-Control on the live object: pages must revalidate, everything else 5 min.
+    if [ "$cache" = None ]; then case "$key" in *.html) cache="no-cache" ;; *) cache="public, max-age=300" ;; esac; fi
   fi
   echo "$MODE  s3://$BUCKET/$key  [$ctype | $cache]$([ "$meta" = NEW ] && echo '  (new object)')"
   [ "$MODE" = dry ] && continue

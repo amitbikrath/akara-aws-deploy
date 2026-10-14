@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Signing you in · Akara</title>
+<link rel="icon" href="/akara/assets/akara-icon-round.png">
+<!-- Cognito returns here with ?code=… The one sign-in implementation is
+     /akara/js/auth.js (from auth.jsx); this page only runs its code exchange. -->
+<script>window.__AKARA_API_BASE = "";window.__AKARA_AUTH = {"hostedUI":"https://auth.akara.studio","clientId":"tdvllhi43hnfi1ibn21an410d","redirectUri":"https://www.akara.studio/auth/callback","logoutUri":"https://www.akara.studio/","scope":"openid email profile"};
+// auth.js reads three React hooks at load; this page renders no React.
+window.React = window.React || { useState: function(){}, useEffect: function(){}, useCallback: function(){} };</script>
+<style>
+  html,body{margin:0;min-height:100%;background:#030303;color:#f5f1ea}
+  body{min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box;text-align:center;font:400 14px/1.6 'Inter',system-ui,-apple-system,sans-serif}
+  .w{max-width:420px}
+  .k{font:400 11px/1 ui-monospace,'JetBrains Mono',monospace;letter-spacing:.28em;text-transform:uppercase;color:#C5A059;margin-bottom:14px}
+  .sp{width:28px;height:28px;border-radius:50%;border:2px solid rgba(197,160,89,.25);border-top-color:#C5A059;animation:s 1s linear infinite;margin:0 auto 18px}
+  h1{font:italic 400 32px/1.2 'Instrument Serif',Georgia,serif;margin:0 0 12px;letter-spacing:-.01em}
+  p{color:rgba(245,241,234,.7);margin:0 0 22px}
+  a,button{color:#C5A059;background:none;border:0;border-bottom:1px solid rgba(197,160,89,.4);font:inherit;font-size:15px;padding:0;cursor:pointer;text-decoration:none}
+  .acts{display:flex;gap:28px;justify-content:center}
+  [hidden]{display:none!important}
+  @keyframes s{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.sp{animation-duration:3s}}
+</style>
+</head>
+<body>
+<main class="w" role="status" aria-live="polite">
+  <div class="k">Akara · Auth</div>
+  <div class="sp" id="sp"></div>
+  <h1 id="h">Signing you in</h1>
+  <p id="m">Completing sign-in…</p>
+  <div class="acts" id="acts" hidden><button id="again" type="button">Try again</button><a href="/">Return home</a></div>
+</main>
+<script src="/akara/js/auth.js"></script>
+<script>
+(function(){
+  var h = document.getElementById('h'), m = document.getElementById('m');
+  function fail(msg){
+    document.getElementById('sp').hidden = true;
+    h.textContent = "Sign-in didn't complete";
+    m.textContent = msg;
+    document.getElementById('acts').hidden = false;
+  }
+  function go(to){ m.textContent = 'Signed in. Redirecting…'; location.replace(to || '/'); }
+  document.getElementById('again').onclick = function(){
+    if (window.akSignIn) window.akSignIn(); else location.href = '/';
+  };
+  if (!window.akExchangeCodeForTokens) { fail('The sign-in script did not load. Please check your connection and try again.'); return; }
+  var q = new URLSearchParams(location.search), code = q.get('code'), err = q.get('error_description') || q.get('error');
+  if (err) { fail(err); return; }
+  if (!code) { if (window.akHasSession()) go('/'); else fail('No sign-in code came back. Please try again.'); return; }
+  window.akExchangeCodeForTokens(code).then(function(to){
+    m.textContent = 'Signed in. Loading membership…';
+    // Members' clean originals need the signed cookies; home retries if this fails.
+    return Promise.resolve(window.akGrantImageAccess()).catch(function(){}).then(function(){ go(to); });
+  }, function(e){
+    fail(/verifier/i.test(e && e.message) ? 'This sign-in started in another window. Please try again here.' : ((e && e.message) || 'Unexpected error during sign-in.'));
+  });
+})();
+</script>
+</body>
+</html>

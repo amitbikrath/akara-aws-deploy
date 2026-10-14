@@ -5,7 +5,8 @@
 //
 // Sign-in flow:
 //   1. signIn() generates a PKCE verifier+challenge, stores verifier in
-//      sessionStorage, redirects the browser to /oauth2/authorize.
+//      sessionStorage (+ a 15-min localStorage backup for in-app browsers),
+//      redirects the browser to /oauth2/authorize.
 //   2. Cognito sends the user back to redirectUri with ?code=...
 //   3. /auth/callback.html exchanges the code for tokens, writes them to
 //      localStorage under "akara.auth.tokens", and redirects to "/".
@@ -19,6 +20,10 @@ const { useState: aaS, useEffect: aaE, useCallback: aaC } = React;
 const AK_TOKENS_KEY      = "akara.auth.tokens";
 const AK_VERIFIER_KEY    = "akara.auth.pkce_verifier";
 const AK_RETURN_TO_KEY   = "akara.auth.return_to";
+// Backup of the verifier + return path in localStorage. sessionStorage is per
+// tab, and in-app browsers (X, Instagram) can land the callback in a fresh tab.
+const AK_PKCE_BACKUP_KEY = "akara.auth.pkce_backup";    // {v, r, t}
+const AK_PKCE_BACKUP_TTL = 15 * 60 * 1000;
 const AK_LAST_GRANT_KEY  = "akara.auth.last_grant_at";  // ms timestamp
 const AK_GRANT_REFRESH_S = 45 * 60;                      // refresh signed cookies after 45 min
 
@@ -92,10 +97,12 @@ async function akSignIn(opts){
   }
   const verifier = _akRandomVerifier(64);
   const challenge = await _akChallenge(verifier);
+  const returnTo = window.location.pathname + window.location.search + window.location.hash;
   try {
     sessionStorage.setItem(AK_VERIFIER_KEY, verifier);
-    sessionStorage.setItem(AK_RETURN_TO_KEY, window.location.pathname + window.location.search + window.location.hash);
+    sessionStorage.setItem(AK_RETURN_TO_KEY, returnTo);
   } catch {}
+  try { localStorage.setItem(AK_PKCE_BACKUP_KEY, JSON.stringify({ v: verifier, r: returnTo, t: Date.now() })); } catch {}
 
   const params = new URLSearchParams({
     client_id: cfg.clientId,
@@ -331,35 +338,54 @@ async function akRefreshIfNeeded(){
   return _akRefreshing;
 }
 
-// Used by /auth/callback.html
-async function akExchangeCodeForTokens(code){
-  const cfg = _akAuthCfg();
-  const verifier = sessionStorage.getItem(AK_VERIFIER_KEY);
-  if (!verifier) throw new Error("missing PKCE verifier — sign in again");
-  sessionStorage.removeItem(AK_VERIFIER_KEY);
-  const body = new URLSearchParams({
-    grant_type: "authorization_code",
-    client_id: cfg.clientId,
-    code,
-    redirect_uri: cfg.redirectUri,
-    code_verifier: verifier,
-  });
-  const res = await fetch(`${cfg.hostedUI}/oauth2/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.error_description || json.error || `token exchange failed (${res.status})`);
-  const expiresIn = Number(json.expires_in || 3600);
-  const expiresAt = Math.floor(Date.now() / 1000) + (isFinite(expiresIn) ? expiresIn : 3600);
-  _akWriteTokens({ idToken: json.id_token, accessToken: json.access_token, refreshToken: json.refresh_token || null, expiresAt });
-  let returnTo = "/";
-  try {
-    returnTo = sessionStorage.getItem(AK_RETURN_TO_KEY) || "/";
-    sessionStorage.removeItem(AK_RETURN_TO_KEY);
-  } catch {}
-  return returnTo;
+// Used by /auth/callback.html. Safe to call twice (a reloaded or re-opened
+// callback): with no verifier left but a session already stored, it just
+// returns where to go.
+function _akTakePkce(){
+  let v = null, r = null, b = null;
+  try { v = sessionStorage.getItem(AK_VERIFIER_KEY); r = sessionStorage.getItem(AK_RETURN_TO_KEY); } catch {}
+  try { b = JSON.parse(localStorage.getItem(AK_PKCE_BACKUP_KEY) || "null"); } catch {}
+  if (!v && b && b.v && Date.now() - (b.t || 0) < AK_PKCE_BACKUP_TTL) { v = b.v; r = r || b.r; }
+  try { sessionStorage.removeItem(AK_VERIFIER_KEY); sessionStorage.removeItem(AK_RETURN_TO_KEY); } catch {}
+  try { localStorage.removeItem(AK_PKCE_BACKUP_KEY); } catch {}
+  r = r || "/";
+  if (!r.startsWith("/") || r.startsWith("//")) r = "/";
+  return { verifier: v, returnTo: r };
+}
+let _akExchangeP = null;
+function akExchangeCodeForTokens(code){
+  if (_akExchangeP) return _akExchangeP;
+  _akExchangeP = (async () => {
+    const cfg = _akAuthCfg();
+    const { verifier, returnTo } = _akTakePkce();
+    if (!verifier) {
+      if (akHasSession()) return returnTo;
+      throw new Error("missing PKCE verifier — sign in again");
+    }
+    const body = new URLSearchParams({
+      grant_type: "authorization_code",
+      client_id: cfg.clientId,
+      code,
+      redirect_uri: cfg.redirectUri,
+      code_verifier: verifier,
+    });
+    const res = await fetch(`${cfg.hostedUI}/oauth2/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      // The code was already spent by an earlier load of this page that signed in.
+      if (json.error === "invalid_grant" && akHasSession()) return returnTo;
+      throw new Error(json.error_description || json.error || `token exchange failed (${res.status})`);
+    }
+    const expiresIn = Number(json.expires_in || 3600);
+    const expiresAt = Math.floor(Date.now() / 1000) + (isFinite(expiresIn) ? expiresIn : 3600);
+    _akWriteTokens({ idToken: json.id_token, accessToken: json.access_token, refreshToken: json.refresh_token || null, expiresAt });
+    return returnTo;
+  })();
+  return _akExchangeP;
 }
 
 if (typeof window !== "undefined") {
