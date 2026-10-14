@@ -226,7 +226,7 @@
         <a id="sw" target="_blank" rel="noopener" href="https://wa.me/?text=https%3A%2F%2Fwww.akara.studio%2Fvishwaroopa">WhatsApp</a>
         <button id="sc" type="button">Copy link</button>
       </div>
-      <p class="note">On a phone, the file goes to Downloads. To save it straight to Photos, press and hold the picture above and choose “Save to Photos”.</p>
+      <p class="note">On a phone, pick a size, then tap “Save Image”. It goes straight to Photos.</p>
       <a class="more" href="/#wallpapers" data-track="more_wallpapers">More wallpapers →</a>
     </aside>
   </div>
@@ -235,6 +235,7 @@
 </div>
 <div id="toast" role="status" aria-live="polite"></div>
 
+<script src="/akara/ak-save.js?v=1"></script>
 <script>
 (function(){
   var ITEM = 'vishwaroopa';
@@ -325,17 +326,36 @@
     if (open) dlm.querySelector('a').focus({ preventScroll: true });
   }
   dl.addEventListener('click', function(e){
+    if (dl.hasAttribute('data-ak-save')) return;   // armed "Save to Photos": ak-save.js handles this tap
     e.stopPropagation();
     var open = dl.getAttribute('aria-expanded') !== 'true';
     menu(open);
     if (open) track('download_menu_open', { view: cur });
   });
   items.forEach(function(a){
-    a.addEventListener('click', function(){
-      var fmt=a.dataset.fmt;
+    a.addEventListener('click', function(e){
+      var fmt=a.dataset.fmt, name=a.getAttribute('download');
+      menu(false);
+      // Phone: the share sheet's "Save Image" puts the file in Photos, not Files.
+      if (window.akSave && akSave.ok()) {
+        e.preventDefault();
+        // Status text on the button; the original nodes go back after (live view label included).
+        var kept=null, icon=dl.querySelector('svg').cloneNode(true);
+        akSave.save(function(){ return [{ url: a.href, name: name }]; }, { btn: dl,
+          label: function(t){
+            if (t) { if (!kept) kept=[].slice.call(dl.childNodes); dl.textContent=''; dl.appendChild(icon); dl.appendChild(document.createTextNode(' ' + t)); }
+            else if (kept) { dl.textContent=''; kept.forEach(function(n){ dl.appendChild(n); }); kept=null; }
+          },
+          done: function(){ track('wallpaper_download_' + fmt, Object.assign({ view: cur, device: a.dataset.dev, file_name: a.getAttribute('download'), file_format: fmt }, { method: 'photos' })); }
+        }).then(function(ok){
+          if (ok) return;
+          var x=document.createElement('a'); x.href=a.href; x.download=name; document.body.appendChild(x); x.click(); x.remove();
+          track('wallpaper_download_' + fmt, { view: cur, device: a.dataset.dev, file_name: a.getAttribute('download'), file_format: fmt });
+        }, function(){ toast('Could not prepare the picture — please try again'); });
+        return;
+      }
       track('wallpaper_download_' + fmt, { view: cur, device: a.dataset.dev, file_name: a.getAttribute('download'), file_format: fmt });
       toast(fmt === 'png' ? 'Downloading the original PNG…' : 'Downloading JPEG…');
-      menu(false);
     });
   });
   document.addEventListener('click', function(e){ if (!dl.parentNode.contains(e.target)) menu(false); });

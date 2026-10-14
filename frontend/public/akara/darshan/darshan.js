@@ -14,6 +14,10 @@
   var WORK_SLUG = path.split('/')[2] === 'art' ? (path.split('/')[3] || '') : '';
   var SLUG = WORK_SLUG ? '' : (path.split('/')[2] || '');
   var phoneQ = matchMedia('(max-width:860px)');
+  // Phones save downloads to Photos through the share sheet (ak-save.js).
+  (function(){ var s = document.createElement('script'); s.src = '/akara/ak-save.js?v=1'; document.head.appendChild(s); })();
+  var SAVE_PHOTOS = matchMedia('(pointer:coarse)').matches && !!(navigator.share && navigator.canShare && window.File);
+  function isCarousel(it){ return it.slides.length > 1 && it.layout !== 'strip'; }
 
   function track(name, params){ params = Object.assign({ page: location.pathname }, params || {}); if (window.akTrack) window.akTrack(name, params); else if (window.gtag) window.gtag('event', name, params); }
   function toast(t){ var el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(function(){ el.classList.remove('on'); }, 2600); }
@@ -494,7 +498,8 @@
       '<dl>' + (links ? '<dt>Devatā</dt><dd>' + links + '</dd>' : '') + (c ? '<dt>Yugala</dt><dd><a href="' + BASE + '/' + c.slug + '">' + esc(c.title) + '</a></dd>' : '') + (b ? '<dt>Bhāva</dt><dd><a href="' + BASE + '/' + b.slug + '">' + esc(b.en) + '</a> · ' + esc(b.sa) + '</dd>' : '') +
       (it.colors.length ? '<dt>Varṇa</dt><dd class="sw">' + it.colors.slice(0, 5).map(function(x){ return '<i style="background:' + x.hex + '"></i>'; }).join('') + '</dd>' : '') +
       '<dt>Shape</dt><dd>' + { portrait: 'Phone', landscape: 'Desktop', square: 'Square' }[it.orient] + '</dd></dl>' +
-      '<button class="dl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>' + (!u ? 'Sign in to download' : it.slides.length < 2 ? 'Download full size' : it.layout === 'strip' ? 'Download the full image' : 'Download all ' + it.slides.length + ' images') + '</span></button>' +
+      '<button class="dl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>' + (!u ? 'Sign in to download' : SAVE_PHOTOS ? (isCarousel(it) ? 'Save all ' + it.slides.length + ' photos' : 'Save to Photos') : it.slides.length < 2 ? 'Download full size' : it.layout === 'strip' ? 'Download the full image' : 'Download all ' + it.slides.length + ' images') + '</span></button>' +
+      (u && SAVE_PHOTOS && isCarousel(it) ? '<button class="dlz">Download as a zip</button>' : '') +
       '<p class="note">' + (u ? 'Free, for personal use. Each download carries an invisible mark tied to your account.' : 'Free with an Akara account — full size, no watermark.') + '</p>' +
       (pr ? '<a class="shop" href="' + esc(pr.url) + '" data-track="darshan_shop">In the shop<b>' + esc(pr.title.split(' — ')[0]) + ' →</b></a>' : '') +
       '<div class="share"><a target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(it.title + ' — ' + share) + '">WhatsApp</a><a target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?url=' + encodeURIComponent(share) + '&text=' + encodeURIComponent(it.title + ' — @Akara__1') + '">X</a><button class="cpl">Copy link</button></div>';
@@ -502,6 +507,7 @@
   function bindSide(root, it){
     var share = location.origin + workPath(it);
     root.querySelector('.dl').onclick = function(){ if (auth.current()) download(it, this); else auth.signIn(); };
+    var z = root.querySelector('.dlz'); if (z) z.onclick = function(){ download(it, root.querySelector('.dl'), true); };
     root.querySelector('.cpl').onclick = function(){ (navigator.clipboard ? navigator.clipboard.writeText(share) : Promise.reject()).then(function(){ toast('Link copied'); }, function(){ prompt('Copy this link', share); }); track('share', { method: 'copy_link', content_type: 'darshan' }); };
   }
   // The band of other works: long arrows, a small picture, the name. Never on the picture.
@@ -717,20 +723,33 @@
     box.querySelector('.ms-n').textContent = (k + 1) + ' / ' + n;
     cleanCopy(it, box.querySelectorAll('.ms-s img')[k], k);
   }
-  function download(it, btn){
+  function download(it, btn, zip){
     var u = auth.current(); if (!u) { auth.signIn(); return; }
+    if (btn.hasAttribute('data-ak-save')) return;   // armed: ak-save.js handles this tap
     var label = btn.querySelector('span'), was = label.textContent;
     btn.disabled = true; label.textContent = 'Preparing your copy…';
     track('darshan_download_request', { item_id: it.id });
-    // Strip → the full joined image. Carousel → a zip of every image. Each
-    // file carries this person's invisible mark.
-    var req = { id: it.id };
+    function ask(req){
+      return fetch('/api/darshan/download', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + u.idToken }, body: JSON.stringify(Object.assign({ id: it.id }, req)) })
+        .then(function(r){ if (r.status === 401) throw new Error('auth'); if (!r.ok) throw new Error('fail'); return r.json(); });
+    }
+    // Strip → the full joined image. Carousel → every image (a zip off the phone).
+    // Each file carries this person's invisible mark.
+    var req = {};
     if (it.slides.length > 1) { if (it.layout === 'strip') req.part = 'full'; else req.bundle = true; }
-    fetch('/api/darshan/download', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + u.idToken }, body: JSON.stringify(req) })
-      .then(function(r){ if (r.status === 401) throw new Error('auth'); if (!r.ok) throw new Error('fail'); return r.json(); })
-      .then(function(d){ var a = document.createElement('a'); a.href = d.url; a.download = d.filename || 'akara.jpg'; document.body.appendChild(a); a.click(); a.remove(); toast('Downloading'); track('wallpaper_download_darshan', { item_id: it.id }); searchEvent(it, 'download'); })
-      .catch(function(e){ if (e.message === 'auth') { toast('Please sign in again'); auth.signIn(); } else toast('Download failed — please try again'); })
-      .then(function(){ btn.disabled = false; label.textContent = was; });
+    function fileDownload(){
+      return ask(req).then(function(d){ var a = document.createElement('a'); a.href = d.url; a.download = d.filename || 'akara.jpg'; document.body.appendChild(a); a.click(); a.remove(); toast('Downloading'); track('wallpaper_download_darshan', { item_id: it.id }); });
+    }
+    // Phone: the share sheet's "Save Image" puts it in Photos. A carousel sends every slide.
+    function photos(){
+      return window.akSave.save(function(){
+        var parts = isCarousel(it) ? it.slides.map(function(_, k){ return { part: k }; }) : [req];
+        return Promise.all(parts.map(function(p){ return ask(p).then(function(d){ return { url: d.url, name: d.filename || 'akara.jpg' }; }); }));
+      }, { btn: btn, label: function(t){ label.textContent = t || was; }, done: function(){ track('wallpaper_download_darshan', { item_id: it.id, method: 'photos' }); } });
+    }
+    var run = !zip && SAVE_PHOTOS && window.akSave ? photos().then(function(ok){ return ok || fileDownload(); }) : fileDownload();
+    run.catch(function(e){ label.textContent = was; if (e.message === 'auth') { toast('Please sign in again'); auth.signIn(); } else toast('Download failed — please try again'); })
+      .then(function(){ if (!btn.hasAttribute('data-ak-save')) { btn.disabled = false; label.textContent = was; } });
   }
 
   // ── search: instant suggestions on the phone, meaning-based search on Enter ──
