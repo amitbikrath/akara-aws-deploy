@@ -86,7 +86,7 @@
     track('darshan_join_open');
     sh.el.querySelector('#jg').onclick = function(){ track('darshan_join', { method: 'google' }); api.akSignIn({ identityProvider: 'Google' }); };
     sh.el.querySelector('#jsu').onclick = function(){ track('darshan_join', { method: 'signup' }); api.akSignIn({ signup: true }); };
-    sh.el.querySelector('#jfp').onclick = function(){ var c = (window.__AKARA_AUTH || {}); location.href = c.hostedUI + '/forgotPassword?client_id=' + encodeURIComponent(c.clientId) + '&response_type=code&scope=' + encodeURIComponent(c.scope || 'openid email profile') + '&redirect_uri=' + encodeURIComponent(c.redirectUri); };
+    sh.el.querySelector('#jfp').onclick = function(){ track('darshan_join', { method: 'forgot' }); api.akSignIn({ forgot: true }); };
     sh.el.querySelector('#jf').onsubmit = function(e){
       e.preventDefault(); var btn = sh.el.querySelector('#js'), err = sh.el.querySelector('#jerr');
       btn.disabled = true; btn.textContent = 'Signing in…'; err.hidden = true;

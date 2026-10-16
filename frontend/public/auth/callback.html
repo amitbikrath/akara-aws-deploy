@@ -32,7 +32,7 @@ window.React = window.React || { useState: function(){}, useEffect: function(){}
   <div class="sp" id="sp"></div>
   <h1 id="h">Signing you in</h1>
   <p id="m">Completing sign-in…</p>
-  <div class="acts" id="acts" hidden><button id="again" type="button">Try again</button><a href="/">Return home</a></div>
+  <div class="acts" id="acts" hidden><button id="again" type="button">Try again</button><a href="/" id="home">Return home</a></div>
 </main>
 <script src="/akara/js/auth.js"></script>
 <script>
@@ -43,6 +43,8 @@ window.React = window.React || { useState: function(){}, useEffect: function(){}
     h.textContent = "Sign-in didn't complete";
     m.textContent = msg;
     document.getElementById('acts').hidden = false;
+    var back = null; try { back = localStorage.getItem('akara.auth.last_return'); } catch (e) {}
+    if (back && back !== '/' && back.charAt(0) === '/' && back.charAt(1) !== '/') { var hm = document.getElementById('home'); hm.href = back; hm.textContent = 'Back to where you were'; }
   }
   function go(to){ m.textContent = 'Signed in. Redirecting…'; location.replace(to || '/'); }
   document.getElementById('again').onclick = function(){

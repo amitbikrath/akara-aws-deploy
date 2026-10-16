@@ -23,7 +23,11 @@ const AK_RETURN_TO_KEY   = "akara.auth.return_to";
 // Backup of the verifier + return path in localStorage. sessionStorage is per
 // tab, and in-app browsers (X, Instagram) can land the callback in a fresh tab.
 const AK_PKCE_BACKUP_KEY = "akara.auth.pkce_backup";    // {v, r, t}
-const AK_PKCE_BACKUP_TTL = 15 * 60 * 1000;
+// 60 min: a new member signs up, waits for the email code, types it in.
+const AK_PKCE_BACKUP_TTL = 60 * 60 * 1000;
+// The page a visitor wanted (e.g. an image opened from X). Kept until a sign-in
+// succeeds, so a failed attempt retried from /auth/callback still goes back there.
+const AK_LAST_RETURN_KEY = "akara.auth.last_return";
 const AK_LAST_GRANT_KEY  = "akara.auth.last_grant_at";  // ms timestamp
 const AK_GRANT_REFRESH_S = 45 * 60;                      // refresh signed cookies after 45 min
 
@@ -97,7 +101,11 @@ async function akSignIn(opts){
   }
   const verifier = _akRandomVerifier(64);
   const challenge = await _akChallenge(verifier);
-  const returnTo = window.location.pathname + window.location.search + window.location.hash;
+  let returnTo = window.location.pathname + window.location.search + window.location.hash;
+  if (returnTo.startsWith("/auth/")) {
+    try { returnTo = localStorage.getItem(AK_LAST_RETURN_KEY) || "/"; } catch { returnTo = "/"; }
+  }
+  try { localStorage.setItem(AK_LAST_RETURN_KEY, returnTo); } catch {}
   try {
     sessionStorage.setItem(AK_VERIFIER_KEY, verifier);
     sessionStorage.setItem(AK_RETURN_TO_KEY, returnTo);
@@ -116,8 +124,8 @@ async function akSignIn(opts){
   if (opts && opts.identityProvider) {
     params.set("identity_provider", opts.identityProvider);
   }
-  // Optional: open the sign-up tab directly
-  const path = (opts && opts.signup) ? "/signup" : "/oauth2/authorize";
+  // Optional: open the sign-up or forgot-password page directly
+  const path = (opts && opts.signup) ? "/signup" : (opts && opts.forgot) ? "/forgotPassword" : "/oauth2/authorize";
   window.location.assign(`${cfg.hostedUI}${path}?${params.toString()}`);
 }
 
@@ -346,6 +354,7 @@ function _akTakePkce(){
   try { v = sessionStorage.getItem(AK_VERIFIER_KEY); r = sessionStorage.getItem(AK_RETURN_TO_KEY); } catch {}
   try { b = JSON.parse(localStorage.getItem(AK_PKCE_BACKUP_KEY) || "null"); } catch {}
   if (!v && b && b.v && Date.now() - (b.t || 0) < AK_PKCE_BACKUP_TTL) { v = b.v; r = r || b.r; }
+  if (!r) { try { r = localStorage.getItem(AK_LAST_RETURN_KEY); } catch {} }
   try { sessionStorage.removeItem(AK_VERIFIER_KEY); sessionStorage.removeItem(AK_RETURN_TO_KEY); } catch {}
   try { localStorage.removeItem(AK_PKCE_BACKUP_KEY); } catch {}
   r = r || "/";
@@ -383,6 +392,7 @@ function akExchangeCodeForTokens(code){
     const expiresIn = Number(json.expires_in || 3600);
     const expiresAt = Math.floor(Date.now() / 1000) + (isFinite(expiresIn) ? expiresIn : 3600);
     _akWriteTokens({ idToken: json.id_token, accessToken: json.access_token, refreshToken: json.refresh_token || null, expiresAt });
+    try { localStorage.removeItem(AK_LAST_RETURN_KEY); } catch {}
     return returnTo;
   })();
   return _akExchangeP;
