@@ -24,7 +24,11 @@ if (typeof document !== "undefined" && !document.getElementById("ak-ga4")){
 // akTrack() is defined here too so feature events sent before that file
 // loads still reach Google (gtag queues them).
 if (typeof window !== "undefined"){
-  window.akTrack = window.akTrack || function(name, params){ try{ window.gtag("event", name, params || {}); }catch(e){} };
+  // Until ak-track.js loads, shop events also wait in __akMetaQ for the Meta pixel.
+  window.akTrack = window.akTrack || function(name, params){
+    try{ window.gtag("event", name, params || {}); }catch(e){}
+    if (/^(view_item|add_to_cart|begin_checkout)$/.test(name)) (window.__akMetaQ = window.__akMetaQ || []).push([name, params]);
+  };
   if (!document.getElementById("ak-track-js")){
     const tk = document.createElement("script");
     tk.id = "ak-track-js"; tk.async = true; tk.src = "/akara/ak-track.js";

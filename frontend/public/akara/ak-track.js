@@ -6,6 +6,12 @@
      section_view   a section came to the middle of the screen
      section_time   seconds spent in that section (visible tab only)
      scroll_depth   25 / 50 / 75 / 100 percent of a page
+   Also loads the Meta pixel (2026-11-07) so Instagram ads learn from visits:
+     PageView on load; view_item / add_to_cart / begin_checkout become
+     ViewContent / AddToCart / InitiateCheckout. NO Purchase here — the
+     Shopify checkout sends it and a second copy double-counts.
+   Ad click ids (utm_*, fbclid) are kept for the session; window.akAdParams()
+   returns them so the shop can append them to the Shopify checkoutUrl.
    Feature events (music_play, view_item, add_to_cart, artwork_view ...)
    are sent by the jsx files through window.akTrack(name, params).
    Never send typed text or e-mail addresses (GA terms forbid personal data). */
@@ -13,6 +19,7 @@
   if (typeof window === "undefined" || window.__akTrackOn) return;
   window.__akTrackOn = true;
   var GA_ID = "G-BQEB260FD7";
+  var META_PIXEL = "2223955191883160";
 
   // Bootstrap GA only if the page has not done it already.
   window.dataLayer = window.dataLayer || [];
@@ -28,6 +35,59 @@
     document.head.appendChild(s);
   }
 
+  // Bootstrap the Meta pixel only if the page has not done it already.
+  if (!window.fbq){
+    var fbq = window.fbq = function(){
+      fbq.callMethod ? fbq.callMethod.apply(fbq, arguments) : fbq.queue.push(arguments);
+    };
+    if (!window._fbq) window._fbq = fbq;
+    fbq.push = fbq; fbq.loaded = true; fbq.version = "2.0"; fbq.queue = [];
+    window.fbq("init", META_PIXEL);
+    window.fbq("track", "PageView");
+  }
+  if (!document.getElementById("ak-meta") && !document.querySelector('script[src*="connect.facebook.net"]')){
+    var m = document.createElement("script");
+    m.id = "ak-meta"; m.async = true;
+    m.src = "https://connect.facebook.net/en_US/fbevents.js";
+    document.head.appendChild(m);
+  }
+
+  // Ad click ids from the landing URL, kept for this tab's session.
+  var AD_KEYS = /^(utm_[a-z]+|fbclid)$/;
+  function adParams(){
+    var got = {};
+    try{ got = JSON.parse(sessionStorage.getItem("ak-ad-params") || "{}") || {}; }catch(e){}
+    try{
+      var fresh = {}, any = false;
+      new URLSearchParams(location.search).forEach(function(v, k){
+        if (AD_KEYS.test(k) && v){ fresh[k] = v.slice(0, 200); any = true; }
+      });
+      if (any){ got = fresh; try{ sessionStorage.setItem("ak-ad-params", JSON.stringify(got)); }catch(e){} }
+    }catch(e){}
+    return got;
+  }
+  adParams();
+  window.akAdParams = adParams;
+
+  // GA4 ecommerce event -> Meta standard event. Only ids, prices, counts.
+  var META_EVENTS = { view_item: "ViewContent", add_to_cart: "AddToCart", begin_checkout: "InitiateCheckout" };
+  function toMeta(name, params){
+    var ev = META_EVENTS[name];
+    if (!ev) return;
+    try{
+      var items = (params && params.items) || [];
+      var p = {
+        content_ids: items.map(function(i){ return String(i.item_id); }),
+        content_type: "product",
+        contents: items.map(function(i){ return { id: String(i.item_id), quantity: i.quantity || 1, item_price: Number(i.price) || 0 }; }),
+        currency: "INR",
+        value: Number(params && params.value) || 0
+      };
+      if (ev === "InitiateCheckout") p.num_items = items.reduce(function(n, i){ return n + (i.quantity || 1); }, 0);
+      window.fbq("track", ev, p);
+    }catch(e){}
+  }
+
   function clean(v){
     v = String(v == null ? "" : v).replace(/\s+/g, " ").trim();
     if (/@/.test(v)) return "[redacted]";
@@ -35,8 +95,12 @@
   }
   function track(name, params){
     try{ window.gtag("event", name, params || {}); }catch(e){}
+    toMeta(name, params);
   }
   window.akTrack = track;
+  // Shop events sent by lib.jsx's stand-in akTrack before this file loaded
+  // already reached GA; send them on to Meta now.
+  (window.__akMetaQ || []).splice(0).forEach(function(a){ toMeta(a[0], a[1]); });
 
   // Which part of the site is this element / the screen centre in?
   function sectionOf(el){

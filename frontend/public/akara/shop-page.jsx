@@ -1704,7 +1704,14 @@ function CartDrawer({ open, cart, busy, error, onUpdate, onRemove, onClose, upse
     if(!canCheckout) return;
     try{ window.akTrack && window.akTrack("begin_checkout", { currency:"INR", value:subtotal,
       items:lines.map(l=>({ item_id:l.handle, item_name:l.name, price:l.price, quantity:l.qty })) }); }catch(e){}
-    window.location.assign(cart.checkoutUrl);
+    // Carry the ad click ids (utm_*, fbclid) so Meta ties the Shopify sale to the ad.
+    let url = cart.checkoutUrl;
+    try{
+      const u = new URL(url), ad = (window.akAdParams && window.akAdParams()) || {};
+      Object.keys(ad).forEach(k=>{ if(!u.searchParams.has(k)) u.searchParams.set(k, ad[k]); });
+      url = u.toString();
+    }catch(e){}
+    window.location.assign(url);
   };
   return (
     <React.Fragment>
