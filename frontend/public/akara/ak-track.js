@@ -42,6 +42,8 @@
     };
     if (!window._fbq) window._fbq = fbq;
     fbq.push = fbq; fbq.loaded = true; fbq.version = "2.0"; fbq.queue = [];
+    // autoConfig off: Meta would otherwise read button text and page fields itself.
+    window.fbq("set", "autoConfig", false, META_PIXEL);
     window.fbq("init", META_PIXEL);
     window.fbq("track", "PageView");
   }

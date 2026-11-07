@@ -1711,7 +1711,8 @@ function CartDrawer({ open, cart, busy, error, onUpdate, onRemove, onClose, upse
       Object.keys(ad).forEach(k=>{ if(!u.searchParams.has(k)) u.searchParams.set(k, ad[k]); });
       url = u.toString();
     }catch(e){}
-    window.location.assign(url);
+    // Short pause so the pixel's InitiateCheckout request leaves before the page does.
+    setTimeout(()=>window.location.assign(url), 300);
   };
   return (
     <React.Fragment>

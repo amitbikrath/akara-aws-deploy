@@ -61,6 +61,13 @@ function Cursor(){
   );
 }
 
+// Shopify-style product links (/products/{handle}, used by ads and the Meta
+// catalog) open the product page at /shop/{handle}; utm_* / fbclid stay on.
+if (typeof window !== "undefined"){
+  const pm = window.location.pathname.match(/^\/products\/([^/]+)\/?$/);
+  if (pm) history.replaceState(null, "", "/shop/" + pm[1] + window.location.search + window.location.hash);
+}
+
 function App(){
   const [v, setT] = useTweaks(DEFAULTS);
   const [galleryOpen, setGalleryOpen] = apS(false);
