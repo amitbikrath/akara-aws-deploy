@@ -254,6 +254,7 @@ const PRODUCTS_QUERY = `{
       id handle title productType tags availableForSale descriptionHtml createdAt
       featuredImage { url altText }
       images(first: 20) { nodes { url altText } }
+      media(first: 30) { nodes { mediaContentType ... on MediaImage { image { url } } ... on Video { previewImage { url } sources { url mimeType height } } } }
       options { name values }
       priceRange { minVariantPrice { amount } }
       compareAtPriceRange { minVariantPrice { amount } }
@@ -301,6 +302,16 @@ function mapProduct(n){
     };
   });
   const images = (n.images.nodes||[]).map(i=>i.url);
+  // The product page gallery follows Shopify's media order, videos included: an image is its
+  // URL (same string as in `images`), a video is { video, poster }. Cards keep `images`.
+  const gallery = ((n.media && n.media.nodes)||[]).map(m=>{
+    if(m.mediaContentType==="VIDEO"){
+      const mp4 = (m.sources||[]).filter(x=>x.mimeType==="video/mp4").sort((a,b)=>b.height-a.height);
+      const src = mp4.find(x=>x.height<=720) || mp4[mp4.length-1];   // 720p is sharp at gallery size
+      return src ? { video: src.url, poster: m.previewImage ? m.previewImage.url : null } : null;
+    }
+    return m.image ? m.image.url : null;
+  }).filter(Boolean);
   const imageForColor = {};
   variants.forEach(v=>{ if(v.color && v.image && !imageForColor[v.color]) imageForColor[v.color] = v.image; });
   const price = Number(n.priceRange.minVariantPrice.amount);
@@ -314,7 +325,7 @@ function mapProduct(n){
     deity: deityFor(n.tags), typeLabel: typeLabelFor(n.productType),
     price, compareAt: cmp > price ? cmp : null,
     image: n.featuredImage ? n.featuredImage.url : (images[0]||null),
-    images, imageForColor,
+    images, imageForColor, gallery,
     colors: colorOpt ? colorOpt.values : [],
     sizes: sizeOpt ? sortSizes(sizeOpt.values) : [],
     variants,
@@ -1400,6 +1411,22 @@ function ComingSoonCard({ p, cat, idx, layout="strip" }){
 // ───────────────────────── Gallery (swipe / arrows / dots) ─────────────────────────
 // One scroll-snap strip. Touch swipes natively; mouse uses the arrows. `api` (a ref)
 // gets { goTo(i) } so thumbs and colour pickers can drive it.
+// A muted looping product video: plays only while it is the slide in view, and never on its own
+// for visitors who ask for reduced motion (they get the poster and controls).
+function GalleryVideo({ v, active, fit }){
+  const ref = spR(null);
+  const still = typeof window!=="undefined" && !!window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  spE(()=>{
+    const el = ref.current; if(!el) return;
+    if(active && !still){ const pr = el.play(); if(pr && pr.catch) pr.catch(()=>{}); } else el.pause();
+  },[active, still]);
+  return (
+    <video ref={ref} src={v.video} poster={v.poster || undefined} muted loop playsInline controls={still}
+      preload={active ? "auto" : "none"} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:fit, background:"#0c0a08" }}/>
+  );
+}
+
+// images: URLs, or { video, poster } for a video slide (product page gallery only).
 function Gallery({ images, alt, hover=false, objectPosition="center", arrows="hover", dots=false, api=null, onIndex=null, fit="cover", eager=false }){
   const ref = spR(null);
   const [idx, setIdx] = spS(0);
@@ -1436,11 +1463,12 @@ function Gallery({ images, alt, hover=false, objectPosition="center", arrows="ho
         scrollSnapType:"x mandatory", scrollbarWidth:"none", WebkitOverflowScrolling:"touch",
       }}>
         {images.map((u,i)=>(
-          <div key={u+i} style={{ flex:"0 0 100%", height:"100%", scrollSnapAlign:"start", position:"relative", overflow:"hidden" }}>
+          <div key={(typeof u==="object" ? u.video : u)+i} style={{ flex:"0 0 100%", height:"100%", scrollSnapAlign:"start", position:"relative", overflow:"hidden" }}>
+            {typeof u==="object" ? <GalleryVideo v={u} active={i===idx} fit={fit}/> :
             <img src={u} alt={i===0 ? alt : ""} loading={eager && i<2 ? "eager" : "lazy"} draggable={false} style={{
               position:"absolute", inset:0, width:"100%", height:"100%", objectFit:fit, objectPosition,
               transform: hover ? "scale(1.04)" : "scale(1)", transition:"transform 1.1s var(--ease-out)",
-            }}/>
+            }}/>}
           </div>
         ))}
       </div>
@@ -1489,7 +1517,7 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
   const [size, setSize]   = spS(hasSize ? (firstAvail.size || (p.sizes.includes("M") ? "M" : p.sizes[0])) : null);
   const [idx, setIdx] = spS(0);
   const gal = spR(null);
-  const images = p.images.length ? p.images : (p.image ? [p.image] : []);
+  const images = p.gallery && p.gallery.length ? p.gallery : (p.images.length ? p.images : (p.image ? [p.image] : []));
   const variantFor = (c, s)=> p.variants.find(v=>(!hasColor || v.color===c) && (!hasSize || v.size===s));
   const variant = variantFor(color, size);
   const sizeAvailable = (s)=>{ const v = variantFor(color, s); return !!(v && v.available); };
@@ -1540,14 +1568,18 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
           </div>
           {images.length>1 && (
             <div className="pp-thumbs" style={{ display:"grid", gridAutoFlow:"column", gridAutoColumns:72, gap:10, overflowX:"auto", scrollbarWidth:"none", marginTop:12, padding:"2px 2px 6px" }}>
-              {images.map((u,i)=>(
-                <button key={u+i} onClick={()=>gal.current && gal.current.goTo(i)} aria-label={`Image ${i+1}`} style={{
+              {images.map((u,i)=>{
+                const vid = typeof u==="object";
+                return (
+                <button key={(vid ? u.video : u)+i} onClick={()=>gal.current && gal.current.goTo(i)} aria-label={vid ? `Video ${i+1}` : `Image ${i+1}`} style={{
                   width:72, height:88, padding:0, borderRadius:8, overflow:"hidden", cursor:"pointer", background:"#ece4d4",
-                  border:`2px solid ${i===idx ? "#1a1008" : "rgba(138,105,50,.25)"}`, transition:"border-color .35s",
+                  border:`2px solid ${i===idx ? "#1a1008" : "rgba(138,105,50,.25)"}`, transition:"border-color .35s", position:"relative",
                 }}>
-                  <img src={u} alt="" loading="lazy" draggable={false} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/>
+                  {(vid ? u.poster : u) && <img src={vid ? u.poster : u} alt="" loading="lazy" draggable={false} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/>}
+                  {vid && <span aria-hidden="true" style={{ position:"absolute", inset:0, display:"grid", placeItems:"center", color:"#f5efe4", fontSize:18, textShadow:"0 1px 6px rgba(0,0,0,.7)", background:"rgba(12,10,8,.18)" }}>▶</span>}
                 </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
