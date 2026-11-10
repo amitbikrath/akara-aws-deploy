@@ -314,9 +314,12 @@ function mapProduct(n){
       id:v.id, title:v.title, available:!!v.availableForSale,
       price:Number(v.price.amount), compareAt: v.compareAtPrice ? Number(v.compareAtPrice.amount) : null,
       image: v.image ? v.image.url : null,
-      color: so.color || so.colour || null, size: so.size || null,
+      color: so.color || so.colour || null, size: so.size || null, opts: so,
     };
   });
+  // Any other option with a real choice (Print: acrylic / metal, Eyes: open / closed) gets its own picker.
+  const extras = (n.options||[]).filter(o=>!/^(colou?r|size)$/i.test(o.name) && o.values.length > 1)
+    .map(o=>({ key:o.name.toLowerCase(), name:o.name, values:o.values }));
   const images = (n.images.nodes||[]).map(i=>i.url);
   // The product page gallery follows Shopify's media order, videos included: an image is its
   // URL (same string as in `images`), a video is { video, poster }. Cards keep `images`.
@@ -344,7 +347,7 @@ function mapProduct(n){
     images, imageForColor, gallery,
     colors: colorOpt ? colorOpt.values : [],
     sizes: sizeOpt ? sortSizes(sizeOpt.values) : [],
-    variants,
+    extras, variants,
     founderNote: (n.founderNote && n.founderNote.value) ? String(n.founderNote.value).trim() : "",
     ...parseRatingMetafield(n.reviewRating && n.reviewRating.value, n.reviewCount && n.reviewCount.value),
     comingSoon:false,
@@ -430,6 +433,7 @@ function mapCart(c){
       return {
         id:l.id, qty:l.quantity, variantId:m.id, name:head.trim(), handle:(m.product && m.product.handle) || null,
         color: so.color || so.colour || null, size: so.size || null,
+        extra: (m.selectedOptions||[]).filter(o=>!/^(colou?r|size|title)$/i.test(o.name)).map(o=>o.value),
         price:Number(m.price && m.price.amount || 0), image: m.image ? m.image.url : null,
       };
     }),
@@ -1644,6 +1648,37 @@ function ProductPage({ p, status, products, now, busy, onAdd, onOpen, onBack, on
   return <ProductView key={p.id} p={p} products={products} now={now} busy={busy} onAdd={onAdd} onOpen={onOpen} onBack={onBack}/>;
 }
 
+// One row of choices for any Shopify option (Size, Print, Eyes…). A sold-out value is struck out.
+// Each value shows its own price when the values cost different amounts.
+function OptionRow({ label, values, value, onPick, ok, priceOf, text, note }){
+  const t = text || String;
+  const showPrice = new Set(values.map(priceOf).filter(x=>x!=null)).size > 1;
+  return (
+    <div>
+      <div className="mono" style={{ fontSize:9, letterSpacing:".32em", color:"rgba(26,16,8,.55)", textTransform:"uppercase", marginBottom:10 }}>
+        {label} · <span style={{ color:"#8a3e18" }}>{t(value)}</span>
+      </div>
+      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+        {values.map(s=>{
+          const active = s===value; const good = ok(s);
+          return (
+            <button key={s} onClick={()=>onPick(s)} disabled={!good} aria-pressed={active} style={{
+              minWidth:46, minHeight:42, padding:"6px 10px", borderRadius:6,
+              background: active?"#1a1008":"transparent",
+              color: active?"#f5efe4": good ? "#1a1008" : "rgba(26,16,8,.3)",
+              border:`1px solid ${active?"#1a1008": good ? "rgba(26,16,8,.2)" : "rgba(26,16,8,.1)"}`,
+              textDecoration: good ? "none" : "line-through",
+              fontFamily:"var(--mono)", fontSize:11, fontWeight:600, letterSpacing:".1em",
+              cursor: good ? "pointer" : "not-allowed", transition:"background-color .15s, color .15s, border-color .15s, scale .16s var(--ease-out)",
+            }}>{t(s)}{showPrice && priceOf(s)!=null && <span style={{ fontWeight:400, opacity:.7, marginLeft:8 }}>{fmtINR(priceOf(s))}</span>}</button>
+          );
+        })}
+      </div>
+      {note && <div className="mono" style={{ fontSize:8, letterSpacing:".28em", color:"rgba(26,16,8,.4)", textTransform:"uppercase", marginTop:8 }}>{note}</div>}
+    </div>
+  );
+}
+
 function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
   const cat = AISLES.find(a=>a.id===p.aisle) || AISLES[0];
   const hasColor = p.colors.length > 0, hasSize = p.sizes.length > 0;
@@ -1653,8 +1688,19 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
   const [idx, setIdx] = spS(0);
   const gal = spR(null);
   const images = p.gallery && p.gallery.length ? p.gallery : (p.images.length ? p.images : (p.image ? [p.image] : []));
-  const variantFor = (c, s)=> p.variants.find(v=>(!hasColor || v.color===c) && (!hasSize || v.size===s));
+  const extras = p.extras || [];
+  const [extra, setExtra] = spS(()=>Object.fromEntries(extras.map(o=>[o.key, (firstAvail.opts||{})[o.key] || o.values[0]])));
+  const variantFor = (c, s, ex)=>{ const e = ex || extra;
+    return p.variants.find(v=>(!hasColor || v.color===c) && (!hasSize || v.size===s) && extras.every(o=>v.opts[o.key]===e[o.key])); };
   const variant = variantFor(color, size);
+  const extraVariant = (key, val)=> variantFor(color, size, { ...extra, [key]:val });
+  const pickExtra = (key, val)=>{
+    setExtra({ ...extra, [key]:val });
+    const v = extraVariant(key, val); const i = v && v.image ? images.indexOf(v.image) : -1;
+    if(i>=0 && gal.current) gal.current.goTo(i);
+  };
+  const picked = [...extras.map(o=>extra[o.key]), size].filter(Boolean);
+  const madeNote = p.aisle==="clothing" ? "Unisex fit · Printed to order" : "Printed to order";
   const sizeAvailable = (s)=>{ const v = variantFor(color, s); return !!(v && v.available); };
   const price = variant ? variant.price : p.price;
   const compareAt = variant ? variant.compareAt : p.compareAt;
@@ -1663,7 +1709,6 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
   const deity = deityLabel(p.deity);
   // A size shows its own price when sizes cost different amounts (prints: 8x10 vs 11x14).
   const sizePrice = (s)=>{ const v = variantFor(color, s); return v ? v.price : null; };
-  const sizePricesDiffer = hasSize && new Set(p.sizes.map(sizePrice).filter(x=>x!=null)).size > 1;
   const sizeText = (s)=>String(s).replace(/\s*\((Vertical|Horizontal)\)\s*/i, "");
   // Phones: a buy bar slides up once the main Add to bag button has left the screen.
   const addRef = spR(null);
@@ -1766,30 +1811,14 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
             </div>
           )}
 
-          {hasSize && (
-            <div>
-              <div className="mono" style={{ fontSize:9, letterSpacing:".32em", color:"rgba(26,16,8,.55)", textTransform:"uppercase", marginBottom:10 }}>
-                Size · <span style={{ color:"#8a3e18" }}>{sizeText(size)}</span>
-              </div>
-              <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                {p.sizes.map(s=>{
-                  const active = s===size; const ok = sizeAvailable(s);
-                  return (
-                    <button key={s} onClick={()=>setSize(s)} disabled={!ok} style={{
-                      minWidth:46, height:42, padding:"0 10px", borderRadius:6,
-                      background: active?"#1a1008":"transparent",
-                      color: active?"#f5efe4": ok ? "#1a1008" : "rgba(26,16,8,.3)",
-                      border:`1px solid ${active?"#1a1008": ok ? "rgba(26,16,8,.2)" : "rgba(26,16,8,.1)"}`,
-                      textDecoration: ok ? "none" : "line-through",
-                      fontFamily:"var(--mono)", fontSize:11, fontWeight:600, letterSpacing:".1em",
-                      cursor: ok ? "pointer" : "not-allowed", transition:"background-color .15s, color .15s, border-color .15s, scale .16s var(--ease-out)",
-                    }}>{sizeText(s)}{sizePricesDiffer && sizePrice(s)!=null && <span style={{ fontWeight:400, opacity:.7, marginLeft:8 }}>{fmtINR(sizePrice(s))}</span>}</button>
-                  );
-                })}
-              </div>
-              <div className="mono" style={{ fontSize:8, letterSpacing:".28em", color:"rgba(26,16,8,.4)", textTransform:"uppercase", marginTop:8 }}>{p.aisle==="clothing" ? "Unisex fit · Printed to order" : "Printed to order"}</div>
-            </div>
-          )}
+          {extras.map((o,i)=>(
+            <OptionRow key={o.key} label={o.name} values={o.values} value={extra[o.key]} onPick={(v)=>pickExtra(o.key, v)}
+              ok={(v)=>{ const x = extraVariant(o.key, v); return !!(x && x.available); }}
+              priceOf={(v)=>{ const x = extraVariant(o.key, v); return x ? x.price : null; }}
+              note={!hasSize && i===extras.length-1 ? madeNote : null}/>
+          ))}
+
+          {hasSize && <OptionRow label="Size" values={p.sizes} value={size} onPick={setSize} ok={sizeAvailable} priceOf={sizePrice} text={sizeText} note={madeNote}/>}
 
           <button ref={addRef} onClick={()=>canAdd && onAdd(variant.id)} disabled={!canAdd} style={{
             marginTop:6, padding:"16px 20px",
@@ -1802,7 +1831,7 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
           <div className="pp-sticky" data-on={barOn ? "true" : "false"} aria-hidden={!barOn}>
             <div style={{ flex:1, minWidth:0 }}>
               <div className="display" style={{ fontSize:15, fontStyle:"italic", color:"#1a1008", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.name}</div>
-              <div className="mono" style={{ fontSize:10, letterSpacing:".08em", color:"#8a3e18", fontWeight:600 }}>{size ? sizeText(size) + " · " : ""}{fmtINR(price)}</div>
+              <div className="mono" style={{ fontSize:10, letterSpacing:".08em", color:"#8a3e18", fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{picked.map(x=>sizeText(x) + " · ").join("")}{fmtINR(price)}</div>
             </div>
             <button tabIndex={barOn ? 0 : -1} onClick={()=>canAdd && onAdd(variant.id)} disabled={!canAdd} style={{
               flex:"none", padding:"14px 18px", borderRadius:8, border:"none", background: canAdd ? "#1a1008" : "rgba(26,16,8,.25)", color:"#f5efe4",
@@ -1842,7 +1871,7 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
           <dl className="pp-facts" style={{ display:"grid", gridTemplateColumns:"auto 1fr", gap:"8px 18px", margin:"6px 0 0", paddingTop:16, borderTop:"1px solid rgba(138,105,50,.16)", fontSize:13 }}>
             {[
               ["Cut", p.meta], ["Type", p.typeLabel], deity && ["Deity", deity],
-              p.colors.length && ["Colours", p.colors.join(", ")], p.sizes.length && ["Sizes", p.sizes.join(" · ")],
+              p.colors.length && ["Colours", p.colors.join(", ")], ...extras.map(o=>[o.name, o.values.join(" · ")]), p.sizes.length && ["Sizes", p.sizes.join(" · ")],
               ["Made", MONEY.usd ? "Printed to order in the USA. Free US shipping." : "Printed to order in India, delivered in 5–8 business days"],
             ].filter(Boolean).map(([k,v])=>(
               <React.Fragment key={k}>
@@ -1956,9 +1985,9 @@ function CartDrawer({ open, cart, busy, error, onUpdate, onRemove, onClose, upse
               </div>
               <div>
                 <div style={{ fontFamily:"var(--display,serif)", fontSize:16, fontStyle:"italic", color:"#1a1008" }}>{ci.name}</div>
-                {(ci.color || ci.size) && (
+                {(ci.color || ci.size || ci.extra.length>0) && (
                   <div className="mono" style={{ fontSize:9, letterSpacing:".28em", color:"#8a3e18", textTransform:"uppercase", marginTop:3 }}>
-                    {[ci.color, ci.size && `Size ${ci.size}`].filter(Boolean).join(" · ")}
+                    {[ci.color, ...ci.extra, ci.size && `Size ${ci.size}`].filter(Boolean).join(" · ")}
                   </div>
                 )}
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:6 }}>
