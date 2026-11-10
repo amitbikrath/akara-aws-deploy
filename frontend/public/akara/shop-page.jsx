@@ -670,13 +670,14 @@ function ShopPageInner({ onClose, initialAisle }){
 
         <div style={{ display:"inline-flex", alignItems:"center", gap:14 }}>
         <div className="shop-region mono" role="group" aria-label="Ships to" style={{ display:"inline-flex", alignItems:"center", gap:2, padding:3, borderRadius:999, border:"1px solid rgba(138,105,50,.28)", fontSize:9, letterSpacing:".2em", textTransform:"uppercase" }}>
-          {[["IN","India"],["US","USA"]].map(([code,label])=>{
+          {[["IN","India","\u{1F1EE}\u{1F1F3}"],["US","USA","\u{1F1FA}\u{1F1F8}"]].map(([code,label,flag])=>{
             const on = region===code;
-            return <button key={code} type="button" aria-pressed={on} onClick={()=>{ if(!on) changeRegion(code); }} style={{
+            return <button key={code} type="button" aria-pressed={on} aria-label={"Ships to " + label} title={"Ships to " + label} onClick={()=>{ if(!on) changeRegion(code); }} style={{
+              display:"inline-flex", alignItems:"center", gap:6,
               padding:"7px 11px", borderRadius:999, border:"none", cursor: on ? "default" : "pointer",
               background: on ? "#1a1008" : "transparent", color: on ? "#f5efe4" : "#3d2d13", fontFamily:"inherit", fontSize:"inherit", letterSpacing:"inherit", textTransform:"inherit", fontWeight: on ? 700 : 500,
               transition:"background-color .2s, color .2s, scale .16s var(--ease-out)",
-            }}>{label}</button>;
+            }}><span aria-hidden style={{ fontSize:14, lineHeight:1, letterSpacing:0 }}>{flag}</span><span className="shop-region-label">{label}</span></button>;
           })}
         </div>
         <button onClick={()=>setCartOpen(true)} className="shop-cta-cart" style={{
@@ -877,7 +878,7 @@ function ShopPageInner({ onClose, initialAisle }){
         .ak-seam path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: akSeamDraw 1.6s cubic-bezier(.16,1,.3,1) .35s forwards; }
         .ak-seam .ak-seam-twig { animation-duration: .9s; animation-delay: 1.5s; }
         @keyframes akSeamDraw { to { stroke-dashoffset: 0; } }
-        @media (max-width: 780px) { .shop-region button { padding: 6px 8px !important; } }
+        @media (max-width: 780px) { .shop-region button { padding: 6px 8px !important; } .shop-region-label { display: none; } }
         @media (min-width: 781px) and (max-width: 1100px) { .aisle-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 34px 16px !important; } }
         .aisle-grid .card-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .pp-sticky { display: none; }
