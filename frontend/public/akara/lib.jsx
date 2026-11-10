@@ -247,13 +247,15 @@ function akDetectRegion(){
   }catch(e){}
   try{
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-    if(AK_US_ZONES.includes(tz) || /^America\/(Indiana|Kentucky|North_Dakota)\//.test(tz)) return "US";
+    // A time-zone guess only SUGGESTS the US shelf (the shop asks). It never switches by itself.
+    if(AK_US_ZONES.includes(tz) || /^America\/(Indiana|Kentucky|North_Dakota)\//.test(tz)) return "IN?US";
   }catch(e){}
   return "IN";
 }
-const AKARA_REGION = { code: akDetectRegion(), usdRate: 93.93 };
+const AKARA_REGION = (()=>{ const d = akDetectRegion(); return { code: d === "US" ? "US" : "IN", suggest: d === "IN?US" ? "US" : null, usdRate: 93.93 }; })();
 function akSetRegion(code, persist = true){
   AKARA_REGION.code = code === "US" ? "US" : "IN";
+  if(persist) AKARA_REGION.suggest = null;
   if(persist){ try{ localStorage.setItem(AK_REGION_KEY, AKARA_REGION.code); }catch(e){} }
 }
 // Adds Shopify's market directive to a query or mutation.

@@ -536,6 +536,7 @@ function ShopPageInner({ onClose, initialAisle }){
   const changeRegion = spC((code, persist=true)=>{ akSetRegion(code, persist); setHandle(null); setRegionState(AKARA_REGION.code);
     if(!/^\/shop\/?$/.test(window.location.pathname)) history.replaceState(history.state, "", "/shop"); },[]);
   MONEY.usd = region==="US"; MONEY.rate = AKARA_REGION.usdRate;
+  const [askRegion, setAskRegion] = spS(()=>AKARA_REGION.suggest === "US" && AKARA_REGION.code === "IN");
   const store = useStorefrontProducts(region, ()=>changeRegion("IN", false));
 
   // Product page routing: /shop/{handle}. Back button returns to the aisles.
@@ -704,6 +705,22 @@ function ShopPageInner({ onClose, initialAisle }){
         </div>
       </nav>
 
+      {askRegion && region==="IN" && (
+        <div className="shop-region-ask" role="region" aria-label="Shipping country" style={{
+          display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"center", gap:"8px 16px",
+          padding:"11px 20px", background:"#1a1008", color:"#f5efe4", fontSize:14, position:"relative", zIndex:25,
+        }}>
+          <span>Shipping to the United States? See the US prints, with prices in dollars.</span>
+          <span style={{ display:"inline-flex", gap:8 }}>
+            <button type="button" onClick={()=>{ setAskRegion(false); changeRegion("US"); }} style={{
+              padding:"8px 14px", borderRadius:999, border:"none", background:"#c5a059", color:"#1a1008", cursor:"pointer",
+              fontFamily:"var(--mono)", fontSize:9, letterSpacing:".22em", textTransform:"uppercase", fontWeight:700 }}>Switch to USA</button>
+            <button type="button" onClick={()=>{ setAskRegion(false); akSetRegion("IN"); }} style={{
+              padding:"8px 14px", borderRadius:999, border:"1px solid rgba(245,239,228,.4)", background:"transparent", color:"#f5efe4", cursor:"pointer",
+              fontFamily:"var(--mono)", fontSize:9, letterSpacing:".22em", textTransform:"uppercase", fontWeight:600 }}>Stay on India</button>
+          </span>
+        </div>
+      )}
       {handle ? (
         <ProductPage p={current} status={store.status} products={store.products} now={now} busy={busy}
           onAdd={addVariant} onOpen={openProduct} onBack={closeProduct} onRetry={store.reload}/>
@@ -828,7 +845,11 @@ function ShopPageInner({ onClose, initialAisle }){
           .aisle-copy p { font-size: 13px !important; }
           .aisle-arrows { display: none !important; }
           .aisle-title { font-size: clamp(36px, 9vw, 56px) !important; }
-          .product-card { flex: 0 0 72vw !important; max-width: 300px; }
+          .aisle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 22px 10px !important; }
+          .aisle-grid .card-foot { padding: 10px 10px 12px !important; }
+          .aisle-grid .card-row { flex-direction: column; align-items: flex-start !important; gap: 3px !important; }
+          .aisle-grid .card-name { font-size: 15px !important; line-height: 1.2; }
+          .aisle-grid .card-meta { letter-spacing: .16em !important; font-size: 8px !important; }
           .aisle-spread { grid-template-columns: 1fr !important; gap: 14px !important; }
           .spread-card .card-art { aspect-ratio: 4/5 !important; }
           .soon-banner { grid-template-columns: 1fr !important; padding: 24px 22px !important; min-height: 180px !important; }
@@ -836,7 +857,7 @@ function ShopPageInner({ onClose, initialAisle }){
           .shop-cta-cart .cart-label { display: none; }
         }
         @media (max-width: 460px) {
-          .product-card { flex: 0 0 82vw !important; }
+          .aisle-grid { gap: 18px 8px !important; }
         }
         /* press feedback: every shop button answers a press */
         .shop-root button { transition: scale .16s var(--ease-out); }
@@ -857,12 +878,22 @@ function ShopPageInner({ onClose, initialAisle }){
         .ak-seam .ak-seam-twig { animation-duration: .9s; animation-delay: 1.5s; }
         @keyframes akSeamDraw { to { stroke-dashoffset: 0; } }
         @media (max-width: 780px) { .shop-region button { padding: 6px 8px !important; } }
+        @media (min-width: 781px) and (max-width: 1100px) { .aisle-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 34px 16px !important; } }
+        .aisle-grid .card-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pp-sticky { display: none; }
+        @media (max-width: 880px) {
+          .pp-sticky { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 35; gap: 12px; align-items: center;
+            padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: rgba(245,239,228,.96);
+            -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-top: 1px solid rgba(138,105,50,.22);
+            transform: translateY(110%); transition: transform .26s var(--ease-out); }
+          .pp-sticky[data-on="true"] { transform: translateY(0); transition: transform .4s var(--ease-out); }
+        }
         @media (prefers-reduced-motion: reduce) {
           .ak-leaf { animation: none !important; }
           .ak-seam path { animation: none !important; stroke-dashoffset: 0 !important; }
           .aisle-header video { transform: none !important; }
           .shop-root button { transition: none !important; }
-          .product-card, .pp, .shop-drawer, .shop-chip, .new-ribbon, .filter-row-in { transition: none !important; animation: none !important; }
+          .product-card, .pp, .pp-sticky, .card-swap, .shop-drawer, .shop-chip, .new-ribbon, .filter-row-in { transition: none !important; animation: none !important; }
           .ak-gallery { scroll-behavior: auto !important; }
         }
       `}</style>
@@ -1104,7 +1135,7 @@ function Aisle({ cat, idx, now, onPeek }){
               {cat.desc}
             </p>
           </div>
-          <div className="aisle-arrows" style={{ display: layout==="strip" ? "flex" : "none", gap:8 }}>
+          <div className="aisle-arrows" style={{ display:"none", gap:8 }}>
             {[-1,1].map(d=>(
               <button key={d} onClick={()=>scrollBy(d*420)} aria-label={d<0?"Scroll left":"Scroll right"} style={{
                 width:44, height:44, borderRadius:"50%",
@@ -1122,13 +1153,8 @@ function Aisle({ cat, idx, now, onPeek }){
       </div>
 
       {layout === "strip" ? (
-        <div ref={scroller} style={{
-          display:"flex", gap:16, overflowX:"auto", overflowY:"hidden",
-          paddingBottom:12,
-          scrollSnapType:"x mandatory",
-          WebkitOverflowScrolling:"touch",
-          scrollbarWidth:"thin",
-        }}>
+        /* grid: 4 across on desktop, 3 on tablets, 2 on phones */
+        <div ref={scroller} className="aisle-grid" style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0, 1fr))", gap:"44px 20px" }}>
           {cat.products.map((p,i)=>(
             p.comingSoon
               ? <ComingSoonCard key={p.id} p={p} cat={cat} idx={i} layout="strip"/>
@@ -1179,9 +1205,14 @@ function ProductCard({ p, cat, idx, layout="strip", now, onPeek }){
   const fresh = isNewThisWeek(p.createdAt, now || Date.now());
   const strip = layout === "strip";
   const art = layout === "lead" ? "5/4" : "4/5";
+  // Desktop: the second photo fades in on hover (loaded on first hover). Phones: swipe + dots.
+  const second = CAN_HOVER && typeof p.images[1] === "string" ? p.images[1] : null;
+  const [swapSeen, setSwapSeen] = spS(false);
+  const prices = (p.variants||[]).map(v=>v.price);
+  const from = prices.length > 1 && Math.min(...prices) !== Math.max(...prices);
   return (
     <article
-      onMouseEnter={()=>CAN_HOVER && setHover(true)}
+      onMouseEnter={()=>{ if(CAN_HOVER){ setHover(true); setSwapSeen(true); } }}
       onMouseLeave={()=>setHover(false)}
       className={strip ? "product-card" : `spread-card spread-${layout}`}
       style={{
@@ -1199,7 +1230,13 @@ function ProductCard({ p, cat, idx, layout="strip", now, onPeek }){
       onClick={()=>onPeek()}>
       <div className="card-art" style={{ position:"relative", aspectRatio:art, overflow:"hidden", background:"#ece4d4" }}>
         <Gallery images={p.images.length ? p.images : (p.image ? [p.image] : [])} alt={p.name} hover={hover}
-          objectPosition={layout==="lead" ? "center top" : "center"} arrows="hover" dots/>
+          objectPosition={layout==="lead" ? "center top" : "center"} arrows="never" dots={!CAN_HOVER}/>
+        {second && swapSeen && (
+          <img className="card-swap" src={second} alt="" aria-hidden draggable={false} style={{
+            position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", objectPosition: layout==="lead" ? "center top" : "center",
+            opacity: hover ? 1 : 0, transition:"opacity .3s ease", pointerEvents:"none",
+          }}/>
+        )}
         <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, transparent 60%, rgba(0,0,0,.28) 100%)", pointerEvents:"none" }}/>
         <div className="mono" style={{
           position:"absolute", top:12, left:14, color:"rgba(255,255,255,.9)", textShadow:"0 1px 6px rgba(0,0,0,.5)",
@@ -1235,12 +1272,12 @@ function ProductCard({ p, cat, idx, layout="strip", now, onPeek }){
             display:"grid", placeItems:"center",
           }} aria-label={`Open ${p.name}`}>→</button>
       </div>
-      <div style={{ padding: layout==="lead" ? "22px 24px 24px" : "16px 16px 18px", background:"#fff" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:10, marginBottom:4 }}>
-          <span className="display" style={{ fontSize: layout==="lead" ? 28 : 18, fontStyle:"italic", color:"#1a1008" }}>{p.name}</span>
-          <Price price={p.price} compareAt={p.compareAt} size={layout==="lead" ? 13 : 11}/>
+      <div className="card-foot" style={{ padding: layout==="lead" ? "22px 24px 24px" : "16px 16px 18px", background:"#fff" }}>
+        <div className="card-row" style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:10, marginBottom:4 }}>
+          <span className="display card-name" style={{ fontSize: layout==="lead" ? 28 : 18, fontStyle:"italic", color:"#1a1008" }}>{p.name}</span>
+          <Price price={p.price} compareAt={p.compareAt} size={layout==="lead" ? 13 : 11} from={from}/>
         </div>
-        <div className="mono" style={{ fontSize:9, letterSpacing:".28em", color:"rgba(26,16,8,.55)", textTransform:"uppercase" }}>{p.meta}</div>
+        <div className="mono card-meta" style={{ fontSize:9, letterSpacing:".28em", color:"rgba(26,16,8,.55)", textTransform:"uppercase" }}>{p.meta}</div>
         <CardStars p={p}/>
         {layout==="lead" && (
           <div className="mono" style={{ fontSize:9, letterSpacing:".3em", color:"#8a3e18", textTransform:"uppercase", marginTop:14 }}>
@@ -1409,7 +1446,7 @@ function ReviewsBlock({ p }){
   );
 }
 
-function Price({ price, compareAt, size=11 }){
+function Price({ price, compareAt, size=11, from=false }){
   // keyframe for the ribbon lives here once, near its only users
   if(typeof document !== "undefined" && !document.getElementById("akara-ribbon-kf")){
     const st = document.createElement("style"); st.id="akara-ribbon-kf";
@@ -1419,6 +1456,7 @@ function Price({ price, compareAt, size=11 }){
   return (
     <span className="mono" style={{ fontSize:size, letterSpacing:".08em", color:"#8a3e18", fontWeight:600, whiteSpace:"nowrap" }}>
       {compareAt && <span style={{ textDecoration:"line-through", color:"rgba(26,16,8,.4)", marginRight:8, fontWeight:400 }}>{fmtINR(compareAt)}</span>}
+      {from && <span style={{ fontWeight:400, color:"rgba(26,16,8,.55)", marginRight:5, letterSpacing:".14em", textTransform:"uppercase", fontSize:size-2 }}>From</span>}
       {fmtINR(price)}
     </span>
   );
@@ -1610,6 +1648,19 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
   const canAdd = !!(variant && variant.available) && !busy;
   const fresh = isNewThisWeek(p.createdAt, now || Date.now());
   const deity = deityLabel(p.deity);
+  // A size shows its own price when sizes cost different amounts (prints: 8x10 vs 11x14).
+  const sizePrice = (s)=>{ const v = variantFor(color, s); return v ? v.price : null; };
+  const sizePricesDiffer = hasSize && new Set(p.sizes.map(sizePrice).filter(x=>x!=null)).size > 1;
+  const sizeText = (s)=>String(s).replace(/\s*\((Vertical|Horizontal)\)\s*/i, "");
+  // Phones: a buy bar slides up once the main Add to bag button has left the screen.
+  const addRef = spR(null);
+  const [barOn, setBarOn] = spS(false);
+  spE(()=>{
+    const el = addRef.current; if(!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e])=>setBarOn(!e.isIntersecting && e.boundingClientRect.top < 0));
+    io.observe(el); return ()=>io.disconnect();
+  },[]);
+  const addLabel = busy ? "Adding…" : (variant && !variant.available) ? "Sold out" : "+ Add to bag";
   const pickColor = (c)=>{
     setColor(c);
     const u = p.imageForColor[c]; const i = u ? images.indexOf(u) : -1;
@@ -1705,7 +1756,7 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
           {hasSize && (
             <div>
               <div className="mono" style={{ fontSize:9, letterSpacing:".32em", color:"rgba(26,16,8,.55)", textTransform:"uppercase", marginBottom:10 }}>
-                Size · <span style={{ color:"#8a3e18" }}>{size}</span>
+                Size · <span style={{ color:"#8a3e18" }}>{sizeText(size)}</span>
               </div>
               <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                 {p.sizes.map(s=>{
@@ -1719,22 +1770,32 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
                       textDecoration: ok ? "none" : "line-through",
                       fontFamily:"var(--mono)", fontSize:11, fontWeight:600, letterSpacing:".1em",
                       cursor: ok ? "pointer" : "not-allowed", transition:"background-color .15s, color .15s, border-color .15s, scale .16s var(--ease-out)",
-                    }}>{s}</button>
+                    }}>{sizeText(s)}{sizePricesDiffer && sizePrice(s)!=null && <span style={{ fontWeight:400, opacity:.7, marginLeft:8 }}>{fmtINR(sizePrice(s))}</span>}</button>
                   );
                 })}
               </div>
-              <div className="mono" style={{ fontSize:8, letterSpacing:".28em", color:"rgba(26,16,8,.4)", textTransform:"uppercase", marginTop:8 }}>Unisex fit · Printed to order</div>
+              <div className="mono" style={{ fontSize:8, letterSpacing:".28em", color:"rgba(26,16,8,.4)", textTransform:"uppercase", marginTop:8 }}>{p.aisle==="clothing" ? "Unisex fit · Printed to order" : "Printed to order"}</div>
             </div>
           )}
 
-          <button onClick={()=>canAdd && onAdd(variant.id)} disabled={!canAdd} style={{
+          <button ref={addRef} onClick={()=>canAdd && onAdd(variant.id)} disabled={!canAdd} style={{
             marginTop:6, padding:"16px 20px",
             background: canAdd ? "#1a1008" : "rgba(26,16,8,.25)", color:"#f5efe4", border:"none", borderRadius:8,
             fontFamily:"var(--mono)", fontSize:10, letterSpacing:".3em", textTransform:"uppercase", fontWeight:700,
             cursor: canAdd ? "pointer" : "default", transition:"transform .3s, scale .16s var(--ease-out)",
           }}>
-            {busy ? "Adding…" : (variant && !variant.available) ? "Sold out" : `+ Add to bag · ${size ? `Size ${size} · ` : ""}${fmtINR(price)}`}
+            {busy ? "Adding…" : (variant && !variant.available) ? "Sold out" : `+ Add to bag · ${size ? `Size ${sizeText(size)} · ` : ""}${fmtINR(price)}`}
           </button>
+          <div className="pp-sticky" data-on={barOn ? "true" : "false"} aria-hidden={!barOn}>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div className="display" style={{ fontSize:15, fontStyle:"italic", color:"#1a1008", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.name}</div>
+              <div className="mono" style={{ fontSize:10, letterSpacing:".08em", color:"#8a3e18", fontWeight:600 }}>{size ? sizeText(size) + " · " : ""}{fmtINR(price)}</div>
+            </div>
+            <button tabIndex={barOn ? 0 : -1} onClick={()=>canAdd && onAdd(variant.id)} disabled={!canAdd} style={{
+              flex:"none", padding:"14px 18px", borderRadius:8, border:"none", background: canAdd ? "#1a1008" : "rgba(26,16,8,.25)", color:"#f5efe4",
+              fontFamily:"var(--mono)", fontSize:10, letterSpacing:".24em", textTransform:"uppercase", fontWeight:700, cursor: canAdd ? "pointer" : "default",
+            }}>{addLabel}</button>
+          </div>
           <TrustStrip product={p.name} compact/>
 
           {blocks.length>0 && (
