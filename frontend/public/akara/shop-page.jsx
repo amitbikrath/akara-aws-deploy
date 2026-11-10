@@ -25,8 +25,8 @@ const AISLES = [
     ],
   },
   {
-    id:"prints", name:"Fine Prints", tag:"Giclée on cotton",
-    desc:"Limited editions. Numbered, signed, archival.",
+    id:"prints", name:"Fine Prints", tag:"For the wall",
+    desc:"Metal signs and posters, printed to order.",
     media:"/akara/assets/shop-prints.mp4", still:"/akara/assets/shop-prints-sm.png",
     accent:"#e4b37a",
     types:["print","poster","art","canvas"],
@@ -529,6 +529,8 @@ function ShopPageInner({ onClose, initialAisle }){
   },[filters]);
   const now = spM(()=>Date.now(), []);
   const [cartOpen, setCartOpen] = spS(false);
+  // Filters: open as a left rail on wide screens, closed (slide-in panel) on phones.
+  const [filtersOpen, setFiltersOpen] = spS(()=>{ try{ return window.innerWidth >= 1000; }catch(e){ return true; } });
   const [handle, setHandle] = spS(()=>{ try{ return handleFromPath(window.location.pathname); }catch(e){ return null; } });
   const rootRef = spR(null);
   // Market: India or United States. See AKARA_REGION in lib.jsx.
@@ -587,6 +589,7 @@ function ShopPageInner({ onClose, initialAisle }){
 
   const facets = spM(()=>buildFacets(store.products), [store.products]);
   const active = anyFilterActive(filters);
+  const nActive = filters.deity.length + filters.type.length + filters.color.length;
   const visible = spM(()=>sortProducts(applyFilters(store.products, filters), filters.sort), [store.products, filters]);
   const aisles = spM(()=>{
     return AISLES.map(a=>{
@@ -595,8 +598,9 @@ function ShopPageInner({ onClose, initialAisle }){
       const showSoon = !active && (!filters.aisle || filters.aisle===a.id);
       const soon = showSoon ? a.comingSoon.map(c=>({ ...c, aisle:a.id, comingSoon:true })) : [];
       return { ...a, real, products:[...real, ...soon] };
-    }).filter(a=>a.products.length>0);
-  },[visible, active, filters.aisle]);
+    }).filter(a=>a.products.length>0 && (region!=="US" || a.real.length>0))
+      .sort((x,y)=>(y.real.length>0 ? 1 : 0) - (x.real.length>0 ? 1 : 0));
+  },[visible, active, filters.aisle, region]);
   const upsell = spM(()=>upsellFor(store.products, cart ? cart.lines : [], 3), [store.products, cart]);
 
   const addVariant = async (variantId)=>{
@@ -669,7 +673,7 @@ function ShopPageInner({ onClose, initialAisle }){
         </div>
 
         <div style={{ display:"inline-flex", alignItems:"center", gap:14 }}>
-        <div className="shop-region mono" role="group" aria-label="Ships to" style={{ display:"inline-flex", alignItems:"center", gap:2, padding:3, borderRadius:999, border:"1px solid rgba(138,105,50,.28)", fontSize:9, letterSpacing:".2em", textTransform:"uppercase" }}>
+        <div className="shop-region mono" role="group" aria-label="Ships to" style={{ display:"inline-flex", alignItems:"center", gap:2, padding:3, borderRadius:999, border:"1px solid rgba(138,105,50,.28)", fontSize:10, letterSpacing:".16em", textTransform:"uppercase" }}>
           {[["IN","India","\u{1F1EE}\u{1F1F3}"],["US","USA","\u{1F1FA}\u{1F1F8}"]].map(([code,label,flag])=>{
             const on = region===code;
             return <button key={code} type="button" aria-pressed={on} aria-label={"Ships to " + label} title={"Ships to " + label} onClick={()=>{ if(!on) changeRegion(code); }} style={{
@@ -691,7 +695,7 @@ function ShopPageInner({ onClose, initialAisle }){
         }}
         onMouseEnter={(e)=>{ if(CAN_HOVER) e.currentTarget.style.transform="translateY(-1px)"; }}
         onMouseLeave={(e)=>{ e.currentTarget.style.transform="translateY(0)"; }}>
-          <span>⌇</span>
+          <svg aria-hidden width="15" height="16" viewBox="0 0 15 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"><path d="M1.5 5h12l-.9 9.5h-10.2z"/><path d="M4.8 5V3.8a2.7 2.7 0 0 1 5.4 0V5"/></svg>
           <span className="cart-label">Cart{cartCount?` · ${cartCount}`:""}</span>
           {cartCount>0 && (
             <span style={{
@@ -727,69 +731,57 @@ function ShopPageInner({ onClose, initialAisle }){
           onAdd={addVariant} onOpen={openProduct} onBack={closeProduct} onRetry={store.reload}/>
       ) : (<React.Fragment>
       {/* HEADER */}
-      <header className="shop-header" style={{ maxWidth:1400, margin:"0 auto", padding:"64px 40px 24px", position:"relative" }}>
+      <header className="shop-header" style={{ maxWidth:1500, margin:"0 auto", padding:"30px 40px 0", position:"relative" }}>
         <div className="mono" style={{
           display:"inline-flex", alignItems:"center", gap:12,
-          fontSize:10, letterSpacing:".35em", color:"#8a3e18", textTransform:"uppercase", marginBottom:18,
+          fontSize:10, letterSpacing:".35em", color:"#8a3e18", textTransform:"uppercase", marginBottom:10,
         }}>
           <span style={{ width:20, height:1, background:"#8a6932" }}/>
           <span>The Akara Shop</span>
           <span style={{ width:20, height:1, background:"#8a6932" }}/>
         </div>
         <h1 className="display" style={{
-          fontSize:"clamp(56px,7vw,108px)", lineHeight:.95, margin:"0 0 20px", fontWeight:400, letterSpacing:"-.015em", color:"#1a1008",
+          fontSize:"clamp(38px,4.2vw,60px)", lineHeight:1, margin:"0 0 8px", fontWeight:400, letterSpacing:"-.015em", color:"#1a1008",
         }}>
           Objects, worn, <em className="ak-leaf" style={{ fontStyle:"italic", color:"#8a3e18" }}>and hung.</em>
         </h1>
-        <p style={{ fontSize:18, color:"rgba(26,16,8,.68)", fontWeight:300, maxWidth:640, lineHeight:1.6, margin:0 }}>
+        <p style={{ fontSize:15, color:"rgba(26,16,8,.68)", fontWeight:300, maxWidth:640, lineHeight:1.5, margin:0 }}>
           Every piece is a quiet reminder — woven, printed, or cast with care.
-          Browse the aisles. Each row is a category, each card a piece you can carry home.
         </p>
         <KintsugiSeam/>
       </header>
 
-      {/* FILTER RAILS — Deity, then Type, then Colour. Built from live Products only. */}
-      <div className="shop-collections" style={{
-        position:"sticky", top:68, zIndex:20,
-        padding:"14px 40px 12px",
-        background:"linear-gradient(180deg, rgba(245,239,228,.95) 0%, rgba(245,239,228,.86) 100%)",
-        backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)",
-        borderBottom:"1px solid rgba(138,105,50,.14)",
-      }}>
-        <FilterRow label="Deity" items={facets.deities} selected={filters.deity} onToggle={(id)=>toggle("deity", id)} allLabel="All deities"/>
-        <div className="shop-filter-lower" style={{ display:"flex", gap:28, alignItems:"center", flexWrap:"wrap" }}>
-          {facets.types.length > 1 && (
-            <FilterRow label="Type" items={facets.types} selected={filters.type} onToggle={(id)=>toggle("type", id)} compact/>
-          )}
-          {facets.colors.length > 1 && (
-            <FilterRow label="Colour" items={facets.colors} selected={filters.color} onToggle={(id)=>toggle("color", id)} compact swatch/>
-          )}
-          <div className="shop-sort-row" style={{ marginLeft:"auto", display:"inline-flex", alignItems:"center", gap:8, overflowX:"auto", scrollbarWidth:"none", maxWidth:"100%" }}>
-            <span className="mono" style={{ fontSize:9, letterSpacing:".3em", color:"rgba(26,16,8,.5)", textTransform:"uppercase", flex:"0 0 auto" }}>Sort</span>
-            {SORTS.map(o=>{
-              const on = filters.sort===o.id;
-              return (
-                <button key={o.id} onClick={()=>setSort(o.id)} className="shop-chip" style={{
-                  padding:"6px 12px", borderRadius:999,
-                  background: on ? "#1a1008" : "transparent", color: on ? "#f5efe4" : "#3d2d13",
-                  border:`1px solid ${on ? "#1a1008" : "rgba(138,105,50,.25)"}`,
-                  fontFamily:"var(--mono)", fontSize:9, letterSpacing:".22em", textTransform:"uppercase", fontWeight: on?700:500,
-                  whiteSpace:"nowrap", cursor:"pointer", transition:"background-color .2s, color .2s, border-color .2s, scale .16s var(--ease-out)",
-                }}>{o.label}</button>
-              );
-            })}
-            {(active || filters.aisle) && (
-              <button onClick={clearFilters} className="mono" style={{
-                marginLeft:6, background:"transparent", border:"none", color:"#8a3e18",
-                fontSize:9, letterSpacing:".25em", textTransform:"uppercase", cursor:"pointer",
-              }}>Clear ×</button>
-            )}
-          </div>
+      {/* FILTERS — a left rail on desktop, a slide-in panel on phones. Built from live Products only. */}
+      <div className="shop-body" data-filters={filtersOpen ? "true" : "false"}>
+      <div className="shop-rail-backdrop" onClick={()=>setFiltersOpen(false)}/>
+      <aside className="shop-collections" aria-label="Filters">
+        <div className="shop-rail-head">
+          <span className="display" style={{ fontSize:24, fontStyle:"italic", color:"#1a1008" }}>Filters</span>
+          <button type="button" className="mono shop-clear" onClick={()=>setFiltersOpen(false)}>Close ×</button>
         </div>
-      </div>
+        <FilterRow label="Deity" items={facets.deities} selected={filters.deity} onToggle={(id)=>toggle("deity", id)} allLabel="All deities"/>
+        {facets.types.length > 1 && (
+          <FilterRow label="Type" items={facets.types} selected={filters.type} onToggle={(id)=>toggle("type", id)}/>
+        )}
+        {facets.colors.length > 1 && (
+          <FilterRow label="Colour" items={facets.colors} selected={filters.color} onToggle={(id)=>toggle("color", id)} swatch/>
+        )}
+        <FilterRow label="Sort" items={SORTS} selected={[filters.sort]} onToggle={setSort}/>
+        {(active || filters.aisle) && (
+          <button type="button" onClick={clearFilters} className="mono shop-clear">Clear all ×</button>
+        )}
+      </aside>
 
       {/* AISLES */}
-      <main className="shop-main" style={{ maxWidth:1500, margin:"0 auto", padding:"48px 40px 120px", position:"relative" }}>
+      <main className="shop-main" style={{ width:"100%", maxWidth:1500, margin:"0 auto", padding:"22px 40px 120px", position:"relative" }}>
+        <div className="shop-toolbar">
+          <button type="button" className="mono shop-filter-toggle" aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(o=>!o)}>
+            <svg aria-hidden width="14" height="10" viewBox="0 0 14 10"><path d="M0 1h14M2.5 5h9M5 9h4" stroke="currentColor" strokeWidth="1.4" fill="none"/></svg>
+            <span>{filtersOpen ? "Hide filters" : "Filters"}</span>
+            {nActive>0 && <span className="ct">{nActive}</span>}
+          </button>
+          {store.status==="ok" && <span className="mono shop-count">{visible.length} {visible.length===1 ? "piece" : "pieces"}</span>}
+        </div>
         {store.status==="dhyana" ? (
           <DhyanaState onRetry={store.reload}/>
         ) : store.status==="loading" ? (
@@ -820,6 +812,7 @@ function ShopPageInner({ onClose, initialAisle }){
           </footer>
         )}
       </main>
+      </div>
       </React.Fragment>)}
 
       {/* cart drawer */}
@@ -832,20 +825,16 @@ function ShopPageInner({ onClose, initialAisle }){
           .shop-nav { padding: 14px 18px !important; gap: 10px !important; }
           .shop-nav .shop-brand-sub { display: none !important; }
           .shop-nav .shop-back-label { display: none !important; }
-          .shop-header { padding: 40px 20px 18px !important; }
-          .shop-header h1 { font-size: clamp(44px, 11vw, 68px) !important; }
-          .shop-header p { font-size: 15px !important; }
-          .shop-collections { position: static !important; padding: 10px 14px 8px !important; }
-          .shop-filter-lower { gap: 6px !important; }
-          .shop-sort-row { margin-left: 0 !important; }
-          .shop-filter-row { padding-right: 14px; }
+          .shop-header { padding: 22px 16px 0 !important; }
+          .shop-header h1 { font-size: clamp(32px, 9vw, 44px) !important; }
+          .shop-header p { font-size: 14px !important; }
           .pp-thumbs { grid-auto-columns: 56px !important; }
-          .shop-main { padding: 32px 16px 100px !important; }
-          .aisle-header { height: 200px !important; border-radius: 8px !important; }
+          .shop-main { padding: 16px 16px 100px !important; }
+          .aisle-header { height: 92px !important; border-radius: 8px !important; }
           .aisle-copy { left: 16px !important; right: 16px !important; bottom: 16px !important; grid-template-columns: 1fr !important; }
           .aisle-copy p { font-size: 13px !important; }
           .aisle-arrows { display: none !important; }
-          .aisle-title { font-size: clamp(36px, 9vw, 56px) !important; }
+          .aisle-title { font-size: clamp(26px, 7vw, 34px) !important; }
           .aisle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 22px 10px !important; }
           .aisle-grid .card-foot { padding: 10px 10px 12px !important; }
           .aisle-grid .card-row { flex-direction: column; align-items: flex-start !important; gap: 3px !important; }
@@ -875,9 +864,54 @@ function ShopPageInner({ onClose, initialAisle }){
           animation: akLeaf 14s cubic-bezier(.45,0,.25,1) infinite alternate;
         }
         @keyframes akLeaf { to { background-position: 0 0, 100% 0; } }
-        .ak-seam path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: akSeamDraw 1.6s cubic-bezier(.16,1,.3,1) .35s forwards; }
-        .ak-seam .ak-seam-twig { animation-duration: .9s; animation-delay: 1.5s; }
-        @keyframes akSeamDraw { to { stroke-dashoffset: 0; } }
+        .ak-seam { clip-path: inset(-20px 100% -20px 0); animation: akSeamDraw 1.6s cubic-bezier(.16,1,.3,1) .3s forwards; }
+        @keyframes akSeamDraw { to { clip-path: inset(-20px 0 -20px 0); } }
+
+        /* layout: filters rail + products */
+        .shop-body { display: grid; grid-template-columns: minmax(0, 1fr); max-width: 1500px; margin: 0 auto; }
+        .shop-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 18px; }
+        .shop-filter-toggle { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 999px; cursor: pointer;
+          background: transparent; color: #1a1008; border: 1px solid rgba(26,16,8,.28); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; font-weight: 600; }
+        .shop-filter-toggle .ct { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #c5a059; color: #1a1008; font-size: 10px; display: inline-grid; place-items: center; letter-spacing: 0; }
+        .shop-count { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: rgba(26,16,8,.55); }
+        .shop-filter-row { display: flex; flex-direction: column; gap: 2px; padding: 0 0 26px; }
+        .shop-filter-label { font-size: 10px; letter-spacing: .3em; text-transform: uppercase; color: #8a3e18; margin: 0 0 8px 10px; }
+        .shop-root .shop-chip { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border-radius: 6px; border: none; cursor: pointer;
+          background: transparent; color: #1a1008; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 500; text-align: left;
+          transition: background-color .2s, color .2s, scale .16s var(--ease-out); }
+        .shop-root .shop-chip[data-on="true"] { background: #1a1008; color: #f5efe4; font-weight: 700; }
+        .shop-chip .ct { margin-left: auto; opacity: .5; }
+        @media (hover: hover) and (pointer: fine) {
+          .shop-root .shop-chip:not([data-on="true"]):hover { background: rgba(138,105,50,.13); }
+          .shop-filter-toggle:hover { background: #1a1008; color: #f5efe4; }
+        }
+        .shop-filter-toggle { transition: background-color .2s, color .2s, scale .16s var(--ease-out) !important; }
+        .shop-clear { background: transparent; border: none; color: #8a3e18; font-size: 10px; letter-spacing: .24em; text-transform: uppercase; cursor: pointer; padding: 6px 10px; }
+        .shop-rail-head { display: none; }
+        .shop-rail-backdrop { display: none; }
+        @media (min-width: 1000px) {
+          .shop-body[data-filters="true"] { grid-template-columns: 232px minmax(0, 1fr); }
+          .shop-body[data-filters="false"] .shop-collections { display: none; }
+          .shop-collections { position: sticky; top: 92px; align-self: start; max-height: calc(100vh - 104px); overflow-y: auto; padding: 22px 0 40px 30px; scrollbar-width: thin; }
+          .shop-body[data-filters="true"] .shop-main { padding-left: 28px !important; }
+          .shop-body[data-filters="true"] .aisle-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+        }
+        @media (min-width: 1500px) { .shop-body[data-filters="true"] .aisle-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; } }
+        @media (max-width: 999px) {
+          .shop-collections { position: fixed; z-index: 44; top: 0; left: 0; bottom: 0; width: min(320px, 86vw); background: #f5efe4; padding: 20px 14px 40px; overflow-y: auto;
+            box-shadow: 18px 0 50px rgba(26,16,8,.25); transform: translateX(-104%); transition: transform .26s var(--ease-out); }
+          .shop-body[data-filters="true"] .shop-collections { transform: translateX(0); transition: transform .4s var(--ease-out); }
+          .shop-rail-head { display: flex; align-items: center; justify-content: space-between; padding: 0 0 18px 10px; }
+          .shop-rail-backdrop { display: block; position: fixed; inset: 0; z-index: 43; background: rgba(26,16,8,.4); opacity: 0; pointer-events: none; transition: opacity .3s; }
+          .shop-body[data-filters="true"] .shop-rail-backdrop { opacity: 1; pointer-events: auto; }
+          .shop-filter-toggle span:first-of-type { font-size: 0; }
+          .shop-filter-toggle span:first-of-type::after { content: "Filters"; font-size: 11px; }
+        }
+        /* slim aisle banner */
+        .aisle-header { height: clamp(104px, 10vw, 128px) !important; margin-bottom: 20px !important; }
+        .aisle-copy { bottom: 50% !important; transform: translateY(50%); }
+        .aisle-copy p { display: none; }
+        .aisle-title { font-size: clamp(30px, 3.2vw, 44px) !important; margin: 0 !important; }
         @media (max-width: 780px) { .shop-region button { padding: 6px 8px !important; } .shop-region-label { display: none; } }
         @media (min-width: 781px) and (max-width: 1100px) { .aisle-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 34px 16px !important; } }
         .aisle-grid .card-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -891,7 +925,8 @@ function ShopPageInner({ onClose, initialAisle }){
         }
         @media (prefers-reduced-motion: reduce) {
           .ak-leaf { animation: none !important; }
-          .ak-seam path { animation: none !important; stroke-dashoffset: 0 !important; }
+          .ak-seam { animation: none !important; clip-path: none !important; }
+          .shop-collections, .shop-rail-backdrop { transition: none !important; }
           .aisle-header video { transform: none !important; }
           .shop-root button { transition: none !important; }
           .product-card, .pp, .pp-sticky, .card-swap, .shop-drawer, .shop-chip, .new-ribbon, .filter-row-in { transition: none !important; animation: none !important; }
@@ -903,25 +938,19 @@ function ShopPageInner({ onClose, initialAisle }){
 }
 
 // ───────────────────────── FilterRow (one row of chips) ─────────────────────────
-function FilterRow({ label, items, selected, onToggle, compact=false, swatch=false, allLabel }){
+function FilterRow({ label, items, selected, onToggle, swatch=false, allLabel }){
   if(!items || items.length===0) return null;
   return (
-    <div className="shop-filter-row filter-row-in" style={{
-      display:"flex", alignItems:"center", gap: compact ? 6 : 8,
-      overflowX:"auto", whiteSpace:"nowrap", scrollbarWidth:"none",
-      padding: compact ? "4px 0" : "2px 0 10px",
-      animation:"filterIn .5s var(--ease-out) both",
-    }}>
-      <span className="mono" style={{ fontSize:9, letterSpacing:".3em", color:"#8a3e18", textTransform:"uppercase", marginRight: compact ? 6 : 10, flex:"0 0 auto" }}>{label}</span>
+    <div className="shop-filter-row" role="group" aria-label={label}>
+      <div className="mono shop-filter-label">{label}</div>
       {allLabel && (
-        <button onClick={()=>selected.forEach(id=>onToggle(id))} className="shop-chip" style={chipStyle(selected.length===0, compact)}>{allLabel}</button>
+        <button type="button" onClick={()=>selected.forEach(id=>onToggle(id))} className="shop-chip" data-on={selected.length===0 ? "true" : "false"} aria-pressed={selected.length===0}>{allLabel}</button>
       )}
-      {items.map((it, i)=>{
+      {items.map(it=>{
         const on = selected.includes(it.id);
         const hex = swatch ? (it.hex || cssColorOrNull(it.id)) : null;
         return (
-          <button key={it.id} onClick={()=>onToggle(it.id)} className="shop-chip" title={`${it.label} · ${it.count}`}
-            style={{ ...chipStyle(on, compact), animationDelay:`${.05*i}s`, display:"inline-flex", alignItems:"center", gap:7 }}>
+          <button type="button" key={it.id} onClick={()=>onToggle(it.id)} className="shop-chip" data-on={on ? "true" : "false"} aria-pressed={on}>
             {swatch && (
               <span aria-hidden style={{
                 width:12, height:12, borderRadius:"50%", flex:"0 0 auto",
@@ -930,25 +959,12 @@ function FilterRow({ label, items, selected, onToggle, compact=false, swatch=fal
               }}/>
             )}
             <span>{it.label}</span>
-            {!compact && <span style={{ opacity:.5, marginLeft:4 }}>{it.count}</span>}
+            {it.count!=null && <span className="ct">{it.count}</span>}
           </button>
         );
       })}
-      <style>{`@keyframes filterIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }`}</style>
     </div>
   );
-}
-function chipStyle(on, compact){
-  return {
-    flex:"0 0 auto",
-    padding: compact ? "6px 12px" : "8px 16px", borderRadius:999,
-    background: on ? "#1a1008" : "rgba(255,255,255,.6)",
-    color: on ? "#f5efe4" : "#1a1008",
-    border:`1px solid ${on ? "#1a1008" : "rgba(138,105,50,.25)"}`,
-    fontFamily:"var(--mono)", fontSize: compact ? 9 : 10, letterSpacing:".24em", textTransform:"uppercase",
-    fontWeight: on ? 700 : 500,
-    cursor:"pointer", transition:"background-color .2s, color .2s, border-color .2s, scale .16s var(--ease-out)",
-  };
 }
 // Browser-only: does the first word of a colour name parse as a CSS colour?
 function cssColorOrNull(name){
@@ -983,7 +999,7 @@ function TrustStrip({ align="left", product=null, compact=false }){
 // A mended crack in gold leaf (same leaf as the Darśana masthead word). Draws once.
 function KintsugiSeam(){
   return (
-    <svg className="ak-seam" aria-hidden viewBox="0 0 1200 40" preserveAspectRatio="none" style={{ display:"block", width:"100%", height:34, marginTop:34, overflow:"visible" }}>
+    <svg className="ak-seam" aria-hidden viewBox="0 0 1200 40" preserveAspectRatio="none" style={{ display:"block", width:"100%", height:22, marginTop:16, overflow:"visible" }}>
       <defs>
         <linearGradient id="akSeamG" x1="0" x2="1" y1="0" y2="0">
           <stop offset="0" stopColor="#8A6420"/><stop offset=".18" stopColor="#C99A3E"/><stop offset=".34" stopColor="#F2D78C"/>
@@ -991,8 +1007,8 @@ function KintsugiSeam(){
         </linearGradient>
       </defs>
       <g fill="none" stroke="url(#akSeamG)" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke">
-        <path className="ak-seam-main" pathLength="1" strokeWidth="1.6" vectorEffect="non-scaling-stroke" d="M0 22 L88 19 L131 26 L214 17 L262 21 L340 12 L398 24 L471 20 L520 29 L603 18 L655 23 L742 14 L790 22 L868 27 L921 16 L1004 21 L1062 13 L1130 20 L1200 17"/>
-        <path className="ak-seam-twig" pathLength="1" strokeWidth="1" vectorEffect="non-scaling-stroke" d="M340 12 L361 3 L384 6 M603 18 L622 31 L651 36 M921 16 L940 5 M131 26 L149 35"/>
+        <path className="ak-seam-main" strokeWidth="1.6" vectorEffect="non-scaling-stroke" d="M0 22 L88 19 L131 26 L214 17 L262 21 L340 12 L398 24 L471 20 L520 29 L603 18 L655 23 L742 14 L790 22 L868 27 L921 16 L1004 21 L1062 13 L1130 20 L1200 17"/>
+        <path className="ak-seam-twig" strokeWidth="1" vectorEffect="non-scaling-stroke" d="M340 12 L361 3 L384 6 M603 18 L622 31 L651 36 M921 16 L940 5 M131 26 L149 35"/>
       </g>
     </svg>
   );
@@ -1091,7 +1107,7 @@ function Aisle({ cat, idx, now, onPeek }){
   const countLabel = realCount === 0 ? "Coming soon" : realCount === 1 ? "1 piece" : `${realCount} pieces`;
 
   return (
-    <section style={{ marginBottom: 88, position:"relative" }}>
+    <section style={{ marginBottom: 64, position:"relative" }}>
       {/* aisle opener: full-width film band, video edge to edge behind the name */}
       <div
         ref={chipRef}
@@ -1114,7 +1130,7 @@ function Aisle({ cat, idx, now, onPeek }){
           position:"absolute", top:16, left:18, zIndex:4,
           padding:"5px 10px", borderRadius:4,
           background:"rgba(245,239,228,.92)", color:"#1a1008",
-          fontFamily:"var(--mono)", fontSize:9, letterSpacing:".28em", textTransform:"uppercase", fontWeight:700,
+          fontFamily:"var(--mono)", fontSize:9, letterSpacing:".28em", textTransform:"uppercase", fontWeight:700, display:"none",
         }}>Aisle {String(idx+1).padStart(2,"0")}</div>
         <div className="mono" style={{
           position:"absolute", top:20, right:20, zIndex:4, color:"rgba(245,239,228,.85)",
@@ -1238,16 +1254,12 @@ function ProductCard({ p, cat, idx, layout="strip", now, onPeek }){
             opacity: hover ? 1 : 0, transition:"opacity .3s ease", pointerEvents:"none",
           }}/>
         )}
-        <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, transparent 60%, rgba(0,0,0,.28) 100%)", pointerEvents:"none" }}/>
-        <div className="mono" style={{
-          position:"absolute", top:12, left:14, color:"rgba(255,255,255,.9)", textShadow:"0 1px 6px rgba(0,0,0,.5)",
-          fontSize:9, letterSpacing:".3em", textTransform:"uppercase",
-        }}>{cat.id}/{String(idx+1).padStart(2,"0")}</div>
+        <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, transparent 72%, rgba(0,0,0,.16) 100%)", pointerEvents:"none" }}/>
         {fresh && (
-          <div className="new-ribbon display" style={{
-            position:"absolute", top:30, left:14, color:"#e4b37a", fontStyle:"italic", fontSize:15, letterSpacing:".01em",
-            textShadow:"0 1px 8px rgba(0,0,0,.55)", animation:"ribbonIn 1.4s var(--ease-out) both",
-          }}>New this week</div>
+          <div className="new-ribbon mono" style={{
+            position:"absolute", top:12, left:12, padding:"4px 9px", borderRadius:4,
+            background:"rgba(245,239,228,.94)", color:"#8a3e18", fontSize:9, letterSpacing:".24em", textTransform:"uppercase", fontWeight:700,
+          }}>New</div>
         )}
         {p.compareAt && !soldOut && (
           <div className="mono" style={{
@@ -1601,7 +1613,7 @@ function Gallery({ images, alt, hover=false, objectPosition="center", arrows="ho
           <button aria-label="Next image" onClick={(e)=>{ e.stopPropagation(); go(idx+1); }} style={arrowStyle("right")}>→</button>
         </React.Fragment>
       )}
-      {dots && n>1 && (
+      {dots && n>1 && n<=6 && (
         <div style={{ position:"absolute", left:0, right:0, bottom:10, display:"flex", justifyContent:"center", gap:5, zIndex:3, pointerEvents:"none" }}>
           {images.map((_,i)=>(
             <span key={i} style={{ width: i===idx ? 14 : 5, height:5, borderRadius:3, background: i===idx ? "#e4b37a" : "rgba(245,239,228,.7)", transition:"width .3s var(--ease-out), background-color .3s" }}/>
