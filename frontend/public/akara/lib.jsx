@@ -231,7 +231,39 @@ const AKARA_JUDGEME = {
   token: "uYG86eq35fhsh2uH_6Rs6cbYT5g",
   base: "https://judge.me/api/v1",
 };
+// ── Region (2026-11-11) ─────────────────────────────────────────────────────
+// One Shopify store, two markets: India (default) and United States. The US
+// market has its own catalogue (prints made in the USA). Prices are stored in
+// INR in both markets; US visitors see an approximate USD figure.
+// Detection is a guess from the device time zone; the shopper can switch.
+const AK_REGION_KEY = "akara_region";
+const AK_US_ZONES = ["America/New_York","America/Chicago","America/Denver","America/Los_Angeles","America/Phoenix","America/Anchorage","America/Detroit","America/Boise","America/Juneau","America/Sitka","America/Nome","America/Menominee","America/Adak","America/Metlakatla","America/Yakutat","Pacific/Honolulu"];
+function akDetectRegion(){
+  try{
+    const q = new URLSearchParams(window.location.search).get("region");
+    if(q && /^(us|in)$/i.test(q)){ const c = q.toUpperCase(); try{ localStorage.setItem(AK_REGION_KEY, c); }catch(e){} return c; }
+    const saved = localStorage.getItem(AK_REGION_KEY);
+    if(saved === "US" || saved === "IN") return saved;
+  }catch(e){}
+  try{
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    if(AK_US_ZONES.includes(tz) || /^America\/(Indiana|Kentucky|North_Dakota)\//.test(tz)) return "US";
+  }catch(e){}
+  return "IN";
+}
+const AKARA_REGION = { code: akDetectRegion(), usdRate: 93.93 };
+function akSetRegion(code, persist = true){
+  AKARA_REGION.code = code === "US" ? "US" : "IN";
+  if(persist){ try{ localStorage.setItem(AK_REGION_KEY, AKARA_REGION.code); }catch(e){} }
+}
+// Adds Shopify's market directive to a query or mutation.
+function akInContext(query, country){
+  const i = query.indexOf("{");
+  const head = query.slice(0, i);
+  return (head.trim() ? head : "query") + " @inContext(country: " + country + ") " + query.slice(i);
+}
 async function shopifyStorefront(query, variables = {}){
+  query = akInContext(query, AKARA_REGION.code);
   const res = await fetch(`https://${AKARA_SHOPIFY.domain}/api/${AKARA_SHOPIFY.version}/graphql.json`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Shopify-Storefront-Access-Token": AKARA_SHOPIFY.token },
@@ -674,4 +706,4 @@ if (typeof window !== "undefined"){ loadLiveWallpapers(); }
 
 Object.assign(window, { useScrollBus, useInView, useMagnetic, StaggerText, MagButton, SectionKicker,
   HERO, WALLPAPER_ITEMS, WP_SWATCHES, WP_STYLES, WP_DEITIES, SHOP_ITEMS, TRACKS, STORY_CHAPTERS,
-  useLiveWallpapers, loadLiveWallpapers, mapApiWallpaper, AKARA_SHOPIFY, shopifyStorefront, AKARA_JUDGEME });
+  useLiveWallpapers, loadLiveWallpapers, mapApiWallpaper, AKARA_SHOPIFY, shopifyStorefront, AKARA_JUDGEME, AKARA_REGION, akSetRegion });

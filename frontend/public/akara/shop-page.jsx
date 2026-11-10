@@ -7,6 +7,8 @@
 // Vocabulary (CONTEXT.md): Shop, Storefront, Product, Variant, Aisle,
 // Coming Soon item, Dhyana state.
 
+// Hover effects only where a real pointer exists (a tap on a phone must not leave a card lifted).
+const CAN_HOVER = (()=>{ try{ return window.matchMedia("(hover: hover) and (pointer: fine)").matches; }catch(e){ return true; } })();
 const { useState: spS, useEffect: spE, useRef: spR, useMemo: spM, useCallback: spC } = React;
 
 // ───────────────────────── Aisles ─────────────────────────
@@ -64,7 +66,14 @@ function sortSizes(list){
   });
 }
 
-function fmtINR(n){ return "₹" + Math.round(Number(n)||0).toLocaleString("en-IN"); }
+// Prices live in INR. For the US market the same INR price is shown as whole US dollars.
+const MONEY = { usd:false, rate:93.93 };
+function fmtINR(n){
+  const v = Number(n)||0;
+  if(MONEY.usd) return "$" + Math.round(v / MONEY.rate).toLocaleString("en-US");
+  return "₹" + Math.round(v).toLocaleString("en-IN");
+}
+function fmtRupees(n){ return "₹" + Math.round(Number(n)||0).toLocaleString("en-IN"); }
 
 // Deity: the first Product tag that matches this list. Order = display order.
 const DEITIES = [
@@ -183,6 +192,13 @@ const TRUST = {
     "Delivered in 5–8 business days across India",
     "Secure prepaid checkout — UPI, cards, netbanking",
     "7-day replacement for damage or misprint",
+  ],
+  // US market: made by a US print partner. No delivery-day or replacement claim until measured.
+  itemsUS: [
+    "Printed to order in the USA",
+    "Free shipping across the United States",
+    "Secure card checkout by Shopify",
+    "Charged in Indian rupees · dollar prices are approximate",
   ],
   whatsapp: "919993518528",
 };
@@ -371,15 +387,19 @@ function useProductReviews(handle, enabled){
   return state;
 }
 
-function useStorefrontProducts(){
+function useStorefrontProducts(region, onEmptyUS){
   const [state, setState] = spS({ status:"loading", products:[], error:null });
   const load = spC(()=>{
     setState(s=>({ ...s, status:"loading", error:null }));
     const timeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")), 12000));
     Promise.race([shopifyStorefront(PRODUCTS_QUERY), timeout])
-      .then(d=>setState({ status:"ok", products:(d.products.nodes||[]).map(mapProduct), error:null }))
+      .then(d=>{
+        const list = (d.products.nodes||[]).map(mapProduct);
+        if(region==="US" && !list.length && onEmptyUS){ onEmptyUS(); return; }
+        setState({ status:"ok", products:list, error:null });
+      })
       .catch(e=>setState({ status:"dhyana", products:[], error:String(e && e.message || e) }));
-  },[]);
+  },[region]);
   spE(()=>{ load(); },[load]);
   return { ...state, reload:load };
 }
@@ -416,21 +436,25 @@ function mapCart(c){
   };
 }
 
-function useStorefrontCart(){
+function useStorefrontCart(region){
+  const cartKey = region==="US" ? CART_KEY + "_us" : CART_KEY;
   const [cart, setCart] = spS(null);
   const [busy, setBusy] = spS(false);
   const [error, setError] = spS(null);
 
-  const remember = (c)=>{ try{ if(c && c.id) localStorage.setItem(CART_KEY, c.id); else localStorage.removeItem(CART_KEY); }catch(e){} };
+  const remember = (c)=>{ try{ if(c && c.id) localStorage.setItem(cartKey, c.id); else localStorage.removeItem(cartKey); }catch(e){} };
 
   // Restore a cart from a previous visit.
   spE(()=>{
-    let id = null; try{ id = localStorage.getItem(CART_KEY); }catch(e){}
+    let on = true;
+    setCart(null);
+    let id = null; try{ id = localStorage.getItem(cartKey); }catch(e){}
     if(!id) return;
     shopifyStorefront(`query($id: ID!){ cart(id:$id){ ${CART_FIELDS} } }`, { id })
-      .then(d=>{ if(d.cart){ setCart(mapCart(d.cart)); } else { remember(null); } })
+      .then(d=>{ if(!on) return; if(d.cart){ setCart(mapCart(d.cart)); } else { remember(null); } })
       .catch(()=>{});
-  },[]);
+    return ()=>{ on = false; };
+  },[cartKey]);
 
   const run = async (fn)=>{
     setBusy(true); setError(null);
@@ -507,7 +531,12 @@ function ShopPageInner({ onClose, initialAisle }){
   const [cartOpen, setCartOpen] = spS(false);
   const [handle, setHandle] = spS(()=>{ try{ return handleFromPath(window.location.pathname); }catch(e){ return null; } });
   const rootRef = spR(null);
-  const store = useStorefrontProducts();
+  // Market: India or United States. See AKARA_REGION in lib.jsx.
+  const [region, setRegionState] = spS(()=>AKARA_REGION.code);
+  const changeRegion = spC((code, persist=true)=>{ akSetRegion(code, persist); setHandle(null); setRegionState(AKARA_REGION.code);
+    if(!/^\/shop\/?$/.test(window.location.pathname)) history.replaceState(history.state, "", "/shop"); },[]);
+  MONEY.usd = region==="US"; MONEY.rate = AKARA_REGION.usdRate;
+  const store = useStorefrontProducts(region, ()=>changeRegion("IN", false));
 
   // Product page routing: /shop/{handle}. Back button returns to the aisles.
   const openProduct = spC((p)=>{
@@ -529,7 +558,7 @@ function ShopPageInner({ onClose, initialAisle }){
     return ()=>window.removeEventListener("popstate", onPop);
   },[]);
   spE(()=>{ window.scrollTo(0, 0); },[handle]);
-  const { cart, busy, error:cartError, add, update, remove } = useStorefrontCart();
+  const { cart, busy, error:cartError, add, update, remove } = useStorefrontCart(region);
 
   // The shop is a real page that scrolls the document (no fixed overlay, no
   // 100vh maths on phones). Paint the page canvas cream so rubber-band
@@ -638,6 +667,17 @@ function ShopPageInner({ onClose, initialAisle }){
           </span>
         </div>
 
+        <div style={{ display:"inline-flex", alignItems:"center", gap:14 }}>
+        <div className="shop-region mono" role="group" aria-label="Ships to" style={{ display:"inline-flex", alignItems:"center", gap:2, padding:3, borderRadius:999, border:"1px solid rgba(138,105,50,.28)", fontSize:9, letterSpacing:".2em", textTransform:"uppercase" }}>
+          {[["IN","India"],["US","USA"]].map(([code,label])=>{
+            const on = region===code;
+            return <button key={code} type="button" aria-pressed={on} onClick={()=>{ if(!on) changeRegion(code); }} style={{
+              padding:"7px 11px", borderRadius:999, border:"none", cursor: on ? "default" : "pointer",
+              background: on ? "#1a1008" : "transparent", color: on ? "#f5efe4" : "#3d2d13", fontFamily:"inherit", fontSize:"inherit", letterSpacing:"inherit", textTransform:"inherit", fontWeight: on ? 700 : 500,
+              transition:"background-color .2s, color .2s, scale .16s var(--ease-out)",
+            }}>{label}</button>;
+          })}
+        </div>
         <button onClick={()=>setCartOpen(true)} className="shop-cta-cart" style={{
           position:"relative",
           display:"inline-flex", alignItems:"center", gap:10,
@@ -645,9 +685,9 @@ function ShopPageInner({ onClose, initialAisle }){
           background:"#1a1008", color:"#f5efe4",
           border:"none", borderRadius:999,
           fontFamily:"var(--mono)", fontSize:10, letterSpacing:".26em", textTransform:"uppercase", fontWeight:600,
-          cursor:"pointer", transition:"transform .25s",
+          cursor:"pointer", transition:"transform .25s, scale .16s var(--ease-out)",
         }}
-        onMouseEnter={(e)=>{ e.currentTarget.style.transform="translateY(-1px)"; }}
+        onMouseEnter={(e)=>{ if(CAN_HOVER) e.currentTarget.style.transform="translateY(-1px)"; }}
         onMouseLeave={(e)=>{ e.currentTarget.style.transform="translateY(0)"; }}>
           <span>⌇</span>
           <span className="cart-label">Cart{cartCount?` · ${cartCount}`:""}</span>
@@ -661,6 +701,7 @@ function ShopPageInner({ onClose, initialAisle }){
             }}>{cartCount}</span>
           )}
         </button>
+        </div>
       </nav>
 
       {handle ? (
@@ -680,12 +721,13 @@ function ShopPageInner({ onClose, initialAisle }){
         <h1 className="display" style={{
           fontSize:"clamp(56px,7vw,108px)", lineHeight:.95, margin:"0 0 20px", fontWeight:400, letterSpacing:"-.015em", color:"#1a1008",
         }}>
-          Objects, worn, <em style={{ fontStyle:"italic", color:"#8a3e18" }}>and hung.</em>
+          Objects, worn, <em className="ak-leaf" style={{ fontStyle:"italic", color:"#8a3e18" }}>and hung.</em>
         </h1>
         <p style={{ fontSize:18, color:"rgba(26,16,8,.68)", fontWeight:300, maxWidth:640, lineHeight:1.6, margin:0 }}>
           Every piece is a quiet reminder — woven, printed, or cast with care.
           Browse the aisles. Each row is a category, each card a piece you can carry home.
         </p>
+        <KintsugiSeam/>
       </header>
 
       {/* FILTER RAILS — Deity, then Type, then Colour. Built from live Products only. */}
@@ -714,7 +756,7 @@ function ShopPageInner({ onClose, initialAisle }){
                   background: on ? "#1a1008" : "transparent", color: on ? "#f5efe4" : "#3d2d13",
                   border:`1px solid ${on ? "#1a1008" : "rgba(138,105,50,.25)"}`,
                   fontFamily:"var(--mono)", fontSize:9, letterSpacing:".22em", textTransform:"uppercase", fontWeight: on?700:500,
-                  whiteSpace:"nowrap", cursor:"pointer", transition:"all .3s",
+                  whiteSpace:"nowrap", cursor:"pointer", transition:"background-color .2s, color .2s, border-color .2s, scale .16s var(--ease-out)",
                 }}>{o.label}</button>
               );
             })}
@@ -796,7 +838,30 @@ function ShopPageInner({ onClose, initialAisle }){
         @media (max-width: 460px) {
           .product-card { flex: 0 0 82vw !important; }
         }
+        /* press feedback: every shop button answers a press */
+        .shop-root button { transition: scale .16s var(--ease-out); }
+        .shop-root button:not(:disabled):active, .shop-drawer button:not(:disabled):active { scale: .97; }
+        /* gold leaf (kintsugi) — the same leaf as the Darśana masthead word */
+        .ak-leaf {
+          background:
+            radial-gradient(120% 80% at 30% 20%, rgba(255,250,225,.75), transparent 45%),
+            linear-gradient(100deg,#8A6420 0%,#C99A3E 18%,#F2D78C 34%,#B9862F 50%,#E8C46C 66%,#9C7428 82%,#D9B25A 100%);
+          background-size: 100% 100%, 200% 100%;
+          -webkit-background-clip: text; background-clip: text;
+          color: transparent !important; -webkit-text-fill-color: transparent;
+          padding: 0 .08em .1em 0;
+          animation: akLeaf 14s cubic-bezier(.45,0,.25,1) infinite alternate;
+        }
+        @keyframes akLeaf { to { background-position: 0 0, 100% 0; } }
+        .ak-seam path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: akSeamDraw 1.6s cubic-bezier(.16,1,.3,1) .35s forwards; }
+        .ak-seam .ak-seam-twig { animation-duration: .9s; animation-delay: 1.5s; }
+        @keyframes akSeamDraw { to { stroke-dashoffset: 0; } }
+        @media (max-width: 780px) { .shop-region button { padding: 6px 8px !important; } }
         @media (prefers-reduced-motion: reduce) {
+          .ak-leaf { animation: none !important; }
+          .ak-seam path { animation: none !important; stroke-dashoffset: 0 !important; }
+          .aisle-header video { transform: none !important; }
+          .shop-root button { transition: none !important; }
           .product-card, .pp, .shop-drawer, .shop-chip, .new-ribbon, .filter-row-in { transition: none !important; animation: none !important; }
           .ak-gallery { scroll-behavior: auto !important; }
         }
@@ -813,7 +878,7 @@ function FilterRow({ label, items, selected, onToggle, compact=false, swatch=fal
       display:"flex", alignItems:"center", gap: compact ? 6 : 8,
       overflowX:"auto", whiteSpace:"nowrap", scrollbarWidth:"none",
       padding: compact ? "4px 0" : "2px 0 10px",
-      animation:"filterIn 1.1s var(--ease-out) both",
+      animation:"filterIn .5s var(--ease-out) both",
     }}>
       <span className="mono" style={{ fontSize:9, letterSpacing:".3em", color:"#8a3e18", textTransform:"uppercase", marginRight: compact ? 6 : 10, flex:"0 0 auto" }}>{label}</span>
       {allLabel && (
@@ -850,7 +915,7 @@ function chipStyle(on, compact){
     border:`1px solid ${on ? "#1a1008" : "rgba(138,105,50,.25)"}`,
     fontFamily:"var(--mono)", fontSize: compact ? 9 : 10, letterSpacing:".24em", textTransform:"uppercase",
     fontWeight: on ? 700 : 500,
-    cursor:"pointer", transition:"all .35s var(--ease-out)",
+    cursor:"pointer", transition:"background-color .2s, color .2s, border-color .2s, scale .16s var(--ease-out)",
   };
 }
 // Browser-only: does the first word of a colour name parse as a CSS colour?
@@ -870,7 +935,7 @@ function TrustStrip({ align="left", product=null, compact=false }){
       fontSize: compact ? 8.5 : 9.5, letterSpacing:".2em", textTransform:"uppercase", lineHeight:2,
       color:"rgba(26,16,8,.55)", textAlign:align,
     }}>
-      {TRUST.items.map((t,i)=>(
+      {(MONEY.usd ? TRUST.itemsUS : TRUST.items).map((t,i)=>(
         <React.Fragment key={t}>
           {i>0 && <span style={{ color:"#c5a059", margin:"0 8px" }}>·</span>}
           <span style={{ whiteSpace:"nowrap" }}>{t}</span>
@@ -879,6 +944,25 @@ function TrustStrip({ align="left", product=null, compact=false }){
       <span style={{ color:"#c5a059", margin:"0 8px" }}>·</span>
       <a href={whatsappUrl(msg)} target="_blank" rel="noopener noreferrer" style={{ color:"#8a3e18", textDecoration:"none", borderBottom:"1px solid rgba(138,62,24,.35)", whiteSpace:"nowrap" }}>WhatsApp us</a>
     </div>
+  );
+}
+
+// ───────────────────────── Kintsugi seam ─────────────────────────
+// A mended crack in gold leaf (same leaf as the Darśana masthead word). Draws once.
+function KintsugiSeam(){
+  return (
+    <svg className="ak-seam" aria-hidden viewBox="0 0 1200 40" preserveAspectRatio="none" style={{ display:"block", width:"100%", height:34, marginTop:34, overflow:"visible" }}>
+      <defs>
+        <linearGradient id="akSeamG" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stopColor="#8A6420"/><stop offset=".18" stopColor="#C99A3E"/><stop offset=".34" stopColor="#F2D78C"/>
+          <stop offset=".5" stopColor="#B9862F"/><stop offset=".66" stopColor="#E8C46C"/><stop offset=".82" stopColor="#9C7428"/><stop offset="1" stopColor="#D9B25A"/>
+        </linearGradient>
+      </defs>
+      <g fill="none" stroke="url(#akSeamG)" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke">
+        <path className="ak-seam-main" pathLength="1" strokeWidth="1.6" vectorEffect="non-scaling-stroke" d="M0 22 L88 19 L131 26 L214 17 L262 21 L340 12 L398 24 L471 20 L520 29 L603 18 L655 23 L742 14 L790 22 L868 27 L921 16 L1004 21 L1062 13 L1130 20 L1200 17"/>
+        <path className="ak-seam-twig" pathLength="1" strokeWidth="1" vectorEffect="non-scaling-stroke" d="M340 12 L361 3 L384 6 M603 18 L622 31 L651 36 M921 16 L940 5 M131 26 L149 35"/>
+      </g>
+    </svg>
   );
 }
 
@@ -980,7 +1064,7 @@ function Aisle({ cat, idx, now, onPeek }){
       <div
         ref={chipRef}
         className="aisle-header"
-        onMouseEnter={()=>setHover(true)}
+        onMouseEnter={()=>CAN_HOVER && setHover(true)}
         onMouseLeave={()=>setHover(false)}
         style={{
           position:"relative", overflow:"hidden", borderRadius:10,
@@ -1026,9 +1110,9 @@ function Aisle({ cat, idx, now, onPeek }){
                 width:44, height:44, borderRadius:"50%",
                 background:"rgba(245,239,228,.18)", border:"1px solid rgba(245,239,228,.35)",
                 color:"#f5efe4", cursor:"pointer", display:"grid", placeItems:"center",
-                fontSize:16, transition:"all .25s", backdropFilter:"blur(6px)",
+                fontSize:16, transition:"background-color .2s, color .2s, border-color .2s, scale .16s var(--ease-out)", backdropFilter:"blur(6px)",
               }}
-              onMouseEnter={(e)=>{ e.currentTarget.style.background="#f5efe4"; e.currentTarget.style.color="#1a1008"; }}
+              onMouseEnter={(e)=>{ if(!CAN_HOVER) return; e.currentTarget.style.background="#f5efe4"; e.currentTarget.style.color="#1a1008"; }}
               onMouseLeave={(e)=>{ e.currentTarget.style.background="rgba(245,239,228,.18)"; e.currentTarget.style.color="#f5efe4"; }}>
                 {d<0?"←":"→"}
               </button>
@@ -1097,7 +1181,7 @@ function ProductCard({ p, cat, idx, layout="strip", now, onPeek }){
   const art = layout === "lead" ? "5/4" : "4/5";
   return (
     <article
-      onMouseEnter={()=>setHover(true)}
+      onMouseEnter={()=>CAN_HOVER && setHover(true)}
       onMouseLeave={()=>setHover(false)}
       className={strip ? "product-card" : `spread-card spread-${layout}`}
       style={{
@@ -1109,7 +1193,7 @@ function ProductCard({ p, cat, idx, layout="strip", now, onPeek }){
           ? "0 24px 50px rgba(61,45,19,.28), 0 0 0 1px rgba(138,105,50,.25)"
           : "0 8px 22px rgba(61,45,19,.14)",
         transform: hover ? "translateY(-4px)" : "translateY(0)",
-        transition:"all .4s var(--ease-out)",
+        transition:"transform .4s var(--ease-out), box-shadow .4s var(--ease-out)",
         cursor:"pointer",
       }}
       onClick={()=>onPeek()}>
@@ -1147,7 +1231,7 @@ function ProductCard({ p, cat, idx, layout="strip", now, onPeek }){
             background:"rgba(245,239,228,.96)", color:"#1a1008", border:"none",
             cursor:"pointer", fontSize:18, fontWeight:300,
             opacity: hover?1:0, transform: hover?"translateY(0)":"translateY(-4px)",
-            transition:"all .3s",
+            transition:"opacity .25s, transform .25s var(--ease-out)",
             display:"grid", placeItems:"center",
           }} aria-label={`Open ${p.name}`}>→</button>
       </div>
@@ -1236,7 +1320,7 @@ function ReviewForm({ p }){
       <div style={{ marginTop:4 }}>
         <button type="button" onClick={()=>setOpen(true)} className="mono write-review-btn" style={{
           background:"transparent", border:"1px solid #1a1008", color:"#1a1008", borderRadius:6, padding:"13px 20px", cursor:"pointer",
-          fontSize:10, letterSpacing:".3em", textTransform:"uppercase", fontWeight:700, transition:"all .3s",
+          fontSize:10, letterSpacing:".3em", textTransform:"uppercase", fontWeight:700, transition:"background-color .2s, color .2s, border-color .2s, scale .16s var(--ease-out)",
         }}>Write a review →</button>
         <div className="mono" style={{ fontSize:8, letterSpacing:".22em", color:"rgba(26,16,8,.45)", textTransform:"uppercase", marginTop:8 }}>Read before it appears</div>
       </div>
@@ -1349,7 +1433,7 @@ function ComingSoonCard({ p, cat, idx, layout="strip" }){
     // One wide strip across the whole aisle. Text lives inside the art.
     return (
       <article
-        onMouseEnter={()=>setHover(true)}
+        onMouseEnter={()=>CAN_HOVER && setHover(true)}
         onMouseLeave={()=>setHover(false)}
         className="soon-banner"
         aria-label={`${p.name} — coming soon`}
@@ -1373,7 +1457,7 @@ function ComingSoonCard({ p, cat, idx, layout="strip" }){
   const art = layout === "lead" ? "4/3" : "4/5";
   return (
     <article
-      onMouseEnter={()=>setHover(true)}
+      onMouseEnter={()=>CAN_HOVER && setHover(true)}
       onMouseLeave={()=>setHover(false)}
       className={strip ? "product-card" : `spread-card spread-${layout}`}
       aria-label={`${p.name} — coming soon`}
@@ -1381,7 +1465,7 @@ function ComingSoonCard({ p, cat, idx, layout="strip" }){
         flex: strip ? "0 0 300px" : "none", scrollSnapAlign:"start",
         position:"relative", borderRadius:10, overflow:"hidden",
         background:"#fff", boxShadow:"0 8px 22px rgba(61,45,19,.12)",
-        transition:"all .4s var(--ease-out)", cursor:"default",
+        transition:"opacity .4s, transform .4s var(--ease-out), box-shadow .4s var(--ease-out)", cursor:"default",
         opacity: hover ? 1 : .92,
         display:"flex", flexDirection:"column",
       }}>
@@ -1481,7 +1565,7 @@ function Gallery({ images, alt, hover=false, objectPosition="center", arrows="ho
       {dots && n>1 && (
         <div style={{ position:"absolute", left:0, right:0, bottom:10, display:"flex", justifyContent:"center", gap:5, zIndex:3, pointerEvents:"none" }}>
           {images.map((_,i)=>(
-            <span key={i} style={{ width: i===idx ? 14 : 5, height:5, borderRadius:3, background: i===idx ? "#e4b37a" : "rgba(245,239,228,.7)", transition:"all .4s var(--ease-out)" }}/>
+            <span key={i} style={{ width: i===idx ? 14 : 5, height:5, borderRadius:3, background: i===idx ? "#e4b37a" : "rgba(245,239,228,.7)", transition:"width .3s var(--ease-out), background-color .3s" }}/>
           ))}
         </div>
       )}
@@ -1610,7 +1694,7 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
                       fontFamily:"var(--mono)", fontSize:9, letterSpacing:".18em", textTransform:"uppercase",
                       border:`2px solid ${active ? "#1a1008" : "rgba(26,16,8,.18)"}`,
                       boxShadow: active ? "0 0 0 3px #f5efe4, 0 0 0 4px #1a1008" : "inset 0 0 0 1px rgba(0,0,0,.08)",
-                      cursor:"pointer", transition:"all .3s",
+                      cursor:"pointer", transition:"box-shadow .2s, scale .16s var(--ease-out)",
                     }}>{hex ? "" : c}</button>
                   );
                 })}
@@ -1634,7 +1718,7 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
                       border:`1px solid ${active?"#1a1008": ok ? "rgba(26,16,8,.2)" : "rgba(26,16,8,.1)"}`,
                       textDecoration: ok ? "none" : "line-through",
                       fontFamily:"var(--mono)", fontSize:11, fontWeight:600, letterSpacing:".1em",
-                      cursor: ok ? "pointer" : "not-allowed", transition:"all .2s",
+                      cursor: ok ? "pointer" : "not-allowed", transition:"background-color .15s, color .15s, border-color .15s, scale .16s var(--ease-out)",
                     }}>{s}</button>
                   );
                 })}
@@ -1647,7 +1731,7 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
             marginTop:6, padding:"16px 20px",
             background: canAdd ? "#1a1008" : "rgba(26,16,8,.25)", color:"#f5efe4", border:"none", borderRadius:8,
             fontFamily:"var(--mono)", fontSize:10, letterSpacing:".3em", textTransform:"uppercase", fontWeight:700,
-            cursor: canAdd ? "pointer" : "default", transition:"transform .3s",
+            cursor: canAdd ? "pointer" : "default", transition:"transform .3s, scale .16s var(--ease-out)",
           }}>
             {busy ? "Adding…" : (variant && !variant.available) ? "Sold out" : `+ Add to bag · ${size ? `Size ${size} · ` : ""}${fmtINR(price)}`}
           </button>
@@ -1685,7 +1769,7 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
             {[
               ["Cut", p.meta], ["Type", p.typeLabel], deity && ["Deity", deity],
               p.colors.length && ["Colours", p.colors.join(", ")], p.sizes.length && ["Sizes", p.sizes.join(" · ")],
-              ["Made", "Printed to order in India, delivered in 5–8 business days"],
+              ["Made", MONEY.usd ? "Printed to order in the USA. Free US shipping." : "Printed to order in India, delivered in 5–8 business days"],
             ].filter(Boolean).map(([k,v])=>(
               <React.Fragment key={k}>
                 <dt className="mono" style={{ fontSize:9, letterSpacing:".3em", textTransform:"uppercase", color:"rgba(26,16,8,.5)", alignSelf:"baseline" }}>{k}</dt>
@@ -1758,7 +1842,7 @@ function CartDrawer({ open, cart, busy, error, onUpdate, onRemove, onClose, upse
         position:"fixed", top:0, right:0, bottom:0, width:"min(420px, 92vw)", zIndex:45,
         background:"#f5efe4", borderLeft:"1px solid rgba(138,105,50,.18)",
         transform: open?"translateX(0)":"translateX(100%)",
-        transition:"transform .4s var(--ease-out)",
+        transition: open ? "transform .4s var(--ease-out)" : "transform .26s var(--ease-out)",
         display:"flex", flexDirection:"column",
         boxShadow:"-20px 0 60px rgba(0,0,0,.25)",
       }}>
@@ -1854,8 +1938,13 @@ function CartDrawer({ open, cart, busy, error, onUpdate, onRemove, onClose, upse
             cursor: canCheckout?"pointer":"default",
           }}>{busy ? "One moment…" : "Checkout →"}</button>
           <div className="mono" style={{ fontSize:9, letterSpacing:".28em", color:"rgba(26,16,8,.4)", textTransform:"uppercase", textAlign:"center", marginTop:10 }}>
-            Secure checkout by Shopify · UPI · Cards
+            {MONEY.usd ? "Secure checkout by Shopify · Cards" : "Secure checkout by Shopify · UPI · Cards"}
           </div>
+          {MONEY.usd && lines.length>0 && (
+            <div style={{ fontSize:12, lineHeight:1.5, color:"rgba(26,16,8,.62)", textAlign:"center", marginTop:8 }}>
+              Your card is charged in Indian rupees: {fmtRupees(subtotal)}. Your bank sets the final dollar amount.
+            </div>
+          )}
           <div style={{ marginTop:12, paddingTop:10, borderTop:"1px solid rgba(138,105,50,.14)" }}>
             <TrustStrip align="center" compact/>
           </div>

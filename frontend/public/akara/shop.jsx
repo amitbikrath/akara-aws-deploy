@@ -194,7 +194,7 @@ function SpecimenCard({ item, index }){
           fontFamily:"var(--mono)", fontSize:9, letterSpacing:".24em", textTransform:"uppercase", fontWeight:600,
           borderRadius:999,
           opacity: hover?1:0, transform: hover?"translateY(0)":"translateY(6px)",
-          transition:"all .35s var(--ease-out)",
+          transition:"opacity .35s var(--ease-out), transform .35s var(--ease-out)",
         }}>Enter shop ↗</div>
         <div aria-hidden style={{
           position:"absolute", top:10, right:10,
@@ -249,7 +249,7 @@ function SpecimenCard({ item, index }){
           color: hover ? "#0a1626" : ACCENT,
           border:`1px solid ${ACCENT}`, borderRadius:999,
           fontFamily:"var(--mono)", fontSize:9, letterSpacing:".24em", textTransform:"uppercase", fontWeight:600,
-          transition:"all .3s var(--ease-out)",
+          transition:"background-color .3s var(--ease-out), color .3s var(--ease-out)",
         }}>Enter →</span>
       </div>
     </a>
@@ -287,7 +287,7 @@ function ShopSection({ tweaks }){
 
       <div style={{ position:"relative", maxWidth:1440, margin:"0 auto" }}>
         <div ref={titleRef} style={{ textAlign:"center", marginBottom:100,
-          opacity:inView?1:0, transform:inView?"translateY(0)":"translateY(24px)", transition:"all .9s var(--ease-out)" }}>
+          opacity:inView?1:0, transform:inView?"translateY(0)":"translateY(24px)", transition:"opacity .9s var(--ease-out), transform .9s var(--ease-out)" }}>
           <SectionKicker num="03 / 05" label="Shop · Objects for a Sanatani home" align="center"/>
           <h2 className="display" style={{ fontSize:"clamp(40px,5.2vw,76px)", lineHeight:1.05, margin:"0 auto", fontWeight:400, maxWidth:"22ch", textWrap:"balance", textShadow:"0 10px 30px rgba(0,0,0,.5)" }}>
             A physical brand, <em className="gold-text" style={{ fontStyle:"italic" }}>arriving slowly</em>.
