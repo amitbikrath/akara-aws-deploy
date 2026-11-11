@@ -261,6 +261,19 @@ function reviewPayload(shopDomain, product, f){
 }
 // Founder's note: metafield text → paragraphs. Empty → [].
 function founderNoteParas(text){ return String(text||"").split(/\n+/).map(x=>x.trim()).filter(Boolean); }
+// Options besides Colour and Size that give a real choice (Print: acrylic / metal, Eyes: open /
+// closed). Each one gets its own picker. An option with one value (Title, Depth) gets none.
+function extraOptionsOf(options){
+  return (options||[]).filter(o=>!/^(colou?r|size)$/i.test(o.name) && (o.values||[]).length > 1)
+    .map(o=>({ key:o.name.toLowerCase(), name:o.name, values:o.values }));
+}
+// The one variant that matches the picked colour, size and every extra option.
+// `color` / `size` are undefined when the product has no such option.
+function findVariant(variants, extras, want){
+  return (variants||[]).find(v=>(want.color===undefined || v.color===want.color)
+    && (want.size===undefined || v.size===want.size)
+    && (extras||[]).every(o=>(v.opts||{})[o.key]===(want.extra||{})[o.key]));
+}
 // @pure-end
 
 // ───────────────────────── Storefront: products ─────────────────────────
@@ -318,8 +331,7 @@ function mapProduct(n){
     };
   });
   // Any other option with a real choice (Print: acrylic / metal, Eyes: open / closed) gets its own picker.
-  const extras = (n.options||[]).filter(o=>!/^(colou?r|size)$/i.test(o.name) && o.values.length > 1)
-    .map(o=>({ key:o.name.toLowerCase(), name:o.name, values:o.values }));
+  const extras = extraOptionsOf(n.options);
   const images = (n.images.nodes||[]).map(i=>i.url);
   // The product page gallery follows Shopify's media order, videos included: an image is its
   // URL (same string as in `images`), a video is { video, poster }. Cards keep `images`.
@@ -1691,7 +1703,7 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
   const extras = p.extras || [];
   const [extra, setExtra] = spS(()=>Object.fromEntries(extras.map(o=>[o.key, (firstAvail.opts||{})[o.key] || o.values[0]])));
   const variantFor = (c, s, ex)=>{ const e = ex || extra;
-    return p.variants.find(v=>(!hasColor || v.color===c) && (!hasSize || v.size===s) && extras.every(o=>v.opts[o.key]===e[o.key])); };
+    return findVariant(p.variants, extras, { color: hasColor ? c : undefined, size: hasSize ? s : undefined, extra: e }); };
   const variant = variantFor(color, size);
   const extraVariant = (key, val)=> variantFor(color, size, { ...extra, [key]:val });
   const pickExtra = (key, val)=>{

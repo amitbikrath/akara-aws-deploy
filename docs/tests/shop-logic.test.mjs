@@ -11,7 +11,7 @@ const block = jsx.split("// @pure-start")[1].split("// @pure-end")[0];
 assert.ok(block.length > 1000, "pure block found");
 assert.ok(!/<[A-Za-z]/.test(block.replace(/\/\/.*$/gm,"")), "pure block has no JSX");
 
-const exportsList = ["DEITIES","deityFor","typeLabelFor","swatchFor","buildFacets","applyFilters","anyFilterActive","SORTS","sortProducts","isNewThisWeek","upsellFor","filtersFromParams","paramsFromFilters","TRUST","whatsappUrl","sortSizes","fmtINR","reviewsVisible","parseRatingMetafield","parseJudgeMeSummary","parseJudgeMeReviews","fmtReviewDate","writeReviewUrl","founderNoteParas","productExternalId","reviewPayload"];
+const exportsList = ["DEITIES","deityFor","typeLabelFor","swatchFor","buildFacets","applyFilters","anyFilterActive","SORTS","sortProducts","isNewThisWeek","upsellFor","filtersFromParams","paramsFromFilters","TRUST","whatsappUrl","sortSizes","fmtINR","reviewsVisible","parseRatingMetafield","parseJudgeMeSummary","parseJudgeMeReviews","fmtReviewDate","writeReviewUrl","founderNoteParas","productExternalId","reviewPayload","extraOptionsOf","findVariant"];
 const L = new Function(block + `\nreturn {${exportsList.join(",")}};`)();
 
 // ---- fixture → minimal product shape (mirrors mapProduct's fields used by the pure code)
@@ -97,7 +97,7 @@ t("url round-trip", ()=>{
 t("trust strip copy rules", ()=>{
   const all = L.TRUST.items.join(" ").toLowerCase();
   assert.ok(!/\breturns?\b/.test(all), "never says returns");
-  assert.ok(all.includes("replacement") && all.includes("5–8 days") && all.includes("most pin codes"));
+  assert.ok(all.includes("replacement") && all.includes("5–8 business days") && all.includes("across india"));
   assert.equal(L.whatsappUrl("hi"), "https://wa.me/919993518528?text=hi");
 });
 t("review gate: hidden for 4, null, NaN; shown for 5 and 12", ()=>{
@@ -148,5 +148,35 @@ t("review payload: validation order, numeric product id, url", ()=>{
   assert.ok(L.reviewPayload("s", prod, { rating:4, name:"a", email:"nope", body:"long enough words" }).error);
   assert.ok(L.reviewPayload("s", prod, { rating:4, name:"a", email:"a@b.co", body:"short" }).error);
   assert.ok(L.reviewPayload("s", { id:"x", handle:"h" }, { rating:4, name:"a", email:"a@b.co", body:"long enough words" }).error);
+});
+// ---- product options: shapes copied from the live store on 2026-11-11
+const wallArt = {   // India wall art: one option, 4 values, 4 prices
+  options: [{ name:"Print", values:["Acrylic A4","Acrylic A3","Metal 8x11.7","Metal 11.7x15.7"] }],
+  variants: [["Acrylic A4",999],["Acrylic A3",1499],["Metal 8x11.7",1499],["Metal 11.7x15.7",2499]]
+    .map(([v,price])=>({ color:null, size:null, opts:{ print:v }, price })),
+};
+const eyes = {      // metal print: Eyes (2 values) + Size (1 value)
+  options: [{ name:"Eyes", values:["Open","Closed"] }, { name:"Size", values:["11.7 x 15.7 in"] }],
+  variants: ["Open","Closed"].map(v=>({ color:null, size:"11.7 x 15.7 in", opts:{ eyes:v, size:"11.7 x 15.7 in" }, price:2499 })),
+};
+t("every option with a real choice gets a picker; Colour, Size and one-value options do not", ()=>{
+  assert.deepEqual(L.extraOptionsOf(wallArt.options).map(o=>[o.key,o.values.length]), [["print",4]]);
+  assert.deepEqual(L.extraOptionsOf(eyes.options).map(o=>o.key), ["eyes"]);
+  assert.deepEqual(L.extraOptionsOf([{name:"Color",values:["a","b"]},{name:"Colour",values:["a","b"]},{name:"Size",values:["S","M"]}]), []);
+  assert.deepEqual(L.extraOptionsOf([{name:"Title",values:["Default Title"]},{name:"Depth",values:["1.25 in"]}]), []);
+  assert.deepEqual(L.extraOptionsOf(undefined), []);
+  // Each product in the saved fixture has only Colour and Size.
+  fx.data.products.edges.forEach(({node:n})=>assert.deepEqual(L.extraOptionsOf(n.options), [], n.handle));
+});
+t("each picked option value reaches its own variant and price", ()=>{
+  const ex = L.extraOptionsOf(wallArt.options);
+  const prices = wallArt.options[0].values.map(v=>L.findVariant(wallArt.variants, ex, { extra:{ print:v } }).price);
+  assert.deepEqual(prices, [999,1499,1499,2499]);
+  const ex2 = L.extraOptionsOf(eyes.options);
+  assert.equal(L.findVariant(eyes.variants, ex2, { size:"11.7 x 15.7 in", extra:{ eyes:"Closed" } }).opts.eyes, "Closed");
+  assert.equal(L.findVariant(eyes.variants, ex2, { size:"A4", extra:{ eyes:"Closed" } }), undefined);
+  // A tee: no extras, colour + size only.
+  const tee = [{ color:"Black", size:"M", opts:{}, price:899 }, { color:"White", size:"M", opts:{}, price:899 }];
+  assert.equal(L.findVariant(tee, [], { color:"White", size:"M", extra:{} }).color, "White");
 });
 console.log(`\n${passed} tests passed`);

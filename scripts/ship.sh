@@ -57,6 +57,21 @@ if [ "$MODE" = verify ]; then verify .; exit $?; fi
 
 ./scripts/check.sh
 
+# Fail before any work if the AWS keys in use cannot write the site bucket.
+# A dry-run copy asks S3 nothing, so test with a real, tiny write and delete it.
+if [ "$MODE" = ship ]; then
+  who=$(aws sts get-caller-identity --query Arn --output text 2>/dev/null) || { echo "STOP: no working AWS keys in this shell."; exit 3; }
+  probe=".ship-probe-$$"
+  if printf ok | aws s3 cp - "s3://$BUCKET/$probe" --only-show-errors 2>/dev/null; then
+    aws s3 rm "s3://$BUCKET/$probe" --only-show-errors
+  else
+    echo "STOP: $who cannot write to $BUCKET. Nothing was uploaded."
+    echo "The keys exported in ~/.zshenv override ~/.aws/credentials. Ask the owner, then run:"
+    echo "  env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY bash scripts/ship.sh $*"
+    exit 3
+  fi
+fi
+
 backup="../_backup_ship_$(date +%Y-%m-%d_%H%M%S)"
 for key in "${keys[@]}"; do
   meta=$(aws s3api head-object --bucket "$BUCKET" --key "$key" \

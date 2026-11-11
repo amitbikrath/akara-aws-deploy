@@ -4,5 +4,7 @@ set -e
 cd "$(dirname "$0")/.."
 node scripts/check-site.mjs
 node scripts/build-jsx.mjs --check
+node docs/tests/shop-logic.test.mjs > /dev/null
+echo "shop logic ok"
 for f in lambdas/*/index.js; do node --check "$f"; done
 echo "lambdas ok: $(ls lambdas/*/index.js | wc -l | tr -d ' ') index.js files parse"
