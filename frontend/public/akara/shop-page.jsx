@@ -164,6 +164,11 @@ function upsellFor(products, cartLines, n=3){
   return (same.length ? same : pool).slice(0, n);
 }
 
+// Which store owns a product: tag "US" = US store (Printify, ships to the USA); no "US" tag = India store
+// (Qikink, ships to India). Products may be published in BOTH market catalogs so links never 404, so the
+// shelf filters by this, and a product link from the other store moves the shopper to that store.
+function storeOf(tags){ return (tags||[]).some(t=>String(t).trim()==="US") ? "US" : "IN"; }
+
 // /shop/{handle} → handle, else null.
 function handleFromPath(pathname){
   const m = /^\/shop\/([^\/?#]+)\/?$/.exec(String(pathname||""));
@@ -409,7 +414,7 @@ function useStorefrontProducts(region, onEmptyUS){
     const timeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")), 12000));
     Promise.race([shopifyStorefront(PRODUCTS_QUERY), timeout])
       .then(d=>{
-        const list = (d.products.nodes||[]).map(mapProduct);
+        const list = (d.products.nodes||[]).map(mapProduct).filter(p=>storeOf(p.tags)===region);
         if(region==="US" && !list.length && onEmptyUS){ onEmptyUS(); return; }
         setState({ status:"ok", products:list, error:null });
       })
@@ -631,6 +636,24 @@ function ShopPageInner({ onClose, initialAisle }){
   const cartCount = cart ? cart.count : 0;
 
   const current = handle ? store.products.find(p=>p.handle===handle) : null;
+  // A /shop/{handle} link from the other store (a US visitor opening an India piece, or the reverse): ask the
+  // other market for it and, if it is there, move to that store and stay on the same piece.
+  const [crossCheck, setCrossCheck] = spS(null);
+  spE(()=>{
+    if(!handle || store.status!=="ok" || current) return;
+    let on = true;
+    const other = region==="US" ? "IN" : "US";
+    setCrossCheck(handle);
+    shopifyStorefront(`query($h: String!){ product(handle: $h){ id tags } }`, { h: handle }, other)
+      .then(d=>{
+        if(!on) return;
+        const pr = d && d.product;
+        if(pr && storeOf(pr.tags)===other){ akSetRegion(other, true); setAskRegion(false); setRegionState(AKARA_REGION.code); }
+        setCrossCheck(null);
+      })
+      .catch(()=>{ if(on) setCrossCheck(null); });
+    return ()=>{ on = false; };
+  },[handle, store.status, current, region]);
   spE(()=>{
     if(current && window.akTrack) window.akTrack("view_item", { currency:"INR", value:current.price,
       items:[{ item_id:current.handle, item_name:current.title, price:current.price }] });
@@ -743,7 +766,7 @@ function ShopPageInner({ onClose, initialAisle }){
         </div>
       )}
       {handle ? (
-        <ProductPage p={current} status={store.status} products={store.products} now={now} busy={busy}
+        <ProductPage p={current} status={crossCheck===handle && !current ? "loading" : store.status} products={store.products} now={now} busy={busy}
           onAdd={addVariant} onOpen={openProduct} onBack={closeProduct} onRetry={store.reload}/>
       ) : (<React.Fragment>
       {/* HEADER */}

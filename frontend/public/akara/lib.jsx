@@ -264,8 +264,8 @@ function akInContext(query, country){
   const head = query.slice(0, i);
   return (head.trim() ? head : "query") + " @inContext(country: " + country + ") " + query.slice(i);
 }
-async function shopifyStorefront(query, variables = {}){
-  query = akInContext(query, AKARA_REGION.code);
+async function shopifyStorefront(query, variables = {}, country){
+  query = akInContext(query, country || AKARA_REGION.code);
   const res = await fetch(`https://${AKARA_SHOPIFY.domain}/api/${AKARA_SHOPIFY.version}/graphql.json`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Shopify-Storefront-Access-Token": AKARA_SHOPIFY.token },

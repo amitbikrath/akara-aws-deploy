@@ -11,7 +11,7 @@ const block = jsx.split("// @pure-start")[1].split("// @pure-end")[0];
 assert.ok(block.length > 1000, "pure block found");
 assert.ok(!/<[A-Za-z]/.test(block.replace(/\/\/.*$/gm,"")), "pure block has no JSX");
 
-const exportsList = ["DEITIES","deityFor","typeLabelFor","swatchFor","buildFacets","applyFilters","anyFilterActive","SORTS","sortProducts","isNewThisWeek","upsellFor","filtersFromParams","paramsFromFilters","TRUST","whatsappUrl","sortSizes","fmtINR","reviewsVisible","parseRatingMetafield","parseJudgeMeSummary","parseJudgeMeReviews","fmtReviewDate","writeReviewUrl","founderNoteParas","productExternalId","reviewPayload","extraOptionsOf","findVariant"];
+const exportsList = ["DEITIES","deityFor","typeLabelFor","swatchFor","buildFacets","applyFilters","anyFilterActive","SORTS","sortProducts","isNewThisWeek","upsellFor","filtersFromParams","paramsFromFilters","TRUST","whatsappUrl","sortSizes","fmtINR","reviewsVisible","parseRatingMetafield","parseJudgeMeSummary","parseJudgeMeReviews","fmtReviewDate","writeReviewUrl","founderNoteParas","productExternalId","reviewPayload","extraOptionsOf","findVariant","storeOf"];
 const L = new Function(block + `\nreturn {${exportsList.join(",")}};`)();
 
 // ---- fixture → minimal product shape (mirrors mapProduct's fields used by the pure code)
@@ -180,3 +180,9 @@ t("each picked option value reaches its own variant and price", ()=>{
   assert.equal(L.findVariant(tee, [], { color:"White", size:"M", extra:{} }).color, "White");
 });
 console.log(`\n${passed} tests passed`);
+
+// ---- storeOf: which store owns a product (tag "US" = US store, else India)
+assert.equal(L.storeOf(["AKARA","US"]), "US");
+assert.equal(L.storeOf(["Acrylic Poster","India Only","Hanuman"]), "IN");
+assert.equal(L.storeOf([]), "IN");
+assert.equal(L.storeOf(["USA print"]), "IN");
