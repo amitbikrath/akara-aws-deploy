@@ -282,8 +282,11 @@ function findVariant(variants, extras, want){
 // @pure-end
 
 // ───────────────────────── Storefront: products ─────────────────────────
-const PRODUCTS_QUERY = `{
-  products(first: 100, sortKey: CREATED_AT, reverse: true) {
+// One store's products, a page at a time. Shopify gives at most 100 per call, so the
+// caller follows pageInfo until the last page: a single call once hid the 31 oldest.
+const PRODUCTS_QUERY = `query($q: String, $after: String){
+  products(first: 100, sortKey: CREATED_AT, reverse: true, query: $q, after: $after) {
+    pageInfo { hasNextPage endCursor }
     nodes {
       id handle title productType tags availableForSale descriptionHtml createdAt
       featuredImage { url altText }
@@ -407,14 +410,29 @@ function useProductReviews(handle, enabled){
   return state;
 }
 
+// Every product of one store. Shopify filters by the store tag (the same rule as
+// storeOf), and this reads page after page until none is left.
+async function fetchStoreProducts(region){
+  const q = region==="US" ? "tag:US" : "-tag:US";
+  const nodes = [];
+  let after = null;
+  for(let page=0; page<20; page++){
+    const d = await shopifyStorefront(PRODUCTS_QUERY, { q, after });
+    nodes.push(...(d.products.nodes||[]));
+    if(!d.products.pageInfo.hasNextPage) return nodes;
+    after = d.products.pageInfo.endCursor;
+  }
+  throw new Error("too many product pages");
+}
+
 function useStorefrontProducts(region, onEmptyUS){
   const [state, setState] = spS({ status:"loading", products:[], error:null });
   const load = spC(()=>{
     setState(s=>({ ...s, status:"loading", error:null }));
     const timeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")), 12000));
-    Promise.race([shopifyStorefront(PRODUCTS_QUERY), timeout])
-      .then(d=>{
-        const list = (d.products.nodes||[]).map(mapProduct).filter(p=>storeOf(p.tags)===region);
+    Promise.race([fetchStoreProducts(region), timeout])
+      .then(nodes=>{
+        const list = nodes.map(mapProduct).filter(p=>storeOf(p.tags)===region);
         if(region==="US" && !list.length && onEmptyUS){ onEmptyUS(); return; }
         setState({ status:"ok", products:list, error:null });
       })
