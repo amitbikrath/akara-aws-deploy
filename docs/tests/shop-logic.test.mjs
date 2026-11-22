@@ -11,7 +11,7 @@ const block = jsx.split("// @pure-start")[1].split("// @pure-end")[0];
 assert.ok(block.length > 1000, "pure block found");
 assert.ok(!/<[A-Za-z]/.test(block.replace(/\/\/.*$/gm,"")), "pure block has no JSX");
 
-const exportsList = ["DEITIES","deityFor","typeLabelFor","swatchFor","buildFacets","applyFilters","anyFilterActive","SORTS","sortProducts","isNewThisWeek","upsellFor","filtersFromParams","paramsFromFilters","TRUST","whatsappUrl","sortSizes","fmtINR","reviewsVisible","parseRatingMetafield","parseJudgeMeSummary","parseJudgeMeReviews","fmtReviewDate","writeReviewUrl","founderNoteParas","productExternalId","reviewPayload","extraOptionsOf","findVariant","storeOf"];
+const exportsList = ["DEITIES","deityFor","typeLabelFor","swatchFor","buildFacets","applyFilters","anyFilterActive","SORTS","sortProducts","isNewThisWeek","upsellFor","filtersFromParams","paramsFromFilters","TRUST","whatsappUrl","sortSizes","fmtINR","reviewsVisible","parseRatingMetafield","parseJudgeMeSummary","parseJudgeMeReviews","fmtReviewDate","writeReviewUrl","founderNoteParas","productExternalId","reviewPayload","extraOptionsOf","findVariant","storeOf","splitTitle"];
 const L = new Function(block + `\nreturn {${exportsList.join(",")}};`)();
 
 // ---- fixture → minimal product shape (mirrors mapProduct's fields used by the pure code)
@@ -20,7 +20,7 @@ const products = fx.data.products.edges.map(({node:n})=>{
   const colorOpt = n.options.find(o=>o.name.toLowerCase()==="color");
   const t = String(n.productType||"").toLowerCase();
   return {
-    id:n.id, handle:n.handle, name:n.title.split(/\s+[—–-]\s+/)[0], title:n.title,
+    id:n.id, handle:n.handle, name:L.splitTitle(n.title).name, title:n.title,
     price:Number(n.priceRange.minVariantPrice.amount), createdAt:n.createdAt,
     tags:n.tags, colors: colorOpt ? colorOpt.values : [],
     deity:L.deityFor(n.tags), typeLabel:L.typeLabelFor(n.productType),
@@ -186,3 +186,10 @@ assert.equal(L.storeOf(["AKARA","US"]), "US");
 assert.equal(L.storeOf(["Acrylic Poster","India Only","Hanuman"]), "IN");
 assert.equal(L.storeOf([]), "IN");
 assert.equal(L.storeOf(["USA print"]), "IN");
+
+// ---- splitTitle: the short name and the small line under it
+assert.deepEqual(L.splitTitle("Satyam Shivam Sundaram Tee — Shiva | Supima Cotton"), { name:"Satyam Shivam Sundaram Tee", meta:"Shiva · Supima Cotton" });
+assert.deepEqual(L.splitTitle("Jambavan Awakens Hanuman | Acrylic & Metal Wall Art"), { name:"Jambavan Awakens Hanuman", meta:"Acrylic & Metal Wall Art" });
+assert.deepEqual(L.splitTitle("Bal Hanuman — Small Hands, Mountain Heart | Acrylic & Metal Wall Art"), { name:"Bal Hanuman", meta:"Small Hands, Mountain Heart · Acrylic & Metal Wall Art" });
+assert.deepEqual(L.splitTitle("Plain Name"), { name:"Plain Name", meta:"" });
+assert.deepEqual(L.splitTitle(null), { name:"", meta:"" });

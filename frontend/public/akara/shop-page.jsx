@@ -279,6 +279,13 @@ function findVariant(variants, extras, want){
     && (want.size===undefined || v.size===want.size)
     && (extras||[]).every(o=>(v.opts||{})[o.key]===(want.extra||{})[o.key]));
 }
+// A Shopify title is "Name — Deity | Material". The name is the part before the first
+// dash; a title with no dash ("Name | Material") is cut at the first bar instead.
+function splitTitle(title){
+  const parts = String(title||"").split(/\s+[—–-]\s+/);
+  const bars = parts.length>1 ? [parts[0], ...parts.slice(1).join(" · ").split(/\s*\|\s*/)] : parts[0].split(/\s*\|\s*/);
+  return { name:bars[0].trim(), meta:bars.slice(1).map(x=>x.trim()).filter(Boolean).join(" · ") };
+}
 // @pure-end
 
 // ───────────────────────── Storefront: products ─────────────────────────
@@ -324,8 +331,7 @@ function htmlToText(html){
 
 function mapProduct(n){
   // "Satyam Shivam Sundaram Tee — Shiva | Supima Cotton" → name + meta
-  const [head, ...rest] = n.title.split(/\s+[—–-]\s+/);
-  const meta = rest.join(" · ").split(/\s*\|\s*/).join(" · ");
+  const { name:head, meta } = splitTitle(n.title);
   const optName = (want)=> (n.options||[]).find(o=>o.name.toLowerCase()===want);
   const colorOpt = optName("color") || optName("colour");
   const sizeOpt  = optName("size");
@@ -464,7 +470,7 @@ function mapCart(c){
     lines:(c.lines.nodes||[]).map(l=>{
       const m = l.merchandise || {};
       const so = Object.fromEntries((m.selectedOptions||[]).map(o=>[o.name.toLowerCase(), o.value]));
-      const [head] = String(m.product && m.product.title || "").split(/\s+[—–-]\s+/);
+      const head = splitTitle(m.product && m.product.title).name;
       return {
         id:l.id, qty:l.quantity, variantId:m.id, name:head.trim(), handle:(m.product && m.product.handle) || null,
         color: so.color || so.colour || null, size: so.size || null,
