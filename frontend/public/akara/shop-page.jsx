@@ -1810,7 +1810,7 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
 
       <div className="pp-grid" style={{ display:"grid", gridTemplateColumns:"minmax(0,1.25fr) minmax(0,1fr)", gap:48, alignItems:"start" }}>
         {/* GALLERY */}
-        <div className="pp-gallery" style={{ position:"sticky", top:96 }}>
+        <div className="pp-gallery" style={{ position:"sticky", top:96, minWidth:0 }}>
           <div style={{ position:"relative", aspectRatio:"4/5", borderRadius:12, overflow:"hidden", background:"#ece4d4", boxShadow:"0 24px 60px rgba(61,45,19,.18)" }}>
             <Gallery images={images} alt={p.name} arrows="always" dots api={gal} onIndex={setIdx} eager/>
             <div className="mono" style={{ position:"absolute", top:16, left:18, zIndex:3, color:"rgba(255,255,255,.9)", textShadow:"0 1px 6px rgba(0,0,0,.6)", fontSize:10, letterSpacing:".3em", textTransform:"uppercase", pointerEvents:"none" }}>
@@ -1963,7 +1963,7 @@ function ProductView({ p, products, now, busy, onAdd, onOpen, onBack }){
         .pp-thumbs::-webkit-scrollbar { display:none; }
         @media (max-width: 880px) {
           .pp { padding: 18px 16px 100px !important; }
-          .pp-grid { grid-template-columns: 1fr !important; gap: 26px !important; }
+          .pp-grid { grid-template-columns: minmax(0,1fr) !important; gap: 26px !important; }
           .pp-gallery { position: static !important; }
           .pp-copy h1 { font-size: clamp(34px, 9vw, 48px) !important; }
         }
